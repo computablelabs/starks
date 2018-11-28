@@ -1,4 +1,9 @@
 def _simple_ft(vals, modulus, roots_of_unity):
+    """Efficient base case implementation.
+
+    The FFT recurses down halves of the list. This method is
+    called to handle the base case of the fft.
+    """
     L = len(roots_of_unity)
     o = []
     for i in range(L):

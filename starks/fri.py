@@ -2,12 +2,12 @@ from merkle_tree import merkelize, mk_branch, verify_branch
 from utils import get_power_cycle, get_pseudorandom_indices
 from poly_utils import PrimeField
 
-# Generate an FRI proof that the polynomial that has the specified
-# values at successive powers of the specified root of unity has a
-# degree lower than maxdeg_plus_1
+# Generate an FRI proof that the polynomial that has the
+# specified values at successive powers of the specified root
+# of unity has a degree lower than maxdeg_plus_1
 #
-# We use maxdeg+1 instead of maxdeg because it's more mathematically
-# convenient in this case.
+# We use maxdeg+1 instead of maxdeg because it's more
+# mathematically convenient in this case.
 
 def prove_low_degree(values, root_of_unity, maxdeg_plus_1, modulus, exclude_multiples_of=0):
     f = PrimeField(modulus)

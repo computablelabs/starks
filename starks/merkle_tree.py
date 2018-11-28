@@ -18,14 +18,22 @@ def permute4(values):
     return o
 
 def get_index_in_permuted(x, L):
-    """Mapping to undo the effects of permute4"""
+    """Mapping to undo the effects of permute4
+    
+    Useful to find the location of an index in original list
+    in Merkle tree.
+    """
     ld4 = L // 4
     return x//ld4 + 4 * (x % ld4)
 
 def merkelize(L):
-    """This seems strange. It hashes pairs in the input list L (?)
+    """Creates a merkle-tree representation of the given list.
   
-    Oh, I think I get this. It flat encodes the tree. Pretty slick.
+    The merkle-tree is stored as a list of length 2*len(L).
+    The last len(L) elements are the original list elements
+    (converted to 32 byte representations). The next L-1
+    eleemnts store Merkle-tree elements. nodes[1] is the root
+    of the merkle tree.
     """
     L = permute4(L)
     nodes = [b''] * len(L) + [x.to_bytes(32, 'big') if isinstance(x, int) else x for x in L]
