@@ -12,11 +12,16 @@ nonresidue = 7
 
 # TODO(rbharath): What is meaning of these parameters?
 spot_check_security_factor = 80
+# TODO(rbharath): Is this the Galois extension degree?
 extension_factor = 8
 
 
 # TODO(rbharath): Wait, does Vitalik's blog post claim that
-# the verifier complexity is linear.
+# the verifier complexity is linear; Nah looks like t*log(t)
+# is optimal. Verifier complexity is O(log**2(t)) which should
+# be pretty small even for very large computations.
+# NOTE(rbharath): These starks here are not zero-knowledge I
+# think. Will need to be added onto library later.
 def mimc(inp, steps, round_constants):
   """Compute a MIMC permutation for some number of steps"""
   start_time = time.time()
@@ -24,6 +29,28 @@ def mimc(inp, steps, round_constants):
     inp = (inp**3 + round_constants[i % len(round_constants)]) % modulus
   print("MIMC computed in %.4f sec" % (time.time() - start_time))
   return inp
+
+def get_computational_trace(inp, steps, round_constants):
+  """Get the computational trace for the STARK.
+
+  This function is a first step towards refactoring this code
+  so it can generate STARKs for different computations.
+
+  Parameters
+  ----------
+  inp: Int
+    The input for the MiMC computation
+  steps: Int
+    The number of MiMC steps to run
+  """
+  computational_trace = [inp]
+  for i in range(steps - 1):
+    computational_trace.append(
+        (computational_trace[-1]**3 + round_constants[i % len(round_constants)])
+        % modulus)
+  output = computational_trace[-1]
+  print('Done generating computational trace')
+  return computational_trace, output
 
 # NOTE(rbharath): If you run a deep learning model on a GPU,
 # you can add a trace-log which can be exited from the GPU
@@ -56,14 +83,15 @@ def mk_mimc_proof(inp, steps, round_constants):
   xs = get_power_cycle(G2, modulus)
   last_step_position = xs[(steps - 1) * extension_factor]
 
-  # Generate the computational trace
-  computational_trace = [inp]
-  for i in range(steps - 1):
-    computational_trace.append(
-        (computational_trace[-1]**3 + round_constants[i % len(round_constants)])
-        % modulus)
-  output = computational_trace[-1]
-  print('Done generating computational trace')
+  ## Generate the computational trace
+  #computational_trace = [inp]
+  #for i in range(steps - 1):
+  #  computational_trace.append(
+  #      (computational_trace[-1]**3 + round_constants[i % len(round_constants)])
+  #      % modulus)
+  #output = computational_trace[-1]
+  #print('Done generating computational trace')
+  computational_trace, output = get_computational_trace(inp, steps, round_constants)
 
   # Interpolate the computational trace into a polynomial P,
   # with each step along a successive power of G1
@@ -92,6 +120,7 @@ def mk_mimc_proof(inp, steps, round_constants):
   # think this is the forward loop in MiMC. g1*x is the next
   # iteration and should equal the MiMC pass from previous.
   # For a deep network, would be the sigma(wx+b) I think.
+  # TODO(rbharath): I think this part would have to be refactored out for a general tape.
   c_of_p_evaluations = [
       (p_evaluations[
           (i + extension_factor) % precision] - f.exp(p_evaluations[i], 3) -

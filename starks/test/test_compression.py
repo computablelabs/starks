@@ -1,12 +1,19 @@
 import unittest
+from starks.compression import compress_fri 
+from starks.compression import decompress_fri 
+from starks.compression import bin_length
 from starks.fri import prove_low_degree
 from starks.fft import fft
 
-class TestFRI(unittest.TestCase):
+class TestMiMC(unittest.TestCase):
   """
-  Basic tests for FRI implementation. 
+  Basic tests for compression/decompression of FRI proofs.
   """
-  def test_basic_prove(self):
+
+  def test_compress_fri(self):
+    """
+    Basic tests of compression
+    """
     degree = 4
     modulus = 31 
     # 1 + 2x + 3x^2 + 4 x^3 mod 31
@@ -21,3 +28,10 @@ class TestFRI(unittest.TestCase):
     assert len(evaluations) == 6
     
     proof = prove_low_degree(evaluations, root_of_unity, degree, modulus)
+    compressed = compress_fri(proof)
+    length = bin_length(compressed)
+    print(compressed)
+    print("bin_length: %d" % length)
+    # TODO(rbharath): This is a lame test that checks length
+    # of compressed proof is > 0. Need better unit test.
+    assert length > 0
