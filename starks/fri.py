@@ -3,6 +3,9 @@ from starks.utils import get_power_cycle, get_pseudorandom_indices
 from starks.poly_utils import PrimeField
 
 
+# TODO(rbharath): Why are quartics used everywhere in this
+# file? Any specific reason or could cubics or whatever work
+# too?
 def prove_low_degree(values,
                      root_of_unity,
                      maxdeg_plus_1,
@@ -115,8 +118,9 @@ def verify_low_degree_proof(merkle_root,
     ys = get_pseudorandom_indices(
         root2, roudeg // 4, 40, exclude_multiples_of=exclude_multiples_of)
 
-    # For each y coordinate, get the x coordinates on the row, the values on
-    # the row, and the value at that y from the column
+    # For each y coordinate, get the x coordinates on the row,
+    # the values on the row, and the value at that y from the
+    # column
     xcoords = []
     rows = []
     columnvals = []
@@ -137,9 +141,10 @@ def verify_low_degree_proof(merkle_root,
       columnvals.append(
           verify_branch(root2, y, branches[i][0], output_as_int=True))
 
-    # Verify for each selected y coordinate that the four points from the
-    # polynomial and the one point from the column that are on that y
-    # coordinate are on the same deg < 4 polynomial
+    # Verify for each selected y coordinate that the four
+    # points from the polynomial and the one point from the
+    # column that are on that y coordinate are on the same deg
+    # < 4 polynomial
     polys = f.multi_interp_4(xcoords, rows)
 
     for p, c in zip(polys, columnvals):
