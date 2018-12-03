@@ -34,7 +34,8 @@ def get_computational_trace(inp, steps, round_constants):
   """Get the computational trace for the STARK.
 
   This function is a first step towards refactoring this code
-  so it can generate STARKs for different computations.
+  so it can generate STARKs for different computations. For
+  now, this only works for MiMC
 
   Parameters
   ----------
@@ -51,6 +52,60 @@ def get_computational_trace(inp, steps, round_constants):
   output = computational_trace[-1]
   print('Done generating computational trace')
   return computational_trace, output
+
+def construct_constraint_polynomial(steps, round_constants, G1, G2, precision, p_evaluations):
+  """Construct the constraint polynomial for the given tape.
+
+  This function constructs a constraint polynomial for the
+  given computational tape. For now, this function only works
+  with MiMC.
+  """
+  skips2 = steps // len(round_constants)
+  constants_mini_polynomial = fft(
+      round_constants, modulus, f.exp(G1, skips2), inv=True)
+  constants_polynomial = [
+      0 if i % skips2 else constants_mini_polynomial[i // skips2]
+      for i in range(steps)
+  ]
+  constants_mini_extension = fft(constants_mini_polynomial, modulus,
+                                 f.exp(G2, skips2))
+  print(
+      'Converted round constants into a polynomial and low-degree extended it')
+
+  # Create the composed polynomial such that
+  # C(P(x), P(g1*x), K(x)) = P(g1*x) - P(x)**3 - K(x)
+  # here K(x) is the round constants.
+  # TODO(rbharath): Why does this structure make sense? Oh, I
+  # think this is the forward loop in MiMC. g1*x is the next
+  # iteration and should equal the MiMC pass from previous.
+  # For a deep network, would be the sigma(wx+b) I think.
+  # TODO(rbharath): I think this part would have to be refactored out for a general tape.
+  c_of_p_evaluations = [
+      (p_evaluations[
+          (i + extension_factor) % precision] - f.exp(p_evaluations[i], 3) -
+       constants_mini_extension[i % len(constants_mini_extension)]) % modulus
+      for i in range(precision)
+  ]
+  print('Computed C(P, K) polynomial')
+  return c_of_p_evaluations
+
+def compute_remainder_polynomial(xs, precision, steps, last_step_position, c_of_p_evaluations):
+  # Compute D(x) = C(P(x), P(g1*x), K(x)) / Z(x)
+  # Z(x) = (x^steps - 1) / (x - x_atlast_step)
+  # TODO(rbharath): I think this is supposed to equal 
+  # Z(x) = (x - 1)(x-2)...(x-(steps_1)). How are these equal?
+  z_num_evaluations = [
+      xs[(i * steps) % precision] - 1 for i in range(precision)
+  ]
+  z_num_inv = f.multi_inv(z_num_evaluations)
+  # (x_i - x_{step-1}) list
+  z_den_evaluations = [xs[i] - last_step_position for i in range(precision)]
+  d_evaluations = [
+      cp * zd * zni % modulus
+      for cp, zd, zni in zip(c_of_p_evaluations, z_den_evaluations, z_num_inv)
+  ]
+  print('Computed D polynomial')
+  return d_evaluations
 
 # NOTE(rbharath): If you run a deep learning model on a GPU,
 # you can add a trace-log which can be exited from the GPU
@@ -83,14 +138,9 @@ def mk_mimc_proof(inp, steps, round_constants):
   xs = get_power_cycle(G2, modulus)
   last_step_position = xs[(steps - 1) * extension_factor]
 
-  ## Generate the computational trace
-  #computational_trace = [inp]
-  #for i in range(steps - 1):
-  #  computational_trace.append(
-  #      (computational_trace[-1]**3 + round_constants[i % len(round_constants)])
-  #      % modulus)
-  #output = computational_trace[-1]
-  #print('Done generating computational trace')
+  # computational_trace is a tape of computation values. (Put
+  # another way, a list of partial values the computation
+  # takes on).
   computational_trace, output = get_computational_trace(inp, steps, round_constants)
 
   # Interpolate the computational trace into a polynomial P,
@@ -102,47 +152,14 @@ def mk_mimc_proof(inp, steps, round_constants):
       'Converted computational steps into a polynomial and low-degree extended it'
   )
 
-  skips2 = steps // len(round_constants)
-  constants_mini_polynomial = fft(
-      round_constants, modulus, f.exp(G1, skips2), inv=True)
-  constants_polynomial = [
-      0 if i % skips2 else constants_mini_polynomial[i // skips2]
-      for i in range(steps)
-  ]
-  constants_mini_extension = fft(constants_mini_polynomial, modulus,
-                                 f.exp(G2, skips2))
-  print(
-      'Converted round constants into a polynomial and low-degree extended it')
+  # Construct the constraint polynomial (represented as a list
+  # of point evaluations)
+  c_of_p_evaluations = construct_constraint_polynomial(steps, round_constants, G1, G2, precision, p_evaluations)
 
-  # Create the composed polynomial such that
-  # C(P(x), P(g1*x), K(x)) = P(g1*x) - P(x)**3 - K(x)
-  # TODO(rbharath): Why does this structure make sense? Oh, I
-  # think this is the forward loop in MiMC. g1*x is the next
-  # iteration and should equal the MiMC pass from previous.
-  # For a deep network, would be the sigma(wx+b) I think.
-  # TODO(rbharath): I think this part would have to be refactored out for a general tape.
-  c_of_p_evaluations = [
-      (p_evaluations[
-          (i + extension_factor) % precision] - f.exp(p_evaluations[i], 3) -
-       constants_mini_extension[i % len(constants_mini_extension)]) % modulus
-      for i in range(precision)
-  ]
-  print('Computed C(P, K) polynomial')
-
-  # Compute D(x) = C(P(x), P(g1*x), K(x)) / Z(x)
-  # Z(x) = (x^steps - 1) / (x - x_atlast_step)
-  z_num_evaluations = [
-      xs[(i * steps) % precision] - 1 for i in range(precision)
-  ]
-  z_num_inv = f.multi_inv(z_num_evaluations)
-  z_den_evaluations = [xs[i] - last_step_position for i in range(precision)]
-  d_evaluations = [
-      cp * zd * zni % modulus
-      for cp, zd, zni in zip(c_of_p_evaluations, z_den_evaluations, z_num_inv)
-  ]
-  print('Computed D polynomial')
+  d_evaluations = compute_remainder_polynomial(xs, precision, steps, last_step_position, c_of_p_evaluations)
 
   # Compute interpolant of ((1, input), (x_atlast_step, output))
+  # TODO(rbharath): Why does this interpolant make sense?
   interpolant = f.lagrange_interp_2([1, last_step_position], [inp, output])
   i_evaluations = [f.eval_poly_at(interpolant, x) for x in xs]
 
