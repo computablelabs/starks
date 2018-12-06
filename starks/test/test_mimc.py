@@ -1,6 +1,6 @@
 import unittest
 from starks.mimc_stark import mimc
-from starks.mimc_stark import mk_mimc_proof
+from starks.mimc_stark import mk_proof
 from starks.mimc_stark import verify_mimc_proof
 
 class TestMiMC(unittest.TestCase):
@@ -27,7 +27,16 @@ class TestMiMC(unittest.TestCase):
     # TODO(rbharath): Why do these constants make sense? Read
     # MiMC paper to see if justification.
     round_constants = [(i**7) ^ 42 for i in range(64)]
-    proof = mk_mimc_proof(inp, steps, round_constants)
+    modulus = 2**256 - 2**32 * 351 + 1
+    # Factoring out computation
+    def mimc_step(inp, i):
+      return ((inp**3 + round_constants[i % len(round_constants)]) % modulus)
+
+    def update_fn(f, value):
+      """The step update function, in GF(2^n)"""
+      return f.exp(value, 3)
+
+    proof = mk_proof(inp, steps, round_constants, mimc_step, update_fn)
     assert isinstance(proof, list)
     assert len(proof) == 4
     (m_root, l_root, branches, fri_proof) = proof
@@ -41,7 +50,14 @@ class TestMiMC(unittest.TestCase):
     LOGSTEPS = 9 
     steps = 2**LOGSTEPS
     round_constants = [(i**7) ^ 42 for i in range(64)]
-    proof = mk_mimc_proof(inp, steps, round_constants)
+    modulus = 2**256 - 2**32 * 351 + 1
+    def mimc_step(inp, i):
+      return ((inp**3 + round_constants[i % len(round_constants)]) % modulus)
+
+    def update_fn(f, value):
+      """The step update function, in GF(2^n)"""
+      return f.exp(value, 3)
+    proof = mk_proof(inp, steps, round_constants, mimc_step, update_fn)
 
     # The actual MiMC result
     output = mimc(inp, steps, round_constants)

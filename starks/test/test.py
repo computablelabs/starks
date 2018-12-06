@@ -48,6 +48,3 @@ def test_stark():
     L2 = bin_length(compress_fri(fri_proof))
     print("Approx proof length: %d (branches), %d (FRI proof), %d (total)" % (L1, L2, L1 + L2))
     assert verify_mimc_proof(3, 2**LOGSTEPS, constants, mimc(3, 2**LOGSTEPS, constants), proof)
-
-#if __name__ == '__main__':
-#    test_stark()
