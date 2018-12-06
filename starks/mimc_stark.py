@@ -30,7 +30,8 @@ def mimc(inp, steps, round_constants):
   print("MIMC computed in %.4f sec" % (time.time() - start_time))
   return inp
 
-def get_computational_trace(inp, steps, round_constants):
+
+def get_computational_trace(inp, steps, computational_step):
   """Get the computational trace for the STARK.
 
   This function is a first step towards refactoring this code
@@ -40,15 +41,14 @@ def get_computational_trace(inp, steps, round_constants):
   Parameters
   ----------
   inp: Int
-    The input for the MiMC computation
-  steps: Int
-    The number of MiMC steps to run
+    The input for the computation
   """
   computational_trace = [inp]
   for i in range(steps - 1):
-    computational_trace.append(
-        (computational_trace[-1]**3 + round_constants[i % len(round_constants)])
-        % modulus)
+    computational_trace.append(computational_step(computational_trace[-1], i))
+    #computational_trace.append(
+    #    (computational_trace[-1]**3 + round_constants[i % len(round_constants)])
+    #    % modulus)
   output = computational_trace[-1]
   print('Done generating computational trace')
   return computational_trace, output
@@ -90,6 +90,7 @@ def construct_constraint_polynomial(steps, round_constants, G1, G2, precision, p
   return c_of_p_evaluations
 
 def compute_remainder_polynomial(xs, precision, steps, last_step_position, c_of_p_evaluations):
+  """Computes the remainder polynomial for the STARK."""
   # Compute D(x) = C(P(x), P(g1*x), K(x)) / Z(x)
   # Z(x) = (x^steps - 1) / (x - x_atlast_step)
   # TODO(rbharath): I think this is supposed to equal 
@@ -106,6 +107,26 @@ def compute_remainder_polynomial(xs, precision, steps, last_step_position, c_of_
   ]
   print('Computed D polynomial')
   return d_evaluations
+
+def compute_boundary_polynomial(xs, last_step_position, inp, output, p_evaluations):
+  """Polynomial encoding boundary constraints on tape."""
+  # Compute interpolant of ((1, input), (x_atlast_step, output))
+  # TODO(rbharath): Why does this interpolant make sense?
+  interpolant = f.lagrange_interp_2([1, last_step_position], [inp, output])
+  i_evaluations = [f.eval_poly_at(interpolant, x) for x in xs]
+
+  zeropoly2 = f.mul_polys([-1, 1], [-last_step_position, 1])
+  inv_z2_evaluations = f.multi_inv([f.eval_poly_at(zeropoly2, x) for x in xs])
+
+  # B = (P - I) / Z2
+  b_evaluations = [
+      ((p - i) * invq) % modulus
+      for p, i, invq in zip(p_evaluations, i_evaluations, inv_z2_evaluations)
+  ]
+  print('Computed B polynomial')
+  return b_evaluations
+
+
 
 # NOTE(rbharath): If you run a deep learning model on a GPU,
 # you can add a trace-log which can be exited from the GPU
@@ -138,10 +159,21 @@ def mk_mimc_proof(inp, steps, round_constants):
   xs = get_power_cycle(G2, modulus)
   last_step_position = xs[(steps - 1) * extension_factor]
 
+  # Factoring out computation
+  def mimc_step(inp, i):
+    #computational_trace = [inp]
+    return ((inp**3 + round_constants[i % len(round_constants)]) % modulus)
+    #for i in range(steps - 1):
+    #  computational_trace.append(
+    #      (computational_trace[-1]**3 + round_constants[i % len(round_constants)])
+    #      % modulus)
+    #return computational_trace 
+
   # computational_trace is a tape of computation values. (Put
   # another way, a list of partial values the computation
   # takes on).
-  computational_trace, output = get_computational_trace(inp, steps, round_constants)
+  #computational_trace, output = get_computational_trace(inp, steps, round_constants)
+  computational_trace, output = get_computational_trace(inp, steps, mimc_step)
 
   # Interpolate the computational trace into a polynomial P,
   # with each step along a successive power of G1
@@ -158,19 +190,7 @@ def mk_mimc_proof(inp, steps, round_constants):
 
   d_evaluations = compute_remainder_polynomial(xs, precision, steps, last_step_position, c_of_p_evaluations)
 
-  # Compute interpolant of ((1, input), (x_atlast_step, output))
-  # TODO(rbharath): Why does this interpolant make sense?
-  interpolant = f.lagrange_interp_2([1, last_step_position], [inp, output])
-  i_evaluations = [f.eval_poly_at(interpolant, x) for x in xs]
-
-  zeropoly2 = f.mul_polys([-1, 1], [-last_step_position, 1])
-  inv_z2_evaluations = f.multi_inv([f.eval_poly_at(zeropoly2, x) for x in xs])
-
-  b_evaluations = [
-      ((p - i) * invq) % modulus
-      for p, i, invq in zip(p_evaluations, i_evaluations, inv_z2_evaluations)
-  ]
-  print('Computed B polynomial')
+  b_evaluations = compute_boundary_polynomial(xs, last_step_position, inp, output, p_evaluations)
 
   # Compute their Merkle root
   mtree = merkelize([
