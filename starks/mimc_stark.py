@@ -193,7 +193,7 @@ def compute_merkle_spot_checks(mtree, l_mtree, precision, skips):
 # polynomial constraint with necessary linkage. Easier for
 # regular workloads. This is also called a "computation tape"
 
-def mk_proof(inp, steps, round_constants, mimc_step, update_fn):
+def mk_proof(inp, steps, round_constants, step_fn, update_fn):
   """Generate a STARK for a MIMC calculation"""
   start_time = time.time()
   # Some constraints to make our job easier
@@ -219,7 +219,7 @@ def mk_proof(inp, steps, round_constants, mimc_step, update_fn):
   # computational_trace is a tape of computation values. (Put
   # another way, a list of partial values the computation
   # takes on).
-  computational_trace, output = get_computational_trace(inp, steps, mimc_step)
+  computational_trace, output = get_computational_trace(inp, steps, step_fn)
 
   # Interpolate the computational trace into a polynomial P,
   # with each step along a successive power of G1
@@ -266,7 +266,7 @@ def mk_proof(inp, steps, round_constants, mimc_step, update_fn):
   return o
 
 
-def verify_mimc_proof(inp, steps, round_constants, output, proof):
+def verify_proof(inp, steps, round_constants, output, proof, transition_constraint):
   """Verifies a STARK"""
   m_root, l_root, branches, fri_proof = proof
   start_time = time.time()
@@ -320,7 +320,8 @@ def verify_mimc_proof(inp, steps, round_constants, output, proof):
     k_of_x = f.eval_poly_at(constants_mini_polynomial, f.exp(x, skips2))
 
     # Check transition constraints C(P(x)) = Z(x) * D(x)
-    assert (p_of_g1x - p_of_x**3 - k_of_x - zvalue * d_of_x) % modulus == 0
+    #assert (p_of_g1x - p_of_x**3 - k_of_x - zvalue * d_of_x) % modulus == 0
+    assert (p_of_g1x - transition_constraint(p_of_x) - k_of_x - zvalue * d_of_x) % modulus == 0
 
     # Check boundary constraints B(x) * Q(x) + I(x) = P(x)
     interpolant = f.lagrange_interp_2([1, last_step_position], [inp, output])
