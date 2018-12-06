@@ -6,6 +6,8 @@ from starks.poly_utils import PrimeField
 # TODO(rbharath): Why are quartics used everywhere in this
 # file? Any specific reason or could cubics or whatever work
 # too?
+# I think we could use a cubic; main trick here is that we
+# need a low degree polynomial.
 def prove_low_degree(values,
                      root_of_unity,
                      maxdeg_plus_1,

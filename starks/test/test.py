@@ -1,16 +1,16 @@
-from fft import fft
-from mimc_stark import mk_mimc_proof, modulus, mimc, verify_mimc_proof
-from compression import compress_fri, compress_branches, bin_length
-from merkle_tree import merkelize, mk_branch, verify_branch
-from fri import prove_low_degree, verify_low_degree_proof
+#from fft import fft
+#from mimc_stark import mk_mimc_proof, modulus, mimc, verify_mimc_proof
+#from compression import compress_fri, compress_branches, bin_length
+#from merkle_tree import merkelize, mk_branch, verify_branch
+#from fri import prove_low_degree, verify_low_degree_proof
 
-def test_merkletree():
-    """How though..."""
-    t = merkelize([x.to_bytes(32, 'big') for x in range(128)])
-    b = mk_branch(t, 59)
-    # Is t[1] the merkle root? Shouldn't it be t[0]?
-    assert verify_branch(t[1], 59, b, output_as_int=True) == 59
-    print('Merkle tree works')
+#def test_merkletree():
+#    """How though..."""
+#    t = merkelize([x.to_bytes(32, 'big') for x in range(128)])
+#    b = mk_branch(t, 59)
+#    # Is t[1] the merkle root? Shouldn't it be t[0]?
+#    assert verify_branch(t[1], 59, b, output_as_int=True) == 59
+#    print('Merkle tree works')
     
 def test_fri():
     # Pure FRI tests
@@ -48,6 +48,3 @@ def test_stark():
     L2 = bin_length(compress_fri(fri_proof))
     print("Approx proof length: %d (branches), %d (FRI proof), %d (total)" % (L1, L2, L1 + L2))
     assert verify_mimc_proof(3, 2**LOGSTEPS, constants, mimc(3, 2**LOGSTEPS, constants), proof)
-
-if __name__ == '__main__':
-    test_stark()
