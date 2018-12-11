@@ -17,22 +17,7 @@ spot_check_security_factor = 80
 # over the security level of the computation, but not sure.
 extension_factor = 8
 
-
-# TODO(rbharath): Wait, does Vitalik's blog post claim that
-# the verifier complexity is linear; Nah looks like t*log(t)
-# is optimal. Verifier complexity is O(log**2(t)) which should
-# be pretty small even for very large computations.
-# NOTE(rbharath): These starks here are not zero-knowledge I
-# think. Will need to be added onto library later.
-def mimc(inp, steps, round_constants):
-  """Compute a MIMC permutation for some number of steps"""
-  start_time = time.time()
-  for i in range(steps - 1):
-    inp = (inp**3 + round_constants[i % len(round_constants)]) % modulus
-  print("MIMC computed in %.4f sec" % (time.time() - start_time))
-  return inp
-
-def get_computational_trace(inp, steps, computational_step):
+def get_computational_trace(inp, steps, constants, computational_step):
   """Get the computational trace for the STARK.
 
   This function is a first step towards refactoring this code
@@ -45,41 +30,28 @@ def get_computational_trace(inp, steps, computational_step):
     The input for the computation
   """
   computational_trace = [inp]
+  round_constants = constants[0]
   for i in range(steps - 1):
-    computational_trace.append(computational_step(computational_trace[-1], i))
+    # TODO(rbharath): Is there off-by-one error on round_contants?
+    computational_trace.append(computational_step(f, computational_trace[-1], round_constants[i], i))
   output = computational_trace[-1]
   print('Done generating computational trace')
   return computational_trace, output
 
-def construct_constraint_polynomial(steps, round_constants, G1, G2, precision, p_evaluations, update_fn):
+def construct_constraint_polynomial(steps, round_constants, G1, G2, precision, p_evaluations, step_fn):
   """Construct the constraint polynomial for the given tape.
 
   This function constructs a constraint polynomial for the
   given computational tape. For now, this function only works
   with MiMC.
   """
-  skips2 = steps // len(round_constants)
+  constants = round_constants[0]
+  skips2 = steps // len(constants)
   constants_mini_polynomial = fft(
-      round_constants, modulus, f.exp(G1, skips2), inv=True)
+      constants, modulus, f.exp(G1, skips2), inv=True)
   constants_mini_extension = fft(constants_mini_polynomial, modulus,
                                  f.exp(G2, skips2))
-  #print("extension_factor")
-  #print(extension_factor)
-  #print("precision, skips2")
-  #print(precision, skips2)
-  #print("len(constants_mini_extension)")
-  #print(len(constants_mini_extension))
-  #print("constants_mini_extension[0]")
-  #print(constants_mini_extension[0])
-  #print("constants_mini_extension[8]")
-  #print(constants_mini_extension[8])
-  #print("constants_mini_extension[64]")
-  #print(constants_mini_extension[64])
-  #print("constants_mini_extension[63]")
-  #print(constants_mini_extension[63])
-  #print("constants_mini_extension[128]")
-  #print(constants_mini_extension[128])
-  #assert 0 == 1
+  assert len(constants_mini_extension) == precision // skips2
   print(
       'Converted round constants into a polynomial and low-degree extended it')
 
@@ -90,10 +62,16 @@ def construct_constraint_polynomial(steps, round_constants, G1, G2, precision, p
   # think this is the forward loop in MiMC. g1*x is the next
   # iteration and should equal the MiMC pass from previous.
   # For a deep network, would be the sigma(wx+b) I think.
+  #c_of_p_evaluations = [
+  #    (p_evaluations[
+  #        (i + extension_factor) % precision] - step_fn(f, p_evaluations[i], i) -
+  #     constants_mini_extension[i % len(constants_mini_extension)]) % modulus
+  #    for i in range(precision)
+  #]
   c_of_p_evaluations = [
       (p_evaluations[
-          (i + extension_factor) % precision] - update_fn(f, p_evaluations[i], i) -
-       constants_mini_extension[i % len(constants_mini_extension)]) % modulus
+          (i + extension_factor) % precision] - step_fn(f, p_evaluations[i], constants_mini_extension[i], i)
+       ) % modulus
       for i in range(precision)
   ]
   print('Computed C(P, K) polynomial')
@@ -197,16 +175,19 @@ def compute_merkle_spot_checks(mtree, l_mtree, precision, skips):
 # polynomial constraint with necessary linkage. Easier for
 # regular workloads. This is also called a "computation tape"
 
-def mk_proof(inp, steps, round_constants, step_fn, update_fn):
+def mk_proof(inp, steps, round_constants, step_fn):
   """Generate a STARK for a MIMC calculation"""
   start_time = time.time()
   # Some constraints to make our job easier
   # TODO: How can round_constants be factored out here
   assert steps <= 2**32 // extension_factor
   assert is_a_power_of_2(steps) and is_a_power_of_2(len(round_constants))
-  assert len(round_constants) <= steps
+  for constants in round_constants:
+    assert len(constants) <= steps
 
   precision = steps * extension_factor
+  print("precision")
+  print(precision)
 
   # Root of unity such that x^precision=1
   G2 = f.exp(7, (modulus - 1) // precision)
@@ -215,6 +196,8 @@ def mk_proof(inp, steps, round_constants, step_fn, update_fn):
   skips = precision // steps
   assert skips == extension_factor
   G1 = f.exp(G2, skips)
+  print("steps")
+  print(steps)
 
   # Powers of the higher-order root of unity
   xs = get_power_cycle(G2, modulus)
@@ -223,20 +206,22 @@ def mk_proof(inp, steps, round_constants, step_fn, update_fn):
   # computational_trace is a tape of computation values. (Put
   # another way, a list of partial values the computation
   # takes on).
-  computational_trace, output = get_computational_trace(inp, steps, step_fn)
+  computational_trace, output = get_computational_trace(inp, steps, round_constants, step_fn)
 
   # Interpolate the computational trace into a polynomial P,
   # with each step along a successive power of G1
   computational_trace_polynomial = fft(
       computational_trace, modulus, G1, inv=True)
+  assert len(computational_trace_polynomial) == steps
   p_evaluations = fft(computational_trace_polynomial, modulus, G2)
+  assert len(p_evaluations) == steps*extension_factor
   print(
       'Converted computational steps into a polynomial and low-degree extended it'
   )
 
   # Construct the constraint polynomial (represented as a list
   # of point evaluations)
-  c_of_p_evaluations = construct_constraint_polynomial(steps, round_constants, G1, G2, precision, p_evaluations, update_fn)
+  c_of_p_evaluations = construct_constraint_polynomial(steps, round_constants, G1, G2, precision, p_evaluations, step_fn)
 
   d_evaluations = compute_remainder_polynomial(xs, precision, steps, last_step_position, c_of_p_evaluations)
 
@@ -268,6 +253,47 @@ def mk_proof(inp, steps, round_constants, step_fn, update_fn):
   ]
   print("STARK computed in %.4f sec" % (time.time() - start_time))
   return o
+
+def verify_proof_at_position(inp, output, k1, k2, k3, k4, G2, steps, skips, skips2, precision, proof, i, pos, last_step_position, constants_mini_polynomial, transition_constraint):
+  """Verifies FR proof at given position"""
+  m_root, l_root, branches, fri_proof = proof
+  x = f.exp(G2, pos)
+  #print("steps")
+  #print(steps)
+  # TODO(rbharath): Why does exponentiating to steps make sense here?
+  # I think this is to compute the pseudorandom linear combination.
+  x_to_the_steps = f.exp(x, steps)
+  #print("skips")
+  #print(skips)
+  mbranch1 = verify_branch(m_root, pos, branches[i * 3])
+  mbranch2 = verify_branch(m_root, (pos + skips) % precision,
+                            branches[i * 3 + 1])
+  l_of_x = verify_branch(l_root, pos, branches[i * 3 + 2], output_as_int=True)
+
+  p_of_x = int.from_bytes(mbranch1[:32], 'big')
+  p_of_g1x = int.from_bytes(mbranch2[:32], 'big')
+  d_of_x = int.from_bytes(mbranch1[32:64], 'big')
+  b_of_x = int.from_bytes(mbranch1[64:], 'big')
+
+  zvalue = f.div(f.exp(x, steps) - 1, x - last_step_position)
+  #print("skips2")
+  #print(skips2)
+  k_of_x = f.eval_poly_at(constants_mini_polynomial, f.exp(x, skips2))
+
+  # Check transition constraints C(P(x)) = Z(x) * D(x)
+  #assert (p_of_g1x - p_of_x**3 - k_of_x - zvalue * d_of_x) % modulus == 0
+  #assert (p_of_g1x - transition_constraint(p_of_x) - k_of_x - zvalue * d_of_x) % modulus == 0
+  assert (p_of_g1x - transition_constraint(f, p_of_x, k_of_x, i) - zvalue * d_of_x) % modulus == 0
+
+  # Check boundary constraints B(x) * Q(x) + I(x) = P(x)
+  interpolant = f.lagrange_interp_2([1, last_step_position], [inp, output])
+  zeropoly2 = f.mul_polys([-1, 1], [-last_step_position, 1])
+  assert (p_of_x - b_of_x * f.eval_poly_at(zeropoly2, x) - f.eval_poly_at(
+      interpolant, x)) % modulus == 0
+
+  # Check correctness of the linear combination
+  assert (l_of_x - d_of_x - k1 * p_of_x - k2 * p_of_x * x_to_the_steps -
+          k3 * b_of_x - k4 * b_of_x * x_to_the_steps) % modulus == 0
 
 
 def verify_proof(inp, steps, round_constants, output, proof, transition_constraint):
@@ -308,34 +334,7 @@ def verify_proof(inp, steps, round_constants, output, proof, transition_constrai
       l_root, precision, samples, exclude_multiples_of=extension_factor)
   last_step_position = f.exp(G2, (steps - 1) * skips)
   for i, pos in enumerate(positions):
-    x = f.exp(G2, pos)
-    x_to_the_steps = f.exp(x, steps)
-    mbranch1 = verify_branch(m_root, pos, branches[i * 3])
-    mbranch2 = verify_branch(m_root, (pos + skips) % precision,
-                             branches[i * 3 + 1])
-    l_of_x = verify_branch(l_root, pos, branches[i * 3 + 2], output_as_int=True)
-
-    p_of_x = int.from_bytes(mbranch1[:32], 'big')
-    p_of_g1x = int.from_bytes(mbranch2[:32], 'big')
-    d_of_x = int.from_bytes(mbranch1[32:64], 'big')
-    b_of_x = int.from_bytes(mbranch1[64:], 'big')
-
-    zvalue = f.div(f.exp(x, steps) - 1, x - last_step_position)
-    k_of_x = f.eval_poly_at(constants_mini_polynomial, f.exp(x, skips2))
-
-    # Check transition constraints C(P(x)) = Z(x) * D(x)
-    #assert (p_of_g1x - p_of_x**3 - k_of_x - zvalue * d_of_x) % modulus == 0
-    assert (p_of_g1x - transition_constraint(p_of_x) - k_of_x - zvalue * d_of_x) % modulus == 0
-
-    # Check boundary constraints B(x) * Q(x) + I(x) = P(x)
-    interpolant = f.lagrange_interp_2([1, last_step_position], [inp, output])
-    zeropoly2 = f.mul_polys([-1, 1], [-last_step_position, 1])
-    assert (p_of_x - b_of_x * f.eval_poly_at(zeropoly2, x) - f.eval_poly_at(
-        interpolant, x)) % modulus == 0
-
-    # Check correctness of the linear combination
-    assert (l_of_x - d_of_x - k1 * p_of_x - k2 * p_of_x * x_to_the_steps -
-            k3 * b_of_x - k4 * b_of_x * x_to_the_steps) % modulus == 0
+    verify_proof_at_position(inp, output, k1, k2, k3, k4, G2, steps, skips, skips2, precision, proof, i, pos, last_step_position, constants_mini_polynomial, transition_constraint)
 
   print('Verified %d consistency checks' % spot_check_security_factor)
   print('Verified STARK in %.4f sec' % (time.time() - start_time))

@@ -1,7 +1,24 @@
 import unittest
-from starks.stark import mimc
+import time
 from starks.stark import mk_proof
 from starks.stark import verify_proof
+from starks.poly_utils import PrimeField
+
+# TODO(rbharath): Wait, does Vitalik's blog post claim that
+# the verifier complexity is linear; Nah looks like t*log(t)
+# is optimal. Verifier complexity is O(log**2(t)) which should
+# be pretty small even for very large computations.
+# NOTE(rbharath): These starks here are not zero-knowledge I
+# think. Will need to be added onto library later.
+def mimc(inp, steps, round_constants):
+  """Compute a MIMC permutation for some number of steps"""
+  modulus = 2**256 - 2**32 * 351 + 1
+  start_time = time.time()
+  for i in range(steps - 1):
+    inp = (inp**3 + round_constants[i % len(round_constants)]) % modulus
+  print("MIMC computed in %.4f sec" % (time.time() - start_time))
+  return inp
+
 
 class TestStark(unittest.TestCase):
   """
@@ -26,17 +43,17 @@ class TestStark(unittest.TestCase):
     steps = 2**LOGSTEPS
     # TODO(rbharath): Why do these constants make sense? Read
     # MiMC paper to see if justification.
-    round_constants = [(i**7) ^ 42 for i in range(64)]
+    constants = [(i**7) ^ 42 for i in range(64)]
+    skips2 = steps // 64
+    round_constants = constants * skips2
+
     modulus = 2**256 - 2**32 * 351 + 1
+    f = PrimeField(modulus)
     # Factoring out computation
-    def mimc_step(inp, i):
-      return ((inp**3 + round_constants[i % len(round_constants)]) % modulus)
+    def mimc_step(f, inp, constant, i):
+      return f.add(f.exp(inp, 3), constant)
 
-    def update_fn(f, value):
-      """The step update function, in GF(2^n)"""
-      return f.exp(value, 3)
-
-    proof = mk_proof(inp, steps, round_constants, mimc_step, update_fn)
+    proof = mk_proof(inp, steps, [round_constants], mimc_step)
     assert isinstance(proof, list)
     assert len(proof) == 4
     (m_root, l_root, branches, fri_proof) = proof
@@ -52,30 +69,26 @@ class TestStark(unittest.TestCase):
     # TODO(rbharath): Why do these constants make sense? Read
     # MiMC paper to see if justification.
     round_constants = [(i**7) ^ 42 for i in range(steps)]
-    scale_constants = [2 for _ in range(steps)]
+    #scale_constants = [2 for _ in range(steps)]
     modulus = 2**256 - 2**32 * 351 + 1
+    f = PrimeField(modulus)
     # Factoring out computation
-    def quadratic_step(inp, i):
-      return ((scale_constants[i]*inp**2 + round_constants[i]) % modulus)
+    def quadratic_step(f, value, constant, i):
+      return f.add(f.mul(f.exp(value, 2), 2), constant)
 
-    def update_fn(f, value, i):
-      """The step update function, in GF(2^n)"""
-      return f.mul(f.exp(value, 2), 2)
-
-    def transition_constraint(value):
-      return 2*value**2
-
-    proof = mk_proof(inp, steps, round_constants, quadratic_step, update_fn)
+    proof = mk_proof(inp, steps, [round_constants], quadratic_step)
     assert isinstance(proof, list)
     assert len(proof) == 4
     (m_root, l_root, branches, fri_proof) = proof
-    def computation(inp, steps, step_fn):
+    def computation(inp, steps, constants, step_fn):
+      round_constants = constants[0]
       for i in range(steps-1):
-        inp = step_fn(inp, i)
+        inp = step_fn(f, inp, round_constants[i], i)
       return inp
-    output = computation(inp, steps, quadratic_step)
+    output = computation(inp, steps, [round_constants], quadratic_step)
     result = verify_proof(inp, steps, round_constants,
-                          output, proof, transition_constraint)
+                          output, proof, quadratic_step)
+    #assert 0 == 1
     assert result
 
   def test_mimc_stark_verification(self):
@@ -85,15 +98,15 @@ class TestStark(unittest.TestCase):
     inp = 5
     LOGSTEPS = 9 
     steps = 2**LOGSTEPS
-    round_constants = [(i**7) ^ 42 for i in range(64)]
-    modulus = 2**256 - 2**32 * 351 + 1
-    def mimc_step(inp, i):
-      return ((inp**3 + round_constants[i % len(round_constants)]) % modulus)
+    constants = [(i**7) ^ 42 for i in range(64)]
+    skips2 = steps // 64
+    round_constants = constants * skips2
 
-    def update_fn(f, value):
-      """The step update function, in GF(2^n)"""
-      return f.exp(value, 3)
-    proof = mk_proof(inp, steps, round_constants, mimc_step, update_fn)
+    modulus = 2**256 - 2**32 * 351 + 1
+    def mimc_step(f, inp, constant, i):
+      return f.add(f.exp(inp, 3), constant)
+
+    proof = mk_proof(inp, steps, [round_constants], mimc_step)
 
     # The actual MiMC result
     output = mimc(inp, steps, round_constants)
@@ -113,26 +126,24 @@ class TestStark(unittest.TestCase):
     # MiMC paper to see if justification.
     round_constants = [0 for i in range(512)]
     modulus = 2**256 - 2**32 * 351 + 1
+    f = PrimeField(modulus)
     # Factoring out computation
-    def affine_step(inp, i):
-      return ((3*inp + 4) % modulus)
-
-    def update_fn(f, value):
-      """The step update function, in GF(2^n)"""
-      return f.add(f.mul(3, value), 4)
+    def affine_step(f, value, constant, i):
+      return f.add(f.add(f.mul(3, value), 4), constant)
 
     def transition_constraint(value):
       return ((3*value + 4) % modulus)
 
-    proof = mk_proof(inp, steps, round_constants, affine_step, update_fn)
+    proof = mk_proof(inp, steps, [round_constants], affine_step)
     assert isinstance(proof, list)
     assert len(proof) == 4
     (m_root, l_root, branches, fri_proof) = proof
-    def computation(inp, steps, step_fn):
+    def computation(inp, steps, constants, step_fn):
+      round_constants = constants[0]
       for i in range(steps-1):
-        inp = step_fn(inp, i)
+        inp = step_fn(f, inp, round_constants[i], i)
       return inp
-    output = computation(inp, steps, affine_step)
+    output = computation(inp, steps, [round_constants], affine_step)
     result = verify_proof(inp, steps, round_constants,
                           output, proof, transition_constraint)
     assert result

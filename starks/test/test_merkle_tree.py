@@ -18,3 +18,23 @@ class TestMerkleTree(unittest.TestCase):
     assert verify_branch(t[1], 59, b, output_as_int=True) == 59
     print('Merkle tree works')
 
+  def test_mk_branch(self):
+    """Tests construction of a merkle tree branch."""
+    t = merkelize([x.to_bytes(32, 'big') for x in range(128)])
+    assert len(t) == 256
+    b = mk_branch(t, 59)
+    assert len(b) == 8
+
+    t = merkelize([x.to_bytes(32, 'big') for x in range(256)])
+    assert len(t) == 512
+    b = mk_branch(t, 59)
+    assert len(b) == 9
+
+  def test_verify_branch(self):
+    """Tests the verification of a merkle tree branch."""
+    t = merkelize([x.to_bytes(32, 'big') for x in range(128)])
+    assert len(t) == 256
+    b = mk_branch(t, 59)
+    assert len(b) == 8
+    v = verify_branch(t[1], 59, b, output_as_int=True) == 59
+    assert v
