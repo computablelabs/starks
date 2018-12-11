@@ -50,7 +50,7 @@ class TestStark(unittest.TestCase):
     modulus = 2**256 - 2**32 * 351 + 1
     f = PrimeField(modulus)
     # Factoring out computation
-    def mimc_step(f, inp, constant, i):
+    def mimc_step(f, inp, constant):
       return f.add(f.exp(inp, 3), constant)
 
     proof = mk_proof(inp, steps, [round_constants], mimc_step)
@@ -73,7 +73,8 @@ class TestStark(unittest.TestCase):
     modulus = 2**256 - 2**32 * 351 + 1
     f = PrimeField(modulus)
     # Factoring out computation
-    def quadratic_step(f, value, constant, i):
+    def quadratic_step(f, value, constant):
+      # 2value**2 + constant
       return f.add(f.mul(f.exp(value, 2), 2), constant)
 
     proof = mk_proof(inp, steps, [round_constants], quadratic_step)
@@ -83,7 +84,7 @@ class TestStark(unittest.TestCase):
     def computation(inp, steps, constants, step_fn):
       round_constants = constants[0]
       for i in range(steps-1):
-        inp = step_fn(f, inp, round_constants[i], i)
+        inp = step_fn(f, inp, round_constants[i])
       return inp
     output = computation(inp, steps, [round_constants], quadratic_step)
     result = verify_proof(inp, steps, round_constants,
@@ -103,17 +104,15 @@ class TestStark(unittest.TestCase):
     round_constants = constants * skips2
 
     modulus = 2**256 - 2**32 * 351 + 1
-    def mimc_step(f, inp, constant, i):
+    def mimc_step(f, inp, constant):
       return f.add(f.exp(inp, 3), constant)
 
     proof = mk_proof(inp, steps, [round_constants], mimc_step)
 
     # The actual MiMC result
     output = mimc(inp, steps, round_constants)
-    def transition_constraint(value):
-      return value**3
     result = verify_proof(inp, steps, round_constants,
-                          output, proof, transition_constraint)
+                          output, proof, mimc_step)
     assert result
 
   def test_affine_stark(self):
@@ -128,11 +127,8 @@ class TestStark(unittest.TestCase):
     modulus = 2**256 - 2**32 * 351 + 1
     f = PrimeField(modulus)
     # Factoring out computation
-    def affine_step(f, value, constant, i):
+    def affine_step(f, value, constant):
       return f.add(f.add(f.mul(3, value), 4), constant)
-
-    def transition_constraint(value):
-      return ((3*value + 4) % modulus)
 
     proof = mk_proof(inp, steps, [round_constants], affine_step)
     assert isinstance(proof, list)
@@ -141,9 +137,9 @@ class TestStark(unittest.TestCase):
     def computation(inp, steps, constants, step_fn):
       round_constants = constants[0]
       for i in range(steps-1):
-        inp = step_fn(f, inp, round_constants[i], i)
+        inp = step_fn(f, inp, round_constants[i])
       return inp
     output = computation(inp, steps, [round_constants], affine_step)
     result = verify_proof(inp, steps, round_constants,
-                          output, proof, transition_constraint)
+                          output, proof, affine_step)
     assert result

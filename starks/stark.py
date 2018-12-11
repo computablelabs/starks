@@ -33,7 +33,7 @@ def get_computational_trace(inp, steps, constants, computational_step):
   round_constants = constants[0]
   for i in range(steps - 1):
     # TODO(rbharath): Is there off-by-one error on round_contants?
-    computational_trace.append(computational_step(f, computational_trace[-1], round_constants[i], i))
+    computational_trace.append(computational_step(f, computational_trace[-1], round_constants[i]))
   output = computational_trace[-1]
   print('Done generating computational trace')
   return computational_trace, output
@@ -70,7 +70,7 @@ def construct_constraint_polynomial(steps, round_constants, G1, G2, precision, p
   #]
   c_of_p_evaluations = [
       (p_evaluations[
-          (i + extension_factor) % precision] - step_fn(f, p_evaluations[i], constants_mini_extension[i], i)
+          (i + extension_factor) % precision] - step_fn(f, p_evaluations[i], constants_mini_extension[i])
        ) % modulus
       for i in range(precision)
   ]
@@ -255,16 +255,13 @@ def mk_proof(inp, steps, round_constants, step_fn):
   return o
 
 def verify_proof_at_position(inp, output, k1, k2, k3, k4, G2, steps, skips, skips2, precision, proof, i, pos, last_step_position, constants_mini_polynomial, transition_constraint):
-  """Verifies FR proof at given position"""
+  """Verifies merkle proof at given position in extended trace"""
   m_root, l_root, branches, fri_proof = proof
   x = f.exp(G2, pos)
-  #print("steps")
-  #print(steps)
   # TODO(rbharath): Why does exponentiating to steps make sense here?
   # I think this is to compute the pseudorandom linear combination.
   x_to_the_steps = f.exp(x, steps)
-  #print("skips")
-  #print(skips)
+  # TODO(rbharath): Why do i*3, i*3+1, i*3+2 make sense?
   mbranch1 = verify_branch(m_root, pos, branches[i * 3])
   mbranch2 = verify_branch(m_root, (pos + skips) % precision,
                             branches[i * 3 + 1])
@@ -276,14 +273,10 @@ def verify_proof_at_position(inp, output, k1, k2, k3, k4, G2, steps, skips, skip
   b_of_x = int.from_bytes(mbranch1[64:], 'big')
 
   zvalue = f.div(f.exp(x, steps) - 1, x - last_step_position)
-  #print("skips2")
-  #print(skips2)
   k_of_x = f.eval_poly_at(constants_mini_polynomial, f.exp(x, skips2))
 
   # Check transition constraints C(P(x)) = Z(x) * D(x)
-  #assert (p_of_g1x - p_of_x**3 - k_of_x - zvalue * d_of_x) % modulus == 0
-  #assert (p_of_g1x - transition_constraint(p_of_x) - k_of_x - zvalue * d_of_x) % modulus == 0
-  assert (p_of_g1x - transition_constraint(f, p_of_x, k_of_x, i) - zvalue * d_of_x) % modulus == 0
+  assert (p_of_g1x - transition_constraint(f, p_of_x, k_of_x) - zvalue * d_of_x) % modulus == 0
 
   # Check boundary constraints B(x) * Q(x) + I(x) = P(x)
   interpolant = f.lagrange_interp_2([1, last_step_position], [inp, output])
