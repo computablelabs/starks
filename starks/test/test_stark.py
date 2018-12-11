@@ -143,3 +143,37 @@ class TestStark(unittest.TestCase):
     result = verify_proof(inp, steps, round_constants,
                           output, proof, affine_step)
     assert result
+
+  def test_varying_quadratic_stark(self):
+    """
+    Basic tests of quadratic stark with varying coefficients
+    """
+    inp = 5
+    LOGSTEPS = 9 
+    steps = 2**LOGSTEPS
+    # TODO(rbharath): Why do these constants make sense? Read
+    # MiMC paper to see if justification.
+    round_constants = [(i**7) ^ 42 for i in range(steps)]
+    scale_constants = [i for i in range(steps)]
+    constants = [round_constants, scale_constants]
+    modulus = 2**256 - 2**32 * 351 + 1
+    f = PrimeField(modulus)
+    # Factoring out computation
+    def quadratic_step(f, value, constants):
+      # c_1*value**2 + c_0 
+      return f.add(f.mul(f.exp(value, constants[1]), 2), constants[0])
+
+    proof = mk_proof(inp, steps, constants, quadratic_step)
+    assert isinstance(proof, list)
+    assert len(proof) == 4
+    (m_root, l_root, branches, fri_proof) = proof
+    def computation(inp, steps, constants, step_fn):
+      round_constants = constants[0]
+      for i in range(steps-1):
+        inp = step_fn(f, inp, [constants[0][i], constants[1][i]])
+      return inp
+    output = computation(inp, steps, constants, quadratic_step)
+    result = verify_proof(inp, steps, round_constants,
+                          output, proof, quadratic_step)
+    #assert 0 == 1
+    assert result

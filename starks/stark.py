@@ -30,28 +30,37 @@ def get_computational_trace(inp, steps, constants, computational_step):
     The input for the computation
   """
   computational_trace = [inp]
-  round_constants = constants[0]
+  deg = len(constants)
   for i in range(steps - 1):
+    poly_constants = [constants[d][i] for d in range(deg)]
     # TODO(rbharath): Is there off-by-one error on round_contants?
-    computational_trace.append(computational_step(f, computational_trace[-1], round_constants[i]))
+    computational_trace.append(computational_step(f, computational_trace[-1], poly_constants))
   output = computational_trace[-1]
   print('Done generating computational trace')
   return computational_trace, output
 
-def construct_constraint_polynomial(steps, round_constants, G1, G2, precision, p_evaluations, step_fn):
+def construct_constraint_polynomial(steps, constants, G1, G2, precision, p_evaluations, step_fn):
   """Construct the constraint polynomial for the given tape.
 
   This function constructs a constraint polynomial for the
   given computational tape. For now, this function only works
   with MiMC.
   """
-  constants = round_constants[0]
-  skips2 = steps // len(constants)
-  constants_mini_polynomial = fft(
-      constants, modulus, f.exp(G1, skips2), inv=True)
-  constants_mini_extension = fft(constants_mini_polynomial, modulus,
-                                 f.exp(G2, skips2))
-  assert len(constants_mini_extension) == precision // skips2
+  deg = len(constants)
+  constants_extensions = []
+  for d in range(deg):
+    #deg_constants = constants[d]
+    deg_constants = constants[0]
+    skips2 = steps // len(deg_constants)
+    constants_mini_polynomial = fft(
+        deg_constants, modulus, f.exp(G1, skips2), inv=True)
+    constants_mini_extension = fft(constants_mini_polynomial, modulus,
+                                  f.exp(G2, skips2))
+    assert len(constants_mini_extension) == precision // skips2
+    constants_extensions.append(constants_mini_extension)
+  assert len(constants_extensions) == deg
+  for extension in constants_extensions:
+    assert len(extension) == precision // skips2
   print(
       'Converted round constants into a polynomial and low-degree extended it')
 
@@ -68,9 +77,16 @@ def construct_constraint_polynomial(steps, round_constants, G1, G2, precision, p
   #     constants_mini_extension[i % len(constants_mini_extension)]) % modulus
   #    for i in range(precision)
   #]
+  #c_of_p_evaluations = [
+  #    (p_evaluations[
+  #        (i + extension_factor) % precision] - step_fn(f, p_evaluations[i], constants_mini_extension[i])
+  #     ) % modulus
+  #    for i in range(precision)
+  #]
   c_of_p_evaluations = [
-      (p_evaluations[
-          (i + extension_factor) % precision] - step_fn(f, p_evaluations[i], constants_mini_extension[i])
+      (p_evaluations[(i + extension_factor) % precision]
+        - step_fn(f, p_evaluations[i],
+                  [constants_extensions[d][i] for d in range(deg)])
        ) % modulus
       for i in range(precision)
   ]
