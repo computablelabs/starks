@@ -202,8 +202,6 @@ def mk_proof(inp, steps, round_constants, step_fn):
     assert len(constants) <= steps
 
   precision = steps * extension_factor
-  print("precision")
-  print(precision)
 
   # Root of unity such that x^precision=1
   G2 = f.exp(7, (modulus - 1) // precision)
@@ -212,8 +210,6 @@ def mk_proof(inp, steps, round_constants, step_fn):
   skips = precision // steps
   assert skips == extension_factor
   G1 = f.exp(G2, skips)
-  print("steps")
-  print(steps)
 
   # Powers of the higher-order root of unity
   xs = get_power_cycle(G2, modulus)
@@ -263,6 +259,7 @@ def mk_proof(inp, steps, round_constants, step_fn):
       prove_low_degree(
           l_evaluations,
           G2,
+          # TODO(rbharath): Why is this 2x?
           steps * 2,
           modulus,
           exclude_multiples_of=extension_factor)

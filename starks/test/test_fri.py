@@ -1,6 +1,8 @@
 import unittest
 from starks.fri import prove_low_degree
+from starks.fri import verify_low_degree_proof
 from starks.fft import fft
+from starks.merkle_tree import merkelize
 from starks.poly_utils import PrimeField
 
 class TestFRI(unittest.TestCase):
@@ -38,10 +40,46 @@ class TestFRI(unittest.TestCase):
     # Root of unity such that x^steps=1
     G = f.exp(7, (modulus - 1) // steps)
     evaluations = fft(poly, modulus, G)
+    # We're trying to prove this is a (steps-1)-degree
+    # polnomial
+    # degree = (steps-1) + 1 = steps
     degree = steps
-
-    # We're trying to prove this is a 512-degree polnomial
     proof = prove_low_degree(evaluations, G, degree, modulus)
-    print("len(proof[0])")
-    print(len(proof[0]))
-    assert 0 == 1
+    # The proof recurses by dividing maxdeg_plus_1 by 4
+    # So 512, 128, 32, 8. (The base case passes over to
+    # special handler for degree 16 or less so these are all
+    # recursions).
+    assert len(proof) == 4
+    for i, rec_proof in enumerate(proof):
+      if i < 3:
+        # Each subproof is [merkle_root, branches] for all but
+        # base case.
+        assert len(rec_proof) == 2
+        assert len(rec_proof[1]) == 40
+      else:
+        # Here we trigger the base case.
+        assert len(rec_proof) == 8
+
+  def test_verify_low_degree_proof(self):
+    """Verify a low degree proof"""
+    degree = 4
+    modulus = 31 
+    steps = 4
+    # 1 + 2x + 3x^2 + 4 x^3 mod 31
+    poly = list(range(degree))
+    # TODO(rbharath): How does the choice of the n-th root of
+    # unity make a difference in the fft?
+
+    # A root of unity is a number such that z^n = 1
+    # This provides us a 6-th root of unity (z^6 = 1)
+    root_of_unity = pow(3, (modulus-1)//6, modulus)
+    evaluations = fft(poly, modulus, root_of_unity)
+    assert len(evaluations) == 6
+    e_mtree = merkelize(evaluations)
+    
+    # This is a low degree polynomial so we hit the special
+    # case of the handler.
+    proof = prove_low_degree(evaluations, root_of_unity, degree, modulus)
+
+    root = e_mtree[1]
+    verification = verify_low_degree_proof(root, root_of_unity, proof, steps, modulus)
