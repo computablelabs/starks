@@ -1,5 +1,6 @@
 import unittest
 from starks.fft import fft
+from starks.poly_utils import PrimeField
 
 class TestFFT(unittest.TestCase):
   """
@@ -19,6 +20,62 @@ class TestFFT(unittest.TestCase):
     evaluations = fft(poly, modulus, root_of_unity)
     assert len(evaluations) == 6
 
-    # TODO(rbharath): This fails if root_of_unity = pow(3,
-    # (modulus-1)//10, modulus) is a 10-th root of unity. Why?
-    # It might have to do with an edge case bug in the code. 
+  def test_constants(self):
+    """Test FFT handling of constants."""
+    steps = 256 
+    modulus = 2**256 - 2**32 * 351 + 1
+    f = PrimeField(modulus)
+    extension_factor = 8
+    # precision = 512
+    precision = steps * extension_factor
+    # Root of unity such that x^512=1
+    G2 = f.exp(7, (modulus - 1) // precision)
+    # Root of unity such that x^64=1
+    G1 = f.exp(G2, extension_factor)
+    round_constants = [(i**7) ^ 42 for i in range(64)]
+    # skips2 = 2
+    skips2 = steps // len(round_constants)
+    # Root of unity such that x^32 = 1
+    root_of_unity = f.exp(G1, skips2)
+    constants_mini_poly = fft(
+        round_constants, modulus, root_of_unity, inv=True)
+    assert len(constants_mini_poly) == len(round_constants)
+
+  # TODO(rbharath): Fix this test
+  #def test_alternative_constants(self):
+  #  """Tests an alternative constant handler."""
+  #  steps = 256 
+  #  modulus = 2**256 - 2**32 * 351 + 1
+  #  f = PrimeField(modulus)
+  #  extension_factor = 8
+  #  # precision = 2048
+  #  precision = steps * extension_factor
+  #  # Root of unity such that x^2048=1
+  #  G2 = f.exp(7, (modulus - 1) // precision)
+  #  # Root of unity such that x^256=1
+  #  G1 = f.exp(G2, extension_factor)
+  #  round_constants = [(i**7) ^ 42 for i in range(64)]
+  #  # skips2 = 4
+  #  skips2 = steps // len(round_constants)
+  #  ext_constants = round_constants * skips2
+  #  # Root of unity such that x^64 = 1
+  #  root_of_unity = f.exp(G1, skips2)
+  #  constants_mini_poly = fft(
+  #      round_constants, modulus, root_of_unity, inv=True)
+  #  assert len(constants_mini_poly) == len(round_constants)
+  #  ext_poly = fft(
+  #      ext_constants, modulus, G2, inv=True)
+  #  assert len(ext_poly) == precision 
+  #  mult_factor = skips2 * extension_factor
+  #  print("mult_factor")
+  #  print(mult_factor)
+  #  print("len(ext_poly)")
+  #  print(len(ext_poly))
+  #  mult_constants_poly = constants_mini_poly * mult_factor
+  #  print("len(mult_constants_poly)")
+  #  print(len(mult_constants_poly))
+  #  print("ext_poly[:10]")
+  #  print(ext_poly[:10])
+  #  print("mult_constants_poly[:10]")
+  #  print(mult_constants_poly[:10])
+  #  assert 0 == 1

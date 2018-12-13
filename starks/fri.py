@@ -2,6 +2,9 @@ from starks.merkle_tree import merkelize, mk_branch, verify_branch
 from starks.utils import get_power_cycle, get_pseudorandom_indices
 from starks.poly_utils import PrimeField
 
+# The number of spot checks performed at each recursion of the
+# FRI proof.
+fri_spot_check_security_factor = 40
 
 # TODO(rbharath): Why are quartics used everywhere in this
 # file? Any specific reason or could cubics or whatever work
@@ -63,7 +66,7 @@ def prove_low_degree(values,
 
   # Pseudo-randomly select y indices to sample
   ys = get_pseudorandom_indices(
-      m2[1], len(column), 40, exclude_multiples_of=exclude_multiples_of)
+      m2[1], len(column), fri_spot_check_security_factor, exclude_multiples_of=exclude_multiples_of)
 
   # Compute the Merkle branches for the values in the
   # polynomial and the column
@@ -84,17 +87,18 @@ def prove_low_degree(values,
       exclude_multiples_of=exclude_multiples_of)
 
 
-# Verify an FRI proof
 def verify_low_degree_proof(merkle_root,
                             root_of_unity,
                             proof,
                             maxdeg_plus_1,
                             modulus,
                             exclude_multiples_of=0):
+  """Verify an FRI proof"""
   f = PrimeField(modulus)
 
   # Calculate which root of unity we're working with
   testval = root_of_unity
+  # roudeg is the power of the root of unity 
   roudeg = 1
   while testval != 1:
     roudeg *= 2
@@ -108,6 +112,9 @@ def verify_low_degree_proof(merkle_root,
       f.exp(root_of_unity, roudeg * 3 // 4)
   ]
 
+  print("len(proof)")
+  print(len(proof))
+
   # Verify the recursive components of the proof
   for prf in proof[:-1]:
     root2, branches = prf
@@ -118,7 +125,7 @@ def verify_low_degree_proof(merkle_root,
 
     # Calculate the pseudo-randomly sampled y indices
     ys = get_pseudorandom_indices(
-        root2, roudeg // 4, 40, exclude_multiples_of=exclude_multiples_of)
+        root2, roudeg // 4, fri_spot_check_security_factor, exclude_multiples_of=exclude_multiples_of)
 
     # For each y coordinate, get the x coordinates on the row,
     # the values on the row, and the value at that y from the

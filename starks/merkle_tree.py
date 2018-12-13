@@ -49,7 +49,7 @@ def merkelize(L):
 
 
 def mk_branch(tree, index):
-  """A branch of the merkle tree is a list?"""
+  """A branch of the merkle tree is a list"""
   index = get_index_in_permuted(index, len(tree) // 2)
   index += len(tree) // 2
   o = [tree[index]]
@@ -64,7 +64,8 @@ def verify_branch(root, index, proof, output_as_int=False):
   index = get_index_in_permuted(index, 2**len(proof) // 2)
   # I think this is a bug. Should be 2**len(proof) // 2
   # But I think it's OK since we're only doing parity checks
-  index += 2**len(proof)
+  #index += 2**len(proof)
+  index += 2**len(proof) // 2
   v = proof[0]
   for p in proof[1:]:
     if index % 2:

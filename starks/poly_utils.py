@@ -164,6 +164,11 @@ class PrimeField():
 
   # Optimized version of the above restricted to deg-2 polynomials
   def lagrange_interp_2(self, xs, ys):
+    print("type(ys[1])")
+    print(type(ys[1]))
+    if isinstance(ys[1], tuple):
+      print("len(ys[1])")
+      print(len(ys[1]))
     m = self.modulus
     eq0 = [-xs[1] % m, 1]
     eq1 = [-xs[0] % m, 1]
