@@ -2,6 +2,8 @@ from starks.merkle_tree import merkelize, mk_branch, verify_branch
 from starks.utils import get_power_cycle, get_pseudorandom_indices
 from starks.poly_utils import PrimeField
 
+# The number of spot checks performed at each recursion of the
+# FRI proof.
 fri_spot_check_security_factor = 40
 
 # TODO(rbharath): Why are quartics used everywhere in this
@@ -97,13 +99,14 @@ def verify_low_degree_proof(merkle_root,
 
   # Calculate which root of unity we're working with
   testval = root_of_unity
+  # roudeg is the power of the root of unity 
   roudeg = 1
   while testval != 1:
     roudeg *= 2
-    print("testval")
-    print(testval)
     testval = (testval * testval) % modulus
 
+  print("roudeg")
+  print(roudeg)
   # Powers of the given root of unity 1, p, p**2, p**3 such that p**4 = 1
   quartic_roots_of_unity = [
       1,
@@ -112,9 +115,13 @@ def verify_low_degree_proof(merkle_root,
       f.exp(root_of_unity, roudeg * 3 // 4)
   ]
 
+  print("len(proof)")
+  print(len(proof))
+
   # Verify the recursive components of the proof
   for prf in proof[:-1]:
     root2, branches = prf
+    print("before")
     print('Verifying degree <= %d' % maxdeg_plus_1)
 
     # Calculate the pseudo-random x coordinate
@@ -123,6 +130,8 @@ def verify_low_degree_proof(merkle_root,
     # Calculate the pseudo-randomly sampled y indices
     ys = get_pseudorandom_indices(
         root2, roudeg // 4, fri_spot_check_security_factor, exclude_multiples_of=exclude_multiples_of)
+    print("len(ys)")
+    print(len(ys))
 
     # For each y coordinate, get the x coordinates on the row,
     # the values on the row, and the value at that y from the
@@ -181,6 +190,10 @@ def verify_low_degree_proof(merkle_root,
   poly = f.lagrange_interp([powers[x] for x in pts[:maxdeg_plus_1]],
                            [data[x] for x in pts[:maxdeg_plus_1]])
   for x in pts[maxdeg_plus_1:]:
+    #print("f.eval_poly_at(poly, powers[x])")
+    #print(f.eval_poly_at(poly, powers[x]))
+    #print("data[x]")
+    #print(data[x])
     assert f.eval_poly_at(poly, powers[x]) == data[x]
 
   print('FRI proof verified')

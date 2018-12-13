@@ -49,8 +49,8 @@ def construct_constraint_polynomial(steps, constants, G1, G2, precision, p_evalu
   deg = len(constants)
   constants_extensions = []
   for d in range(deg):
-    #deg_constants = constants[d]
-    deg_constants = constants[0]
+    deg_constants = constants[d]
+    #deg_constants = constants[0]
     skips2 = steps // len(deg_constants)
     constants_mini_polynomial = fft(
         deg_constants, modulus, f.exp(G1, skips2), inv=True)
@@ -267,12 +267,14 @@ def mk_proof(inp, steps, round_constants, step_fn):
   print("STARK computed in %.4f sec" % (time.time() - start_time))
   return o
 
-def verify_proof_at_position(inp, output, k1, k2, k3, k4, G2, steps, skips, skips2, precision, proof, i, pos, last_step_position, constants_mini_polynomial, transition_constraint):
+def verify_proof_at_position(inp, output, ks, G2, steps, skips, skips2, precision, proof, i, pos, last_step_position, constants_polynomials, step_fn):
   """Verifies merkle proof at given position in extended trace"""
+  k1, k2, k3, k4 = ks
   m_root, l_root, branches, fri_proof = proof
   x = f.exp(G2, pos)
-  # TODO(rbharath): Why does exponentiating to steps make sense here?
-  # I think this is to compute the pseudorandom linear combination.
+  # TODO(rbharath): Why does exponentiating to steps make
+  # sense here?  I think this is to compute the pseudorandom
+  # linear combination.
   x_to_the_steps = f.exp(x, steps)
   # TODO(rbharath): Why do i*3, i*3+1, i*3+2 make sense?
   mbranch1 = verify_branch(m_root, pos, branches[i * 3])
@@ -286,12 +288,17 @@ def verify_proof_at_position(inp, output, k1, k2, k3, k4, G2, steps, skips, skip
   b_of_x = int.from_bytes(mbranch1[64:], 'big')
 
   zvalue = f.div(f.exp(x, steps) - 1, x - last_step_position)
-  k_of_x = f.eval_poly_at(constants_mini_polynomial, f.exp(x, skips2))
+  k_of_xs = []
+  for constants_mini_polynomial in constants_polynomials:
+    k_of_x = f.eval_poly_at(constants_mini_polynomial, f.exp(x, skips2))
+    k_of_xs.append(k_of_x)
 
   # Check transition constraints C(P(x)) = Z(x) * D(x)
-  assert (p_of_g1x - transition_constraint(f, p_of_x, k_of_x) - zvalue * d_of_x) % modulus == 0
+  assert (p_of_g1x - step_fn(f, p_of_x, k_of_xs) - zvalue * d_of_x) % modulus == 0
 
   # Check boundary constraints B(x) * Q(x) + I(x) = P(x)
+  print("type(last_step_position), type(inp), type(output)")
+  print(type(last_step_position), type(inp), type(output))
   interpolant = f.lagrange_interp_2([1, last_step_position], [inp, output])
   zeropoly2 = f.mul_polys([-1, 1], [-last_step_position, 1])
   assert (p_of_x - b_of_x * f.eval_poly_at(zeropoly2, x) - f.eval_poly_at(
@@ -302,13 +309,14 @@ def verify_proof_at_position(inp, output, k1, k2, k3, k4, G2, steps, skips, skip
           k3 * b_of_x - k4 * b_of_x * x_to_the_steps) % modulus == 0
 
 
-def verify_proof(inp, steps, round_constants, output, proof, transition_constraint):
+def verify_proof(inp, steps, constants, output, proof, step_fn):
   """Verifies a STARK"""
   m_root, l_root, branches, fri_proof = proof
   start_time = time.time()
   assert steps <= 2**32 // extension_factor
-  assert is_a_power_of_2(steps) and is_a_power_of_2(len(round_constants))
-  assert len(round_constants) <= steps
+  # ALl constants should be of same length so we check the first
+  assert is_a_power_of_2(steps) and is_a_power_of_2(len(constants[0]))
+  assert len(constants[0]) <= steps
 
   precision = steps * extension_factor
 
@@ -317,9 +325,21 @@ def verify_proof(inp, steps, round_constants, output, proof, transition_constrai
   skips = precision // steps
 
   # Gets the polynomial representing the round constants
-  skips2 = steps // len(round_constants)
-  constants_mini_polynomial = fft(
-      round_constants, modulus, f.exp(G2, extension_factor * skips2), inv=True)
+  skips2 = steps // len(constants[0])
+
+  deg = len(constants)
+  constants_polynomials = []
+  constants_extensions = []
+  for d in range(deg):
+    deg_constants = constants[d]
+    skips2 = steps // len(deg_constants)
+    constants_mini_polynomial = fft(
+        deg_constants, modulus, f.exp(G2, extension_factor * skips2), inv=True)
+    constants_mini_extension = fft(constants_mini_polynomial, modulus,
+                                  f.exp(G2, skips2))
+    assert len(constants_mini_extension) == precision // skips2
+    constants_polynomials.append(constants_mini_polynomial)
+    constants_extensions.append(constants_mini_extension)
 
   # Verifies the low-degree proofs
   assert verify_low_degree_proof(
@@ -335,12 +355,13 @@ def verify_proof(inp, steps, round_constants, output, proof, transition_constrai
   k2 = int.from_bytes(blake(m_root + b'\x02'), 'big')
   k3 = int.from_bytes(blake(m_root + b'\x03'), 'big')
   k4 = int.from_bytes(blake(m_root + b'\x04'), 'big')
+  ks = [k1, k2, k3, k4]
   samples = spot_check_security_factor
   positions = get_pseudorandom_indices(
       l_root, precision, samples, exclude_multiples_of=extension_factor)
   last_step_position = f.exp(G2, (steps - 1) * skips)
   for i, pos in enumerate(positions):
-    verify_proof_at_position(inp, output, k1, k2, k3, k4, G2, steps, skips, skips2, precision, proof, i, pos, last_step_position, constants_mini_polynomial, transition_constraint)
+    verify_proof_at_position(inp, output, ks, G2, steps, skips, skips2, precision, proof, i, pos, last_step_position, constants_polynomials, step_fn)
 
   print('Verified %d consistency checks' % spot_check_security_factor)
   print('Verified STARK in %.4f sec' % (time.time() - start_time))

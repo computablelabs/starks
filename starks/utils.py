@@ -1,4 +1,20 @@
 from starks.merkle_tree import blake
+import time
+
+# TODO(rbharath): Wait, does Vitalik's blog post claim that
+# the verifier complexity is linear; Nah looks like t*log(t)
+# is optimal. Verifier complexity is O(log**2(t)) which should
+# be pretty small even for very large computations.
+# NOTE(rbharath): These starks here are not zero-knowledge I
+# think. Will need to be added onto library later.
+def mimc(inp, steps, round_constants):
+  """Compute a MIMC permutation for some number of steps"""
+  modulus = 2**256 - 2**32 * 351 + 1
+  start_time = time.time()
+  for i in range(steps - 1):
+    inp = (inp**3 + round_constants[i % len(round_constants)]) % modulus
+  print("MIMC computed in %.4f sec" % (time.time() - start_time))
+  return inp
 
 
 def get_power_cycle(r, modulus):
