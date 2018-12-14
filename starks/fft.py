@@ -37,7 +37,8 @@ def fft(vals, modulus, root_of_unity, inv=False, dims=1):
       vals_dim = [val[dim] for val in vals]
       fft_dim = fft_1d(vals_dim, modulus, root_of_unity, inv=inv)
       fft_vals.append(fft_dim)
-    fft_joint = list(zip(*fft_vals))
+    # We get tuples without the explicit list cast
+    fft_joint = list([list(elt) for elt in zip(*fft_vals)])
     return fft_joint
 
 

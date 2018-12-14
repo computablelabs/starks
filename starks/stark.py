@@ -67,15 +67,24 @@ def construct_constraint_polynomial(steps, constants, G1, G2, precision, p_evalu
   # Create the composed polynomial such that
   # C(P(x), P(g1*x), K(x)) = P(g1*x) - P(x)**3 - K(x)
   # here K(x) is the round constants.
-  c_of_p_evaluations = [
-      (p_evaluations[(i + extension_factor) % precision]
-        - step_fn(f, p_evaluations[i],
-                  [constants_extensions[d][i] for d in range(deg)])
-       ) % modulus
-      for i in range(precision)
-  ]
+  p_next_step_evals = [p_evaluations[(i + extension_factor) % precision] for i in range(precision)]
+  step_p_evals = [step_fn(
+    f, p_evaluations[i], [constants_extensions[d][i] for d in range(deg)]) for i in range(precision)]
+  print("p_next_step_evals[0]")
+  print(p_next_step_evals[0])
+  print("step_p_evals[0]")
+  print(step_p_evals[0])
+  c_of_p_evals = [(p_next - step_p) % modulus for (p_next, step_p) in zip(p_next_step_evals, step_p_evals)]
+  #c_of_p_evaluations = [
+  #    (p_evaluations[(i + extension_factor) % precision]
+  #      - step_fn(f, p_evaluations[i],
+  #                [constants_extensions[d][i] for d in range(deg)])
+  #     ) % modulus
+  #    for i in range(precision)
+  #]
   print('Computed C(P, K) polynomial')
-  return c_of_p_evaluations
+  #return c_of_p_evaluations
+  return c_of_p_evals
 
 def compute_remainder_polynomial(xs, precision, steps, last_step_position, c_of_p_evaluations):
   """Computes the remainder polynomial for the STARK.
