@@ -191,15 +191,23 @@ def compute_merkle_spot_checks(mtree, l_mtree, precision, skips):
 # polynomial constraint with necessary linkage. Easier for
 # regular workloads. This is also called a "computation tape"
 
-def mk_proof(inp, steps, round_constants, step_fn):
-  """Generate a STARK for a MIMC calculation"""
+def mk_proof(inp, steps, constants, step_fn, constraint_degree=2):
+  """Generate a STARK for a MIMC calculation
+  
+  Parameters
+  ----------
+  constraint_degree: int
+    The degree of the constraint being considered
+  """
   start_time = time.time()
   # Some constraints to make our job easier
-  # TODO: How can round_constants be factored out here
   assert steps <= 2**32 // extension_factor
-  assert is_a_power_of_2(steps) and is_a_power_of_2(len(round_constants))
-  for constants in round_constants:
-    assert len(constants) <= steps
+  # TODO(rbharath): The second check here may be feasible to
+  # remove
+  #assert is_a_power_of_2(steps) and is_a_power_of_2(len(constants))
+  assert is_a_power_of_2(steps)
+  for poly_constants in constants:
+    assert len(poly_constants) <= steps
 
   precision = steps * extension_factor
 
@@ -218,7 +226,7 @@ def mk_proof(inp, steps, round_constants, step_fn):
   # computational_trace is a tape of computation values. (Put
   # another way, a list of partial values the computation
   # takes on).
-  computational_trace, output = get_computational_trace(inp, steps, round_constants, step_fn)
+  computational_trace, output = get_computational_trace(inp, steps, constants, step_fn)
 
   # Interpolate the computational trace into a polynomial P,
   # with each step along a successive power of G1
@@ -233,11 +241,15 @@ def mk_proof(inp, steps, round_constants, step_fn):
 
   # Construct the constraint polynomial (represented as a list
   # of point evaluations)
-  c_of_p_evaluations = construct_constraint_polynomial(steps, round_constants, G1, G2, precision, p_evaluations, step_fn)
+  c_of_p_evaluations = construct_constraint_polynomial(steps,
+      constants, G1, G2, precision, p_evaluations,
+      step_fn)
 
-  d_evaluations = compute_remainder_polynomial(xs, precision, steps, last_step_position, c_of_p_evaluations)
+  d_evaluations = compute_remainder_polynomial(xs, precision,
+      steps, last_step_position, c_of_p_evaluations)
 
-  b_evaluations = compute_boundary_polynomial(xs, last_step_position, inp, output, p_evaluations)
+  b_evaluations = compute_boundary_polynomial(xs,
+      last_step_position, inp, output, p_evaluations)
 
   # Compute their Merkle root
   mtree = merkelize([
@@ -260,7 +272,7 @@ def mk_proof(inp, steps, round_constants, step_fn):
           l_evaluations,
           G2,
           # TODO(rbharath): Why is this 2x?
-          steps * 2,
+          steps * constraint_degree,
           modulus,
           exclude_multiples_of=extension_factor)
   ]
@@ -297,8 +309,6 @@ def verify_proof_at_position(inp, output, ks, G2, steps, skips, skips2, precisio
   assert (p_of_g1x - step_fn(f, p_of_x, k_of_xs) - zvalue * d_of_x) % modulus == 0
 
   # Check boundary constraints B(x) * Q(x) + I(x) = P(x)
-  print("type(last_step_position), type(inp), type(output)")
-  print(type(last_step_position), type(inp), type(output))
   interpolant = f.lagrange_interp_2([1, last_step_position], [inp, output])
   zeropoly2 = f.mul_polys([-1, 1], [-last_step_position, 1])
   assert (p_of_x - b_of_x * f.eval_poly_at(zeropoly2, x) - f.eval_poly_at(
@@ -309,13 +319,21 @@ def verify_proof_at_position(inp, output, ks, G2, steps, skips, skips2, precisio
           k3 * b_of_x - k4 * b_of_x * x_to_the_steps) % modulus == 0
 
 
-def verify_proof(inp, steps, constants, output, proof, step_fn):
-  """Verifies a STARK"""
+def verify_proof(inp, steps, constants, output, proof, step_fn,
+    constraint_degree=2):
+  """Verifies a STARK
+  
+  Parameters
+  ----------
+  constraint_degree: int
+    The degree of the constraint being considered
+  """
   m_root, l_root, branches, fri_proof = proof
   start_time = time.time()
   assert steps <= 2**32 // extension_factor
   # ALl constants should be of same length so we check the first
-  assert is_a_power_of_2(steps) and is_a_power_of_2(len(constants[0]))
+  #assert is_a_power_of_2(steps) and is_a_power_of_2(len(constants[0]))
+  assert is_a_power_of_2(steps)
   assert len(constants[0]) <= steps
 
   precision = steps * extension_factor
@@ -324,7 +342,7 @@ def verify_proof(inp, steps, constants, output, proof, step_fn):
   G2 = f.exp(7, (modulus - 1) // precision)
   skips = precision // steps
 
-  # Gets the polynomial representing the round constants
+  # Gets the polynomial representing the constants
   skips2 = steps // len(constants[0])
 
   deg = len(constants)
@@ -346,7 +364,7 @@ def verify_proof(inp, steps, constants, output, proof, step_fn):
       l_root,
       G2,
       fri_proof,
-      steps * 2,
+      steps * constraint_degree,
       modulus,
       exclude_multiples_of=extension_factor)
 

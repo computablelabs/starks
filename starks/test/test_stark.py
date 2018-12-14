@@ -1,9 +1,18 @@
 import unittest
 import time
 from starks.utils import mimc
+from starks.merkle_tree import merkelize
+from starks.fft import fft 
+from starks.fri import prove_low_degree 
+from starks.fri import verify_low_degree_proof 
+from starks.stark import get_power_cycle 
 from starks.stark import mk_proof
 from starks.stark import verify_proof
 from starks.stark import get_computational_trace
+from starks.stark import construct_constraint_polynomial 
+from starks.stark import compute_remainder_polynomial 
+from starks.stark import compute_boundary_polynomial 
+from starks.stark import compute_pseudorandom_linear_combination
 from starks.poly_utils import PrimeField
 
 
@@ -166,34 +175,133 @@ class TestStark(unittest.TestCase):
     assert result
 
   # TODO(rbharath): This doesn't work. Understand why...
-  #def test_varying_quadratic_stark(self):
-  #  """
-  #  Basic tests of quadratic stark with varying coefficients
-  #  """
-  #  inp = 5
-  #  steps = 512
-  #  # TODO(rbharath): Why do these constants make sense? Read
-  #  # MiMC paper to see if justification.
-  #  #round_constants = [(i**7) ^ 42 for i in range(steps)]
-  #  round_constants = [0 for i in range(steps)]
-  #  scale_constants = [i for i in range(steps)]
-  #  constants = [round_constants, scale_constants]
-  #  #constants = [round_constants]
-  #  modulus = 2**256 - 2**32 * 351 + 1
-  #  f = PrimeField(modulus)
+  def test_varying_quadratic_fri(self):
+    """
+    Basic tests of FRI generation for quadratic stark with varying coefficients
+    """
+    inp = 5
+    steps = 512
+    constraint_degree = 2
+    round_constants = [i for i in range(steps)]
+    scale_constants = [i for i in range(steps)]
+    constants = [round_constants, scale_constants]
+    modulus = 2**256 - 2**32 * 351 + 1
+    f = PrimeField(modulus)
 
-  #  ## Factoring out computation
-  #  def quadratic_step(f, value, constants):
-  #    # c_1*value**2 + c_0
-  #    return f.add(f.mul(f.exp(value, constants[1]), 2), constants[0])
-  #  #def quadratic_step(f, value, constants):
-  #  #  # 2value**2 + constant
-  #  #  return f.add(f.mul(f.exp(value, 2), 2), constants[0])
+    extension_factor = 8
+    precision = steps * extension_factor
+    G2 = f.exp(7, (modulus - 1) // precision)
+    G1 = f.exp(G2, extension_factor)
 
-  #  proof = mk_proof(inp, steps, constants, quadratic_step)
-  #  assert isinstance(proof, list)
-  #  assert len(proof) == 4
-  #  (m_root, l_root, branches, fri_proof) = proof
-  #  _, output = get_computational_trace(inp, steps, constants, quadratic_step)
-  #  result = verify_proof(inp, steps, constants, output, proof, quadratic_step)
-  #  assert result
+    xs = get_power_cycle(G2, modulus)
+    last_step_position = xs[(steps - 1) * extension_factor]
+
+    ## Factoring out computation
+    def step_fn(f, value, constants):
+      # c_1*value**2 + c_0
+      return f.add(f.mul(constants[1], f.exp(value, 2)), constants[0])
+
+    computational_trace, output = get_computational_trace(inp,
+        steps, constants, step_fn)
+    computational_trace_polynomial = fft(
+        computational_trace, modulus, G1, inv=True)
+    p_evaluations = fft(computational_trace_polynomial,
+        modulus, G2)
+    c_of_p_evaluations = construct_constraint_polynomial(
+        steps, constants, G1, G2, precision,
+        p_evaluations, step_fn)
+    d_evaluations = compute_remainder_polynomial(xs,
+        precision, steps, last_step_position,
+        c_of_p_evaluations)
+    b_evaluations = compute_boundary_polynomial(xs,
+        last_step_position, inp, output, p_evaluations)
+    mtree = merkelize([
+        pval.to_bytes(32, 'big') + dval.to_bytes(32, 'big') + bval.to_bytes(
+            32, 'big')
+        for pval, dval, bval in zip(p_evaluations,
+          d_evaluations, b_evaluations)
+    ])
+    l_evaluations = compute_pseudorandom_linear_combination(mtree, G2, steps, precision, d_evaluations, p_evaluations, b_evaluations)
+    l_mtree = merkelize(l_evaluations)
+    l_root = l_mtree[1]
+    fri_proof = prove_low_degree(
+          l_evaluations,
+          G2,
+          steps * constraint_degree,
+          modulus,
+          exclude_multiples_of=extension_factor)
+
+
+    assert verify_low_degree_proof(
+        l_root,
+        G2,
+        fri_proof,
+        steps * constraint_degree,
+        modulus,
+        exclude_multiples_of=extension_factor)
+
+  def test_varying_quadratic_stark(self):
+    """
+    Basic tests of varying quadratic stark generation
+    """
+    inp = 5
+    steps = 512
+    round_constants = [i for i in range(steps)]
+    scale_constants = [i for i in range(steps)]
+    constants = [round_constants, scale_constants]
+    modulus = 2**256 - 2**32 * 351 + 1
+    f = PrimeField(modulus)
+
+    ## Factoring out computation
+    def quadratic_step(f, value, constants):
+      # c_1*value**2 + c_0
+      return f.add(f.mul(constants[1], f.exp(value, 2)), constants[0])
+
+    proof = mk_proof(inp, steps, constants, quadratic_step)
+    assert isinstance(proof, list)
+    assert len(proof) == 4
+    (m_root, l_root, branches, fri_proof) = proof
+    trace, output = get_computational_trace(
+        inp, steps, constants, quadratic_step)
+    result = verify_proof(inp, steps, constants,
+                          output, proof, quadratic_step)
+    assert result
+
+  def test_varying_quintic_stark(self):
+    """
+    Basic tests of quintic stark generation
+    """
+    inp = 5
+    steps = 512
+    constraint_degree = 8
+    zero_constants = [i for i in range(steps)]
+    one_constants = [i for i in range(steps)]
+    two_constants = [i for i in range(steps)]
+    three_constants = [i for i in range(steps)]
+    four_constants = [i for i in range(steps)]
+    five_constants = [i for i in range(steps)]
+    constants = [zero_constants, one_constants, two_constants, three_constants,
+                 four_constants, five_constants]
+    modulus = 2**256 - 2**32 * 351 + 1
+    f = PrimeField(modulus)
+
+    ## Factoring out computation
+    def quintic_step(f, value, constants):
+      # c_5*value**5 + c_4*value**4 + c_3*value**3 + c_2*value**2 + c_1*value**1 + c_0
+      return f.add(f.mul(constants[5], f.exp(value, 5)),
+          f.add(f.mul(constants[4], f.exp(value, 4)),
+            f.add(f.mul(constants[3], f.exp(value, 3)),
+              f.add(f.mul(constants[2], f.exp(value, 2)),
+                f.add(f.mul(constants[1], f.exp(value, 1)), constants[0])))))
+
+    proof = mk_proof(inp, steps, constants, quintic_step,
+        constraint_degree=constraint_degree)
+    assert isinstance(proof, list)
+    assert len(proof) == 4
+    (m_root, l_root, branches, fri_proof) = proof
+    trace, output = get_computational_trace(
+        inp, steps, constants, quintic_step)
+    result = verify_proof(inp, steps, constants,
+                          output, proof, quintic_step,
+                          constraint_degree=constraint_degree)
+    assert result
