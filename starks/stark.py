@@ -67,22 +67,6 @@ def construct_constraint_polynomial(steps, constants, G1, G2, precision, p_evalu
   # Create the composed polynomial such that
   # C(P(x), P(g1*x), K(x)) = P(g1*x) - P(x)**3 - K(x)
   # here K(x) is the round constants.
-  # TODO(rbharath): Why does this structure make sense? Oh, I
-  # think this is the forward loop in MiMC. g1*x is the next
-  # iteration and should equal the MiMC pass from previous.
-  # For a deep network, would be the sigma(wx+b) I think.
-  #c_of_p_evaluations = [
-  #    (p_evaluations[
-  #        (i + extension_factor) % precision] - step_fn(f, p_evaluations[i], i) -
-  #     constants_mini_extension[i % len(constants_mini_extension)]) % modulus
-  #    for i in range(precision)
-  #]
-  #c_of_p_evaluations = [
-  #    (p_evaluations[
-  #        (i + extension_factor) % precision] - step_fn(f, p_evaluations[i], constants_mini_extension[i])
-  #     ) % modulus
-  #    for i in range(precision)
-  #]
   c_of_p_evaluations = [
       (p_evaluations[(i + extension_factor) % precision]
         - step_fn(f, p_evaluations[i],
@@ -136,9 +120,14 @@ def compute_boundary_polynomial(xs, last_step_position, inp, output, p_evaluatio
 
 
 def compute_pseudorandom_linear_combination(mtree, G2, steps, precision, d_evaluations, p_evaluations, b_evaluations):
-  """Computes a psuedorandom linear combination of polys
+  """Computes a pseudorandom linear combination of polys
 
-  A FRI proofs of low degree for a polynomial takes space. There are multiple polynomials (constraint, tape, reminder, degree) used in a STARK. This function combines these into a single polynomial so that only one FRI proofs needs to be generated for all of them. THe chances of a collision are low.
+  A FRI proofs of low degree for a polynomial takes space.
+  There are multiple polynomials (constraint, tape, reminder,
+  degree) used in a STARK. This function combines these into a
+  single polynomial so that only one FRI proofs needs to be
+  generated for all of them. The chances of a collision are
+  low.
   """
   # Based on the hashes of P, D and B, we select a random
   # linear combination of P * x^steps, P, B * x^steps, B and
@@ -191,13 +180,15 @@ def compute_merkle_spot_checks(mtree, l_mtree, precision, skips):
 # polynomial constraint with necessary linkage. Easier for
 # regular workloads. This is also called a "computation tape"
 
-def mk_proof(inp, steps, constants, step_fn, constraint_degree=2):
+def mk_proof(inp, steps, constants, step_fn, constraint_degree=2, dims=1):
   """Generate a STARK for a MIMC calculation
   
   Parameters
   ----------
   constraint_degree: int
     The degree of the constraint being considered
+  dims: int
+    The dimension of the state space for the computation.
   """
   start_time = time.time()
   # Some constraints to make our job easier
@@ -231,9 +222,9 @@ def mk_proof(inp, steps, constants, step_fn, constraint_degree=2):
   # Interpolate the computational trace into a polynomial P,
   # with each step along a successive power of G1
   computational_trace_polynomial = fft(
-      computational_trace, modulus, G1, inv=True)
+      computational_trace, modulus, G1, inv=True, dims=dims)
   assert len(computational_trace_polynomial) == steps
-  p_evaluations = fft(computational_trace_polynomial, modulus, G2)
+  p_evaluations = fft(computational_trace_polynomial, modulus, G2, dims=dims)
   assert len(p_evaluations) == steps*extension_factor
   print(
       'Converted computational steps into a polynomial and low-degree extended it'

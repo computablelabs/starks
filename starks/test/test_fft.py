@@ -20,6 +20,21 @@ class TestFFT(unittest.TestCase):
     evaluations = fft(poly, modulus, root_of_unity)
     assert len(evaluations) == 6
 
+  def test_fft_multidim(self):
+    """Test FFT of multidimensional signal."""
+    steps = 512 
+    modulus = 2**256 - 2**32 * 351 + 1
+    f = PrimeField(modulus)
+    # [1 + 2x + 3x^2 + 4 x^3 mod 31,
+    #  1 + 2x + 3x^2 + 4 x^3 mod 31]
+    poly = [[1, 1], [2, 2], [3, 3], [4, 4]]
+    # Root of unity such that x^512=1
+    G = f.exp(7, (modulus - 1) // steps)
+    evaluations = fft(poly, modulus, G, dims=2)
+    assert len(evaluations) == steps
+    assert len(evaluations[0]) == 2
+
+
   def test_constants(self):
     """Test FFT handling of constants."""
     steps = 256 
