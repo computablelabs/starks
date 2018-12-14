@@ -1,5 +1,6 @@
 import unittest
 import time
+import numpy as np
 from starks.utils import mimc
 from starks.merkle_tree import merkelize
 from starks.fft import fft 
@@ -42,14 +43,14 @@ class TestStark(unittest.TestCase):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
       f_n_plus_1 = f.add(f_n, f_n_minus_1)
-      return [f_n, f_n_plus_1]
+      return np.array([f_n, f_n_plus_1])
     trace, output = get_computational_trace(inp, steps,
         constants, fibonacci_step)
-    assert trace[0] == [0, 1]
-    assert trace[1] == [1, 1]
-    assert trace[2] == [1, 2]
-    assert trace[3] == [2, 3]
-    assert trace[4] == [3, 5]
+    assert list(trace[0]) == [0, 1]
+    assert list(trace[1]) == [1, 1]
+    assert list(trace[2]) == [1, 2]
+    assert list(trace[3]) == [2, 3]
+    assert list(trace[4]) == [3, 5]
 
   def test_higher_dimensional_proof(self):
     """
@@ -63,7 +64,7 @@ class TestStark(unittest.TestCase):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
       f_n_plus_1 = f.add(f_n, f_n_minus_1)
-      return [f_n, f_n_plus_1]
+      return np.array([f_n, f_n_plus_1])
     proof = mk_proof(inp, steps, constants, fibonacci_step, dims=2)
 
   #def test_stark():
