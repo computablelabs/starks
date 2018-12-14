@@ -112,9 +112,6 @@ def verify_low_degree_proof(merkle_root,
       f.exp(root_of_unity, roudeg * 3 // 4)
   ]
 
-  print("len(proof)")
-  print(len(proof))
-
   # Verify the recursive components of the proof
   for prf in proof[:-1]:
     root2, branches = prf
