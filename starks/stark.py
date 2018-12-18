@@ -15,14 +15,10 @@ spot_check_security_factor = 80
 # TODO(rbharath): Is this the Galois extension degree?
 # I think this is a security factor that gives us more control
 # over the security level of the computation, but not sure.
-extension_factor = 8
+#extension_factor = 8
 
-def get_computational_trace(inp, steps, constants, computational_step):
+def get_computational_trace(inp, steps, constants, step_fn):
   """Get the computational trace for the STARK.
-
-  This function is a first step towards refactoring this code
-  so it can generate STARKs for different computations. For
-  now, this only works for MiMC
 
   Parameters
   ----------
@@ -34,18 +30,62 @@ def get_computational_trace(inp, steps, constants, computational_step):
   for i in range(steps - 1):
     poly_constants = [constants[d][i] for d in range(deg)]
     # TODO(rbharath): Is there off-by-one error on round_contants?
-    computational_trace.append(computational_step(f, computational_trace[-1], poly_constants))
+    computational_trace.append(step_fn(f, computational_trace[-1], poly_constants))
   output = computational_trace[-1]
   print('Done generating computational trace')
   return computational_trace, output
 
-def construct_constraint_polynomial(steps, constants, G1, G2, precision, p_evaluations, step_fn):
+
+class Computation(object):
+  """A simple class defining a computation."""
+  def __init__(self, inp, steps, constants, step_fn):
+    self.inp = inp
+    self.steps = steps
+    self.constants = constants
+    self.step_fn = step_fn
+    self.computational_trace, self.output = get_computational_trace(inp,
+        steps, constants, step_fn)
+
+class StarkParams(object):
+  """Holds the cryptographic parameters needed for STARK"""
+  def __init__(self, comp, modulus, extension_factor):
+    self.modulus = modulus
+    self.extension_factor = extension_factor
+    self.precision = comp.steps * extension_factor
+
+    # Root of unity such that x^precision=1
+    self.G2 = f.exp(7, (modulus - 1) // self.precision)
+
+    # Root of unity such that x^steps=1
+    self.G1 = f.exp(self.G2, extension_factor)
+
+    # Powers of the higher-order root of unity
+    self.xs = get_power_cycle(self.G2, modulus)
+    self.last_step_position = self.xs[(comp.steps - 1) * extension_factor]
+
+def construct_computation_polynomial(comp, params, dims=1):
+  """Constructs polynomial for the given computation."""
+  # Interpolate the computational trace into a polynomial P,
+  # with each step along a successive power of G1
+  computational_trace_polynomial = fft(
+      comp.computational_trace, modulus, G1, inv=True, dims=dims)
+  assert len(computational_trace_polynomial) == steps
+  p_evaluations = fft(computational_trace_polynomial, modulus, G2, dims=dims)
+  assert len(p_evaluations) == steps*extension_factor
+  print(
+      'Converted computational steps into a polynomial and low-degree extended it'
+  )
+  return p_evaluations
+
+def construct_constraint_polynomial(comp_params,
+    p_evaluations, step_fn):
   """Construct the constraint polynomial for the given tape.
 
   This function constructs a constraint polynomial for the
   given computational tape. For now, this function only works
   with MiMC.
   """
+  (inp, steps, constants, precision, extension_factor, G1, G2, xs, last_step_position) = comp_params
   deg = len(constants)
   constants_extensions = []
   for d in range(deg):
@@ -67,6 +107,12 @@ def construct_constraint_polynomial(steps, constants, G1, G2, precision, p_evalu
   # Create the composed polynomial such that
   # C(P(x), P(g1*x), K(x)) = P(g1*x) - P(x)**3 - K(x)
   # here K(x) is the round constants.
+  print("precision")
+  print(precision)
+  print("extension_factor")
+  print(extension_factor)
+  print("len(p_evaluations)")
+  print(len(p_evaluations))
   p_next_step_evals = [p_evaluations[(i + extension_factor) % precision] for i in range(precision)]
   step_p_evals = [step_fn(
     f, p_evaluations[i], [constants_extensions[d][i] for d in range(deg)]) for i in range(precision)]
@@ -86,7 +132,7 @@ def construct_constraint_polynomial(steps, constants, G1, G2, precision, p_evalu
   #return c_of_p_evaluations
   return c_of_p_evals
 
-def compute_remainder_polynomial(xs, precision, steps, last_step_position, c_of_p_evaluations):
+def construct_remainder_polynomial(comp_params, c_of_p_evaluations):
   """Computes the remainder polynomial for the STARK.
   
   Compute D(x) = C(P(x), P(g1*x), K(x)) / Z(x)
@@ -94,6 +140,7 @@ def compute_remainder_polynomial(xs, precision, steps, last_step_position, c_of_
   TODO(rbharath): I think this is supposed to equal 
   Z(x) = (x - 1)(x-2)...(x-(steps_1)). How are these equal?
   """
+  (inp, steps, constants, precision, extension_factor, G1, G2, xs, last_step_position) = comp_params
   z_num_evaluations = [
       xs[(i * steps) % precision] - 1 for i in range(precision)
   ]
@@ -107,11 +154,12 @@ def compute_remainder_polynomial(xs, precision, steps, last_step_position, c_of_
   print('Computed D polynomial')
   return d_evaluations
 
-def compute_boundary_polynomial(xs, last_step_position, inp, output, p_evaluations):
+def construct_boundary_polynomial(comp_params, output, p_evaluations):
   """Polynomial encoding boundary constraints on tape.
   
   Compute interpolant of ((1, input), (x_atlast_step, output))
   """
+  (inp, steps, constants, precision, extension_factor, G1, G2, xs, last_step_position) = comp_params
   # TODO(rbharath): Why does this interpolant make sense?
   interpolant = f.lagrange_interp_2([1, last_step_position], [inp, output])
   i_evaluations = [f.eval_poly_at(interpolant, x) for x in xs]
@@ -128,7 +176,7 @@ def compute_boundary_polynomial(xs, last_step_position, inp, output, p_evaluatio
   return b_evaluations
 
 
-def compute_pseudorandom_linear_combination(mtree, G2, steps, precision, d_evaluations, p_evaluations, b_evaluations):
+def compute_pseudorandom_linear_combination(comp_params, mtree, d_evaluations, p_evaluations, b_evaluations):
   """Computes a pseudorandom linear combination of polys
 
   A FRI proofs of low degree for a polynomial takes space.
@@ -138,6 +186,7 @@ def compute_pseudorandom_linear_combination(mtree, G2, steps, precision, d_evalu
   generated for all of them. The chances of a collision are
   low.
   """
+  (inp, steps, constants, precision, extension_factor, G1, G2, xs, last_step_position) = comp_params
   # Based on the hashes of P, D and B, we select a random
   # linear combination of P * x^steps, P, B * x^steps, B and
   # D, and prove the low-degreeness of that, instead of
@@ -163,8 +212,9 @@ def compute_pseudorandom_linear_combination(mtree, G2, steps, precision, d_evalu
   print('Computed random linear combination')
   return l_evaluations
 
-def compute_merkle_spot_checks(mtree, l_mtree, precision, skips):
+def compute_merkle_spot_checks(mtree, l_mtree, comp_params):
   """Computes pseudorandom spot checks of Merkle tree."""
+  (inp, steps, constants, precision, extension_factor, G1, G2, xs, last_step_position) = comp_params
   # Do some spot checks of the Merkle tree at pseudo-random
   # coordinates, excluding multiples of `extension_factor`
   branches = []
@@ -173,7 +223,7 @@ def compute_merkle_spot_checks(mtree, l_mtree, precision, skips):
       l_mtree[1], precision, samples, exclude_multiples_of=extension_factor)
   for pos in positions:
     branches.append(mk_branch(mtree, pos))
-    branches.append(mk_branch(mtree, (pos + skips) % precision))
+    branches.append(mk_branch(mtree, (pos + extension_factor) % precision))
     branches.append(mk_branch(l_mtree, pos))
   print('Computed %d spot checks' % samples)
   return branches
@@ -189,7 +239,7 @@ def compute_merkle_spot_checks(mtree, l_mtree, precision, skips):
 # polynomial constraint with necessary linkage. Easier for
 # regular workloads. This is also called a "computation tape"
 
-def mk_proof(inp, steps, constants, step_fn, constraint_degree=2, dims=1):
+def mk_proof(inp, steps, constants, step_fn, constraint_degree=2, dims=1, extension_factor=8):
   """Generate a STARK for a MIMC calculation
   
   Parameters
@@ -209,47 +259,51 @@ def mk_proof(inp, steps, constants, step_fn, constraint_degree=2, dims=1):
   for poly_constants in constants:
     assert len(poly_constants) <= steps
 
-  precision = steps * extension_factor
+  comp = Computation(inp, steps, constants, step_fn)
+  params = StarkParams(comp, modulus, extension_factor)
+  #precision = steps * extension_factor
 
-  # Root of unity such that x^precision=1
-  G2 = f.exp(7, (modulus - 1) // precision)
+  ## Root of unity such that x^precision=1
+  #G2 = f.exp(7, (modulus - 1) // precision)
 
-  # Root of unity such that x^steps=1
-  skips = precision // steps
-  assert skips == extension_factor
-  G1 = f.exp(G2, skips)
+  ## Root of unity such that x^steps=1
+  #skips = precision // steps
+  #assert skips == extension_factor
+  #G1 = f.exp(G2, skips)
 
-  # Powers of the higher-order root of unity
-  xs = get_power_cycle(G2, modulus)
-  last_step_position = xs[(steps - 1) * extension_factor]
+  ## Powers of the higher-order root of unity
+  #xs = get_power_cycle(G2, modulus)
+  #last_step_position = xs[(steps - 1) * extension_factor]
+  #comp_params = (steps, precision, G1, G2)
 
-  # computational_trace is a tape of computation values. (Put
-  # another way, a list of partial values the computation
-  # takes on).
-  computational_trace, output = get_computational_trace(inp, steps, constants, step_fn)
+  ## computational_trace is a tape of computation values. (Put
+  ## another way, a list of partial values the computation
+  ## takes on).
+  #computational_trace, output = get_computational_trace(inp, steps, constants, step_fn)
 
-  # Interpolate the computational trace into a polynomial P,
-  # with each step along a successive power of G1
-  computational_trace_polynomial = fft(
-      computational_trace, modulus, G1, inv=True, dims=dims)
-  assert len(computational_trace_polynomial) == steps
-  p_evaluations = fft(computational_trace_polynomial, modulus, G2, dims=dims)
-  assert len(p_evaluations) == steps*extension_factor
-  print(
-      'Converted computational steps into a polynomial and low-degree extended it'
-  )
+  ## Interpolate the computational trace into a polynomial P,
+  ## with each step along a successive power of G1
+  #computational_trace_polynomial = fft(
+  #    computational_trace, modulus, G1, inv=True, dims=dims)
+  #assert len(computational_trace_polynomial) == steps
+  #p_evaluations = fft(computational_trace_polynomial, modulus, G2, dims=dims)
+  #assert len(p_evaluations) == steps*extension_factor
+  #print(
+  #    'Converted computational steps into a polynomial and low-degree extended it'
+  #)
+  p_evaluations = construct_computation_polynomial(
+      comp, params, dims=dims)
 
   # Construct the constraint polynomial (represented as a list
   # of point evaluations)
-  c_of_p_evaluations = construct_constraint_polynomial(steps,
-      constants, G1, G2, precision, p_evaluations,
-      step_fn)
+  c_of_p_evaluations = construct_constraint_polynomial(
+      comp_params, p_evaluations, step_fn)
 
-  d_evaluations = compute_remainder_polynomial(xs, precision,
-      steps, last_step_position, c_of_p_evaluations)
+  d_evaluations = construct_remainder_polynomial(
+      comp_params, c_of_p_evaluations)
 
-  b_evaluations = compute_boundary_polynomial(xs,
-      last_step_position, inp, output, p_evaluations)
+  b_evaluations = construct_boundary_polynomial(comp_params,
+      output, p_evaluations)
 
   # Compute their Merkle root
   mtree = merkelize([
@@ -259,10 +313,12 @@ def mk_proof(inp, steps, constants, step_fn, constraint_degree=2, dims=1):
   ])
   print('Computed hash root')
 
-  l_evaluations = compute_pseudorandom_linear_combination(mtree, G2, steps, precision, d_evaluations, p_evaluations, b_evaluations)
+  l_evaluations = compute_pseudorandom_linear_combination(
+      comp_params, mtree, d_evaluations, p_evaluations,
+      b_evaluations)
   l_mtree = merkelize(l_evaluations)
 
-  branches = compute_merkle_spot_checks(mtree, l_mtree, precision, skips)
+  branches = compute_merkle_spot_checks(mtree, l_mtree, comp_params)
 
   # Return the Merkle roots of P and D, the spot check Merkle
   # proofs, and low-degree proofs of P and D
@@ -320,7 +376,7 @@ def verify_proof_at_position(inp, output, ks, G2, steps, skips, skips2, precisio
 
 
 def verify_proof(inp, steps, constants, output, proof, step_fn,
-    constraint_degree=2):
+    constraint_degree=2, extension_factor=8):
   """Verifies a STARK
   
   Parameters

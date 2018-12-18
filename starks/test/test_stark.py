@@ -8,13 +8,19 @@ from starks.fri import prove_low_degree
 from starks.fri import verify_low_degree_proof 
 from starks.stark import get_power_cycle 
 from starks.stark import mk_proof
+from starks.stark import Computation
+from starks.stark import StarkParams 
 from starks.stark import verify_proof
 from starks.stark import get_computational_trace
+from starks.stark import construct_computation_polynomial 
 from starks.stark import construct_constraint_polynomial 
-from starks.stark import compute_remainder_polynomial 
-from starks.stark import compute_boundary_polynomial 
+from starks.stark import construct_remainder_polynomial 
+from starks.stark import construct_boundary_polynomial 
 from starks.stark import compute_pseudorandom_linear_combination
 from starks.poly_utils import PrimeField
+from starks.compression import bin_length
+from starks.compression import compress_branches
+from starks.compression import compress_fri
 
 
 class TestStark(unittest.TestCase):
@@ -55,6 +61,8 @@ class TestStark(unittest.TestCase):
   def test_higher_dimensional_proof(self):
     """
     Tests proof generation for multidimensional state.
+
+    TODO(rbharath): This test fails!!
     """
     inp = [0, 1]
     steps = 8
@@ -67,28 +75,73 @@ class TestStark(unittest.TestCase):
       return np.array([f_n, f_n_plus_1])
     proof = mk_proof(inp, steps, constants, fibonacci_step, dims=2)
 
-  #def test_stark():
-  #  """Basic stark test"""
-  #  INPUT = 3
-  #  LOGSTEPS = 13
-  #  # Full STARK test
-  #  constants = [(i**7) ^ 42 for i in range(64)]
-  #  proof = mk_mimc_proof(INPUT, 2**LOGSTEPS, constants)
-  #  m_root, l_root, branches, fri_proof = proof
-  #  L1 = bin_length(compress_branches(branches))
-  #  L2 = bin_length(compress_fri(fri_proof))
-  #  print("Approx proof length: %d (branches), %d (FRI proof), %d (total)" %
-  #        (L1, L2, L1 + L2))
-  #  assert verify_mimc_proof(3, 2**LOGSTEPS, constants,
-  #                           mimc(3, 2**LOGSTEPS, constants), proof)
+  def test_computation_polynomial(self):
+    """
+    Tests construction of computation polynomial
+    """
+    inp = 5
+    steps = 512
+    extension_factor = 8
+    constants = [[(i**7) ^ 42 for i in range(steps)]]
+    modulus = 2**256 - 2**32 * 351 + 1
+    def step_fn(f, value, constants):
+      # 2value**2 + constant
+      return f.add(f.mul(f.exp(value, 2), 2), constants[0])
+    comp = Computation(inp, steps, constants, step_fn)
+    comp_params = StarkParams(comp, modulus, extension_factor)
+    comp_poly_evals = construct_computation_polynomial(
+        comp_params, step_fn)
+    assert len(comp_poly_evals) == steps * extension_factor
+
+  def test_constraint_polynomial(self):
+    """
+    Tests construction of constraint polynomial.
+    """
+    inp = 5
+    steps = 512
+    extension_factor = 8
+    constants = [[(i**7) ^ 42 for i in range(steps)]]
+    def step_fn(f, value, constants):
+      # 2value**2 + constant
+      return f.add(f.mul(f.exp(value, 2), 2), constants[0])
+    comp_params = get_computation_params(inp, steps, constants,
+        extension_factor)
+    comp_poly_evals = construct_computation_polynomial(
+        comp_params, step_fn)
+    constraint_evals = construct_constraint_polynomial(
+        comp_params, comp_poly_evals, step_fn)
+    assert len(constraint_evals) == steps * extension_factor
+
+  def test_compressed_stark(self):
+    """Basic compressed stark test"""
+    inp = 3
+    steps = 512
+    # Full STARK test
+    round_constants = [(i**7) ^ 42 for i in range(64)]
+    skips2 = steps // 64
+    constants = round_constants * skips2
+    constants = [constants]
+    # Factoring out computation
+    def mimc_step(f, inp, constants):
+      return f.add(f.exp(inp, 3), constants[0])
+    proof = mk_proof(inp, steps, constants, mimc_step)
+    m_root, l_root, branches, fri_proof = proof
+    L1 = bin_length(compress_branches(branches))
+    L2 = bin_length(compress_fri(fri_proof))
+    print("Approx proof length: %d (branches), %d (FRI proof), %d (total)" %
+          (L1, L2, L1 + L2))
+    trace, output = get_computational_trace(
+        inp, steps, constants, mimc_step)
+    assert verify_proof(inp, steps, constants, output, proof,
+        mimc_step)
+                        
 
   def test_mimc_stark(self):
     """
     Basic tests of MiMC Stark generation
     """
     inp = 5
-    LOGSTEPS = 9
-    steps = 2**LOGSTEPS
+    steps = 512
     # TODO(rbharath): Why do these constants make sense? Read
     # MiMC paper to see if justification.
     constants = [(i**7) ^ 42 for i in range(64)]
@@ -247,10 +300,10 @@ class TestStark(unittest.TestCase):
     c_of_p_evaluations = construct_constraint_polynomial(
         steps, constants, G1, G2, precision,
         p_evaluations, step_fn)
-    d_evaluations = compute_remainder_polynomial(xs,
+    d_evaluations = construct_remainder_polynomial(xs,
         precision, steps, last_step_position,
         c_of_p_evaluations)
-    b_evaluations = compute_boundary_polynomial(xs,
+    b_evaluations = construct_boundary_polynomial(xs,
         last_step_position, inp, output, p_evaluations)
     mtree = merkelize([
         pval.to_bytes(32, 'big') + dval.to_bytes(32, 'big') + bval.to_bytes(
