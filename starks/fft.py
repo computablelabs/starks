@@ -27,8 +27,23 @@ def _fft(vals, modulus, roots_of_unity):
     o[i + len(L)] = (x - y_times_root) % modulus
   return o
 
+def fft(vals, modulus, root_of_unity, inv=False, dims=1):
+  """Computes FFT for potentially multidimensional sequences"""
+  if dims == 1:
+    return fft_1d(vals, modulus, root_of_unity, inv)
+  else:
+    fft_vals = []
+    for dim in range(dims):
+      vals_dim = [val[dim] for val in vals]
+      fft_dim = fft_1d(vals_dim, modulus, root_of_unity, inv=inv)
+      fft_vals.append(fft_dim)
+    # We get tuples without the explicit list cast
+    fft_joint = list([list(elt) for elt in zip(*fft_vals)])
+    return fft_joint
 
-def fft(vals, modulus, root_of_unity, inv=False):
+
+def fft_1d(vals, modulus, root_of_unity, inv=False):
+  """Computes FFT for one dimensional inputs"""
   # Build up roots of unity
   rootz = [1, root_of_unity]
   while rootz[-1] != 1:
