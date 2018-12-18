@@ -59,34 +59,180 @@ class TestStark(unittest.TestCase):
     assert list(trace[4]) == [3, 5]
 
   # TODO(rbharath): Fix this
-  #def test_higher_dim_computation_polynomial(self):
-  #  """
-  #  Tests construction of multidim computation polynomial
-  #  """
-  #  inp = [0, 1]
-  #  steps = 512
-  #  # This is a place filler
-  #  constants = [[1] * steps]
-  #  def step_fn(f, prev, constants):
-  #    f_n_minus_1 = prev[0]
-  #    f_n = prev[1]
-  #    f_n_plus_1 = f.add(f_n, f_n_minus_1)
-  #    return np.array([f_n, f_n_plus_1])
-  #  extension_factor = 8
-  #  modulus = 2**256 - 2**32 * 351 + 1
-  #  comp = Computation(inp, steps, constants, step_fn)
-  #  params = StarkParams(comp, modulus, extension_factor)
-  #  comp_poly_evals = construct_computation_polynomial(
-  #      comp, params)
-  #  assert len(comp_poly_evals) == steps * extension_factor
+  def test_higher_dim_computation_polynomial(self):
+    """
+    Tests construction of multidim computation polynomial
+    """
+    dims = 2
+    inp = [0, 1]
+    steps = 512
+    # This is a place filler
+    constants = [[1] * steps]
+    def step_fn(f, prev, constants):
+      f_n_minus_1 = prev[0]
+      f_n = prev[1]
+      f_n_plus_1 = f.add(f_n, f_n_minus_1)
+      return np.array([f_n, f_n_plus_1])
+    extension_factor = 8
+    modulus = 2**256 - 2**32 * 351 + 1
+    comp = Computation(inp, steps, constants, step_fn)
+    params = StarkParams(comp, modulus, extension_factor)
+    comp_poly_evals = construct_computation_polynomial(
+        comp, params, dims=dims)
+    assert len(comp_poly_evals) == steps * extension_factor
+    assert len(comp_poly_evals[0]) == dims
 
-  # TODO(rbharath): Fix this
-  #def test_higher_dimensional_proof(self):
+  def test_higher_dim_constraint_polynomial(self):
+    """
+    Tests construction of constraint polynomial.
+    """
+    dims = 2
+    inp = [0, 1]
+    steps = 512
+    # This is a place filler
+    constants = [[1] * steps]
+    def step_fn(f, prev, constants):
+      f_n_minus_1 = prev[0]
+      f_n = prev[1]
+      f_n_plus_1 = f.add(f_n, f_n_minus_1)
+      return np.array([f_n, f_n_plus_1])
+    extension_factor = 8
+    modulus = 2**256 - 2**32 * 351 + 1
+    comp = Computation(inp, steps, constants, step_fn)
+    params = StarkParams(comp, modulus, extension_factor)
+    comp_poly_evals = construct_computation_polynomial(
+        comp, params, dims=dims)
+    constraint_evals = construct_constraint_polynomial(
+        comp, params, comp_poly_evals, dims=dims)
+    assert len(constraint_evals) == steps * extension_factor
+    assert len(constraint_evals[0]) == dims
+
+  def test_higher_dim_remainder_polynomial(self):
+    """
+    Basic tests of FRI generation for fibonacci stark
+    """
+    dims = 2
+    inp = [0, 1]
+    steps = 512
+    # This is a place filler
+    constants = [[1] * steps]
+    modulus = 2**256 - 2**32 * 351 + 1
+    extension_factor = 8
+    f = PrimeField(modulus)
+    # This is a place filler
+    constants = [[1] * steps]
+    def step_fn(f, prev, constants):
+      f_n_minus_1 = prev[0]
+      f_n = prev[1]
+      f_n_plus_1 = f.add(f_n, f_n_minus_1)
+      return np.array([f_n, f_n_plus_1])
+    ## Factoring out computation
+    comp = Computation(inp, steps, constants, step_fn)
+    params = StarkParams(comp, modulus, extension_factor)
+
+
+    p_evaluations = construct_computation_polynomial(
+        comp, params, dims=dims)
+    c_of_p_evaluations = construct_constraint_polynomial(
+        comp, params, p_evaluations)
+    d_evaluations = construct_remainder_polynomial(
+        comp, params, c_of_p_evaluations)
+    assert len(d_evaluations) == params.precision
+    for dval in d_evaluations:
+      print("dval")
+      print(dval)
+      for dim in range(dims):
+        assert isinstance(dval[dim], int)
+
+  def test_higher_dim_boundary_polynomial(self):
+    """
+    Basic tests of FRI generation for fibonacci stark
+    """
+    dims = 2
+    inp = [0, 1]
+    steps = 512
+    # This is a place filler
+    constants = [[1] * steps]
+    modulus = 2**256 - 2**32 * 351 + 1
+    extension_factor = 8
+    f = PrimeField(modulus)
+    # This is a place filler
+    constants = [[1] * steps]
+    def step_fn(f, prev, constants):
+      f_n_minus_1 = prev[0]
+      f_n = prev[1]
+      f_n_plus_1 = f.add(f_n, f_n_minus_1)
+      return np.array([f_n, f_n_plus_1])
+    ## Factoring out computation
+    comp = Computation(inp, steps, constants, step_fn)
+    params = StarkParams(comp, modulus, extension_factor)
+
+
+    p_evaluations = construct_computation_polynomial(
+        comp, params, dims=dims)
+    c_of_p_evaluations = construct_constraint_polynomial(
+        comp, params, p_evaluations)
+    d_evaluations = construct_remainder_polynomial(
+        comp, params, c_of_p_evaluations)
+    b_evaluations = construct_boundary_polynomial(
+        comp, params, p_evaluations, dims=dims)
+
+  def test_higher_dim_fri(self):
+    """
+    Basic tests of FRI generation for fibonacci stark
+    """
+    dims = 2
+    inp = [0, 1]
+    steps = 512
+    # This is a place filler
+    constants = [[1] * steps]
+    modulus = 2**256 - 2**32 * 351 + 1
+    extension_factor = 8
+    f = PrimeField(modulus)
+    # This is a place filler
+    constants = [[1] * steps]
+    def step_fn(f, prev, constants):
+      f_n_minus_1 = prev[0]
+      f_n = prev[1]
+      f_n_plus_1 = f.add(f_n, f_n_minus_1)
+      return np.array([f_n, f_n_plus_1])
+    ## Factoring out computation
+    comp = Computation(inp, steps, constants, step_fn)
+    params = StarkParams(comp, modulus, extension_factor)
+
+
+    p_evaluations = construct_computation_polynomial(
+        comp, params, dims=dims)
+    c_of_p_evaluations = construct_constraint_polynomial(
+        comp, params, p_evaluations)
+    d_evaluations = construct_remainder_polynomial(
+        comp, params, c_of_p_evaluations)
+    b_evaluations = construct_boundary_polynomial(
+        comp, params, p_evaluations, dims=dims)
+
+    mtrees = []
+    for dim in range(dims):
+      for pval, dval, bval in zip(p_evaluations, d_evaluations, b_evaluations):
+        print("type(pval[dim]), type(dval[dim]), type(bval[dim])")
+        print(type(pval[dim]), type(dval[dim]), type(bval[dim]))
+        byte_val = pval[dim].to_bytes(32, 'big') + dval[dim].to_bytes(32, 'big') + bval[dim].to_bytes(
+              32, 'big')
+      dim_mtree = merkelize([
+          pval[dim].to_bytes(32, 'big') + dval[dim].to_bytes(32, 'big') + bval[dim].to_bytes(
+              32, 'big')
+          for pval, dval, bval in zip(p_evaluations,
+            d_evaluations, b_evaluations)
+      ])
+      mtrees.append(dim_mtree)
+
+  ## TODO(rbharath): Fix this
+  #def test_higher_dim_proof(self):
   #  """
   #  Tests proof generation for multidimensional state.
 
   #  TODO(rbharath): This test fails!!
   #  """
+  #  dims = 2
   #  inp = [0, 1]
   #  steps = 8
   #  # This is a place filler
@@ -96,7 +242,8 @@ class TestStark(unittest.TestCase):
   #    f_n = prev[1]
   #    f_n_plus_1 = f.add(f_n, f_n_minus_1)
   #    return np.array([f_n, f_n_plus_1])
-  #  proof = mk_proof(inp, steps, constants, fibonacci_step, dims=2)
+  #  proof = mk_proof(inp, steps, constants, fibonacci_step,
+  #      dims=dims)
 
   def test_computation_polynomial(self):
     """
@@ -288,7 +435,6 @@ class TestStark(unittest.TestCase):
                           affine_step)
     assert result
 
-  # TODO(rbharath): This doesn't work. Understand why...
   def test_varying_quadratic_fri(self):
     """
     Basic tests of FRI generation for quadratic stark with varying coefficients
