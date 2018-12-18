@@ -58,6 +58,27 @@ class TestStark(unittest.TestCase):
     assert list(trace[3]) == [2, 3]
     assert list(trace[4]) == [3, 5]
 
+  def test_higher_dim_computation_polynomial(self):
+    """
+    Tests construction of multidim computation polynomial
+    """
+    inp = [0, 1]
+    steps = 512
+    # This is a place filler
+    constants = [[1] * steps]
+    def step_fn(f, prev, constants):
+      f_n_minus_1 = prev[0]
+      f_n = prev[1]
+      f_n_plus_1 = f.add(f_n, f_n_minus_1)
+      return np.array([f_n, f_n_plus_1])
+    extension_factor = 8
+    modulus = 2**256 - 2**32 * 351 + 1
+    comp = Computation(inp, steps, constants, step_fn)
+    params = StarkParams(comp, modulus, extension_factor)
+    comp_poly_evals = construct_computation_polynomial(
+        comp, params)
+    assert len(comp_poly_evals) == steps * extension_factor
+
   def test_higher_dimensional_proof(self):
     """
     Tests proof generation for multidimensional state.
@@ -277,55 +298,46 @@ class TestStark(unittest.TestCase):
     scale_constants = [i for i in range(steps)]
     constants = [round_constants, scale_constants]
     modulus = 2**256 - 2**32 * 351 + 1
-    f = PrimeField(modulus)
-
     extension_factor = 8
-    precision = steps * extension_factor
-    G2 = f.exp(7, (modulus - 1) // precision)
-    G1 = f.exp(G2, extension_factor)
-
-    xs = get_power_cycle(G2, modulus)
-    last_step_position = xs[(steps - 1) * extension_factor]
-
+    f = PrimeField(modulus)
     ## Factoring out computation
     def step_fn(f, value, constants):
       # c_1*value**2 + c_0
       return f.add(f.mul(constants[1], f.exp(value, 2)), constants[0])
+    comp = Computation(inp, steps, constants, step_fn)
+    params = StarkParams(comp, modulus, extension_factor)
 
-    computational_trace, output = get_computational_trace(inp,
-        steps, constants, step_fn)
-    computational_trace_polynomial = fft(
-        computational_trace, modulus, G1, inv=True)
-    p_evaluations = fft(computational_trace_polynomial,
-        modulus, G2)
+
+    p_evaluations = construct_computation_polynomial(
+        comp, params)
     c_of_p_evaluations = construct_constraint_polynomial(
-        steps, constants, G1, G2, precision,
-        p_evaluations, step_fn)
-    d_evaluations = construct_remainder_polynomial(xs,
-        precision, steps, last_step_position,
-        c_of_p_evaluations)
-    b_evaluations = construct_boundary_polynomial(xs,
-        last_step_position, inp, output, p_evaluations)
+        comp, params, p_evaluations)
+    d_evaluations = construct_remainder_polynomial(
+        comp, params, c_of_p_evaluations)
+    b_evaluations = construct_boundary_polynomial(
+        comp, params, p_evaluations)
+
     mtree = merkelize([
         pval.to_bytes(32, 'big') + dval.to_bytes(32, 'big') + bval.to_bytes(
             32, 'big')
         for pval, dval, bval in zip(p_evaluations,
           d_evaluations, b_evaluations)
     ])
-    l_evaluations = compute_pseudorandom_linear_combination(mtree, G2, steps, precision, d_evaluations, p_evaluations, b_evaluations)
+    l_evaluations = compute_pseudorandom_linear_combination(
+        comp, params, mtree, d_evaluations, p_evaluations,
+        b_evaluations)
     l_mtree = merkelize(l_evaluations)
     l_root = l_mtree[1]
     fri_proof = prove_low_degree(
           l_evaluations,
-          G2,
+          params.G2,
           steps * constraint_degree,
           modulus,
           exclude_multiples_of=extension_factor)
 
-
     assert verify_low_degree_proof(
         l_root,
-        G2,
+        params.G2,
         fri_proof,
         steps * constraint_degree,
         modulus,
