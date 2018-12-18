@@ -113,15 +113,7 @@ def construct_constraint_polynomial(comp, params,
   step_p_evals = [comp.step_fn(
     f, p_evaluations[i], [constants_extensions[d][i] for d in range(deg)]) for i in range(params.precision)]
   c_of_p_evals = [(p_next - step_p) % params.modulus for (p_next, step_p) in zip(p_next_step_evals, step_p_evals)]
-  #c_of_p_evaluations = [
-  #    (p_evaluations[(i + extension_factor) % precision]
-  #      - step_fn(f, p_evaluations[i],
-  #                [constants_extensions[d][i] for d in range(deg)])
-  #     ) % modulus
-  #    for i in range(precision)
-  #]
   print('Computed C(P, K) polynomial')
-  #return c_of_p_evaluations
   return c_of_p_evals
 
 def construct_remainder_polynomial(comp, params, c_of_p_evaluations):
@@ -383,7 +375,6 @@ def verify_proof(inp, steps, constants, output, proof, step_fn,
   positions = get_pseudorandom_indices(
       l_root, params.precision, samples,
       exclude_multiples_of=params.extension_factor)
-  #last_step_position = f.exp(params.G2, (comp.steps - 1) * skips)
   for i, pos in enumerate(positions):
     verify_proof_at_position(comp, params, proof, ks, i, pos, constants_polynomials)
 
