@@ -88,9 +88,9 @@ class TestStark(unittest.TestCase):
       # 2value**2 + constant
       return f.add(f.mul(f.exp(value, 2), 2), constants[0])
     comp = Computation(inp, steps, constants, step_fn)
-    comp_params = StarkParams(comp, modulus, extension_factor)
+    params = StarkParams(comp, modulus, extension_factor)
     comp_poly_evals = construct_computation_polynomial(
-        comp_params, step_fn)
+        comp, params)
     assert len(comp_poly_evals) == steps * extension_factor
 
   def test_constraint_polynomial(self):
@@ -101,15 +101,16 @@ class TestStark(unittest.TestCase):
     steps = 512
     extension_factor = 8
     constants = [[(i**7) ^ 42 for i in range(steps)]]
+    modulus = 2**256 - 2**32 * 351 + 1
     def step_fn(f, value, constants):
       # 2value**2 + constant
       return f.add(f.mul(f.exp(value, 2), 2), constants[0])
-    comp_params = get_computation_params(inp, steps, constants,
-        extension_factor)
+    comp = Computation(inp, steps, constants, step_fn)
+    params = StarkParams(comp, modulus, extension_factor)
     comp_poly_evals = construct_computation_polynomial(
-        comp_params, step_fn)
+        comp, params)
     constraint_evals = construct_constraint_polynomial(
-        comp_params, comp_poly_evals, step_fn)
+        comp, params, comp_poly_evals)
     assert len(constraint_evals) == steps * extension_factor
 
   def test_compressed_stark(self):
