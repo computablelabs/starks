@@ -101,7 +101,7 @@ def construct_computation_polynomial(comp, params, dims=1):
   return p_evaluations
 
 def construct_constraint_polynomial(comp, params,
-    p_evaluations):
+    p_evaluations, dims=1):
   """Construct the constraint polynomial for the given tape.
 
   This function constructs a constraint polynomial for the
@@ -134,11 +134,11 @@ def construct_constraint_polynomial(comp, params,
   p_next_step_evals = [p_evaluations[(i + params.extension_factor) % params.precision] for i in range(params.precision)]
   step_p_evals = [comp.step_fn(
     f, p_evaluations[i], [constants_extensions[d][i] for d in range(deg)]) for i in range(params.precision)]
-  c_of_p_evals = [(p_next - step_p) % params.modulus for (p_next, step_p) in zip(p_next_step_evals, step_p_evals)]
+  c_of_p_evals = [[p_next[dim] - step_p[dim] % params.modulus for dim in range(dims)] for (p_next, step_p) in zip(p_next_step_evals, step_p_evals)]
   print('Computed C(P, K) polynomial')
   return c_of_p_evals
 
-def construct_remainder_polynomial(comp, params, c_of_p_evaluations):
+def construct_remainder_polynomial(comp, params, c_of_p_evaluations, dims=1):
   """Computes the remainder polynomial for the STARK.
   
   Compute D(x) = C(P(x), P(g1*x), K(x)) / Z(x)
@@ -153,7 +153,7 @@ def construct_remainder_polynomial(comp, params, c_of_p_evaluations):
   # (x_i - x_{step-1}) list
   z_den_evaluations = [params.xs[i] - params.last_step_position for i in range(params.precision)]
   d_evaluations = [
-      cp * zd * zni % modulus
+      [int(cp[dim] * zd * zni % modulus) for dim in range(dims)]
       for cp, zd, zni in zip(c_of_p_evaluations, z_den_evaluations, z_num_inv)
   ]
   print('Computed D polynomial')
@@ -297,7 +297,7 @@ def mk_proof(inp, steps, constants, step_fn, constraint_degree=2, dims=1, extens
       comp, params, p_evaluations)
 
   d_evaluations = construct_remainder_polynomial(
-      comp, params, c_of_p_evaluations)
+      comp, params, c_of_p_evaluations, dims=dims)
 
   b_evaluations = construct_boundary_polynomial(
       comp, params, p_evaluations, dims=dims)

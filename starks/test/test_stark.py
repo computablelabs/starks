@@ -85,6 +85,8 @@ class TestStark(unittest.TestCase):
   def test_higher_dim_constraint_polynomial(self):
     """
     Tests construction of constraint polynomial.
+
+    TODO(rbharath): This is failing
     """
     dims = 2
     inp = [0, 1]
@@ -103,9 +105,13 @@ class TestStark(unittest.TestCase):
     comp_poly_evals = construct_computation_polynomial(
         comp, params, dims=dims)
     constraint_evals = construct_constraint_polynomial(
-        comp, params, comp_poly_evals, dims=dims)
+        comp, params, comp_poly_evals)
     assert len(constraint_evals) == steps * extension_factor
-    assert len(constraint_evals[0]) == dims
+    for cval in constraint_evals:
+      print("cval")
+      print(cval)
+      assert isinstance(cval, list)
+      assert len(cval) == dims
 
   def test_higher_dim_remainder_polynomial(self):
     """
@@ -134,13 +140,12 @@ class TestStark(unittest.TestCase):
     p_evaluations = construct_computation_polynomial(
         comp, params, dims=dims)
     c_of_p_evaluations = construct_constraint_polynomial(
-        comp, params, p_evaluations)
+        comp, params, p_evaluations, dims=dims)
     d_evaluations = construct_remainder_polynomial(
-        comp, params, c_of_p_evaluations)
+        comp, params, c_of_p_evaluations, dims=dims)
     assert len(d_evaluations) == params.precision
-    for dval in d_evaluations:
-      print("dval")
-      print(dval)
+    for ind, dval in enumerate(d_evaluations):
+      assert len(dval) == dims
       for dim in range(dims):
         assert isinstance(dval[dim], int)
 
