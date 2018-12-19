@@ -1,4 +1,5 @@
 import time
+import numpy as np
 from starks.merkle_tree import merkelize, mk_branch, verify_branch, blake
 from starks.compression import compress_fri, decompress_fri, compress_branches, decompress_branches, bin_length
 from starks.poly_utils import PrimeField
@@ -37,7 +38,27 @@ def get_computational_trace(inp, steps, constants, step_fn):
 
 
 class Computation(object):
-  """A simple class defining a computation."""
+  """A simple class defining a computation.
+  
+  Holds the state of the computation. Here are the various
+  fields that constitue a computation.
+
+  Fields
+  ------
+  inp: Int or List
+    Either a single int or a list of integers of length dims
+  steps: Int
+    An int holding the number of steps of this computation.
+  output: Int of List
+    Either a single int or a list of integers of length dims
+  constants: List
+    A list of constants. Each element of constants must be a
+    list of length steps
+  step_fn: Function
+    A function that maps a computation state to the next
+    state. A state here is either an int of a list of ints of
+    length dims.
+  """
   def __init__(self, inp, steps, constants, step_fn):
     self.inp = inp
     self.steps = steps
@@ -80,7 +101,7 @@ def construct_computation_polynomial(comp, params, dims=1):
   return p_evaluations
 
 def construct_constraint_polynomial(comp, params,
-    p_evaluations):
+    p_evaluations, dims=1):
   """Construct the constraint polynomial for the given tape.
 
   This function constructs a constraint polynomial for the
@@ -91,12 +112,13 @@ def construct_constraint_polynomial(comp, params,
   constants_extensions = []
   for d in range(deg):
     deg_constants = comp.constants[d]
-    #deg_constants = constants[0]
     skips2 = comp.steps // len(deg_constants)
+    # Constants are a 1-d sequence
     constants_mini_polynomial = fft(
-        deg_constants, modulus, f.exp(params.G1, skips2), inv=True)
-    constants_mini_extension = fft(constants_mini_polynomial, modulus,
-                                  f.exp(params.G2, skips2))
+        deg_constants, modulus, f.exp(params.G1, skips2),
+        inv=True, dims=1)
+    constants_mini_extension = fft(constants_mini_polynomial,
+        modulus, f.exp(params.G2, skips2), dims=1)
     assert len(constants_mini_extension) == params.precision // skips2
     constants_extensions.append(constants_mini_extension)
   assert len(constants_extensions) == deg
@@ -112,11 +134,11 @@ def construct_constraint_polynomial(comp, params,
   p_next_step_evals = [p_evaluations[(i + params.extension_factor) % params.precision] for i in range(params.precision)]
   step_p_evals = [comp.step_fn(
     f, p_evaluations[i], [constants_extensions[d][i] for d in range(deg)]) for i in range(params.precision)]
-  c_of_p_evals = [(p_next - step_p) % params.modulus for (p_next, step_p) in zip(p_next_step_evals, step_p_evals)]
+  c_of_p_evals = [[p_next[dim] - step_p[dim] % params.modulus for dim in range(dims)] for (p_next, step_p) in zip(p_next_step_evals, step_p_evals)]
   print('Computed C(P, K) polynomial')
   return c_of_p_evals
 
-def construct_remainder_polynomial(comp, params, c_of_p_evaluations):
+def construct_remainder_polynomial(comp, params, c_of_p_evaluations, dims=1):
   """Computes the remainder polynomial for the STARK.
   
   Compute D(x) = C(P(x), P(g1*x), K(x)) / Z(x)
@@ -131,31 +153,58 @@ def construct_remainder_polynomial(comp, params, c_of_p_evaluations):
   # (x_i - x_{step-1}) list
   z_den_evaluations = [params.xs[i] - params.last_step_position for i in range(params.precision)]
   d_evaluations = [
-      cp * zd * zni % modulus
+      [int(cp[dim] * zd * zni % modulus) for dim in range(dims)]
       for cp, zd, zni in zip(c_of_p_evaluations, z_den_evaluations, z_num_inv)
   ]
   print('Computed D polynomial')
   return d_evaluations
 
-def construct_boundary_polynomial(comp, params, p_evaluations):
+def construct_boundary_polynomial(comp, params, p_evaluations,
+    dims=1):
   """Polynomial encoding boundary constraints on tape.
   
   Compute interpolant of ((1, input), (x_atlast_step, output))
   """
-  # TODO(rbharath): Why does this interpolant make sense?
-  interpolant = f.lagrange_interp_2([1, params.last_step_position], [comp.inp, comp.output])
-  i_evaluations = [f.eval_poly_at(interpolant, x) for x in params.xs]
-
-  zeropoly2 = f.mul_polys([-1, 1], [-params.last_step_position, 1])
-  inv_z2_evaluations = f.multi_inv([f.eval_poly_at(zeropoly2, x) for x in params.xs])
-
+  if dims == 1:
+    inp = [comp.inp]
+    output = [comp.output]
+  else:
+    inp = comp.inp
+    output = comp.output
+  i_evaluations = []
+  inv_z2_evaluations = []
+  for dim in range(dims):
+    inp_dim = inp[dim]
+    out_dim = output[dim]
+    interpolant = f.lagrange_interp_2([1, params.last_step_position], [inp_dim, out_dim])
+    i_evaluations_dim = [f.eval_poly_at(interpolant, x) for x in params.xs]
+    zeropoly2 = f.mul_polys([-1, 1], [-params.last_step_position, 1])
+    inv_z2_evaluations_dim = f.multi_inv([f.eval_poly_at(zeropoly2, x) for x in params.xs])
+    # Append to list
+    i_evaluations.append(i_evaluations_dim)
+    inv_z2_evaluations.append(inv_z2_evaluations_dim)
+  i_evaluations = [np.array([i_evaluations[dim][j] for dim in range(dims)]) for j in range(params.precision)]
+  inv_z2_evaluations = [np.array([inv_z2_evaluations[dim][j] for dim in range(dims)]) for j in range(params.precision)]
   # B = (P - I) / Z2
   b_evaluations = [
       ((p - i) * invq) % modulus
       for p, i, invq in zip(p_evaluations, i_evaluations, inv_z2_evaluations)
-  ]
+      ]
   print('Computed B polynomial')
   return b_evaluations
+  #interpolant = f.lagrange_interp_2([1, params.last_step_position], [comp.inp, comp.output])
+  #i_evaluations = [f.eval_poly_at(interpolant, x) for x in params.xs]
+
+  #zeropoly2 = f.mul_polys([-1, 1], [-params.last_step_position, 1])
+  #inv_z2_evaluations = f.multi_inv([f.eval_poly_at(zeropoly2, x) for x in params.xs])
+
+  ## B = (P - I) / Z2
+  #b_evaluations = [
+  #    ((p - i) * invq) % modulus
+  #    for p, i, invq in zip(p_evaluations, i_evaluations, inv_z2_evaluations)
+  #]
+  #print('Computed B polynomial')
+  #return b_evaluations
 
 
 def compute_pseudorandom_linear_combination(comp, params, mtree, d_evaluations, p_evaluations, b_evaluations):
@@ -248,10 +297,10 @@ def mk_proof(inp, steps, constants, step_fn, constraint_degree=2, dims=1, extens
       comp, params, p_evaluations)
 
   d_evaluations = construct_remainder_polynomial(
-      comp, params, c_of_p_evaluations)
+      comp, params, c_of_p_evaluations, dims=dims)
 
   b_evaluations = construct_boundary_polynomial(
-      comp, params, p_evaluations)
+      comp, params, p_evaluations, dims=dims)
 
   # Compute their Merkle root
   mtree = merkelize([
