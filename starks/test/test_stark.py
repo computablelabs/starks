@@ -17,6 +17,7 @@ from starks.stark import construct_constraint_polynomial
 from starks.stark import construct_remainder_polynomial 
 from starks.stark import construct_boundary_polynomial 
 from starks.stark import compute_pseudorandom_linear_combination
+from starks.stark import merkelize_polynomials 
 from starks.poly_utils import PrimeField
 from starks.compression import bin_length
 from starks.compression import compress_branches
@@ -36,6 +37,41 @@ class TestStark(unittest.TestCase):
     steps = 3
     round_constants = [2, 7]
     val = mimc(inp, steps, round_constants)
+
+  def test_compute_pseudorandom_combination(self):
+    """
+    Tests computation of pseudorandom combinations.
+    """
+    dims = 1
+    inp = 5
+    steps = 512
+    constraint_degree = 2
+    round_constants = [i for i in range(steps)]
+    scale_constants = [i for i in range(steps)]
+    constants = [round_constants, scale_constants]
+    modulus = 2**256 - 2**32 * 351 + 1
+    extension_factor = 8
+    f = PrimeField(modulus)
+    ## Factoring out computation
+    def step_fn(f, value, constants):
+      # c_1*value**2 + c_0
+      return f.add(f.mul(constants[1], f.exp(value[0], 2)), constants[0])
+    comp = Computation(dims, inp, steps, constants, step_fn)
+    params = StarkParams(comp, modulus, extension_factor)
+
+    p_evaluations = construct_computation_polynomial(
+        comp, params)
+    c_of_p_evaluations = construct_constraint_polynomial(
+        comp, params, p_evaluations)
+    d_evaluations = construct_remainder_polynomial(
+        comp, params, c_of_p_evaluations)
+    b_evaluations = construct_boundary_polynomial(
+        comp, params, p_evaluations)
+
+    mtrees = merkelize_polynomials(dims, [p_evaluations, d_evaluations, b_evaluations])
+    l_evaluations = compute_pseudorandom_linear_combination(
+        comp, params, mtrees[0], d_evaluations, p_evaluations,
+        b_evaluations)
 
   def test_higher_dimensional_trace(self):
     """
@@ -80,7 +116,9 @@ class TestStark(unittest.TestCase):
     comp_poly_evals = construct_computation_polynomial(
         comp, params, dims=dims)
     assert len(comp_poly_evals) == steps * extension_factor
-    assert len(comp_poly_evals[0]) == dims
+    for cval in comp_poly_evals:
+      assert isinstance(cval, list)
+      assert len(cval) == dims
 
   def test_higher_dim_constraint_polynomial(self):
     """
@@ -105,11 +143,9 @@ class TestStark(unittest.TestCase):
     comp_poly_evals = construct_computation_polynomial(
         comp, params, dims=dims)
     constraint_evals = construct_constraint_polynomial(
-        comp, params, comp_poly_evals)
+        comp, params, comp_poly_evals, dims=dims)
     assert len(constraint_evals) == steps * extension_factor
     for cval in constraint_evals:
-      print("cval")
-      print(cval)
       assert isinstance(cval, list)
       assert len(cval) == dims
 
@@ -136,7 +172,6 @@ class TestStark(unittest.TestCase):
     comp = Computation(inp, steps, constants, step_fn)
     params = StarkParams(comp, modulus, extension_factor)
 
-
     p_evaluations = construct_computation_polynomial(
         comp, params, dims=dims)
     c_of_p_evaluations = construct_constraint_polynomial(
@@ -145,6 +180,7 @@ class TestStark(unittest.TestCase):
         comp, params, c_of_p_evaluations, dims=dims)
     assert len(d_evaluations) == params.precision
     for ind, dval in enumerate(d_evaluations):
+      assert isinstance(dval, list)
       assert len(dval) == dims
       for dim in range(dims):
         assert isinstance(dval[dim], int)
@@ -176,11 +212,17 @@ class TestStark(unittest.TestCase):
     p_evaluations = construct_computation_polynomial(
         comp, params, dims=dims)
     c_of_p_evaluations = construct_constraint_polynomial(
-        comp, params, p_evaluations)
+        comp, params, p_evaluations, dims=dims)
     d_evaluations = construct_remainder_polynomial(
-        comp, params, c_of_p_evaluations)
+        comp, params, c_of_p_evaluations, dims=dims)
     b_evaluations = construct_boundary_polynomial(
         comp, params, p_evaluations, dims=dims)
+    assert len(b_evaluations) == params.precision
+    for ind, bval in enumerate(d_evaluations):
+      assert isinstance(bval, list)
+      assert len(bval) == dims
+      for dim in range(dims):
+        assert isinstance(bval[dim], int)
 
   def test_higher_dim_fri(self):
     """
@@ -209,17 +251,15 @@ class TestStark(unittest.TestCase):
     p_evaluations = construct_computation_polynomial(
         comp, params, dims=dims)
     c_of_p_evaluations = construct_constraint_polynomial(
-        comp, params, p_evaluations)
+        comp, params, p_evaluations, dims=dims)
     d_evaluations = construct_remainder_polynomial(
-        comp, params, c_of_p_evaluations)
+        comp, params, c_of_p_evaluations, dims=dims)
     b_evaluations = construct_boundary_polynomial(
         comp, params, p_evaluations, dims=dims)
 
     mtrees = []
     for dim in range(dims):
       for pval, dval, bval in zip(p_evaluations, d_evaluations, b_evaluations):
-        print("type(pval[dim]), type(dval[dim]), type(bval[dim])")
-        print(type(pval[dim]), type(dval[dim]), type(bval[dim]))
         byte_val = pval[dim].to_bytes(32, 'big') + dval[dim].to_bytes(32, 'big') + bval[dim].to_bytes(
               32, 'big')
       dim_mtree = merkelize([

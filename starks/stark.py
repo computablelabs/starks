@@ -18,6 +18,27 @@ spot_check_security_factor = 80
 # over the security level of the computation, but not sure.
 #extension_factor = 8
 
+def merkelize_polynomials(dims, polynomials):
+  """Given a list of polynomial evaluations, merkelizes them together.
+
+  Each dimension is merkelized seperately.
+
+  Parameters
+  ----------
+  dims: Int
+    Dimensionality
+  polynomials: List
+    Each element much be a list of evaluations of a given poly. All of
+    these should have the same length.
+  """
+  mtrees = []
+  for dim in range(dims):
+    dim_mtree = merkelize([
+        b''.join([val[dim].to_bytes(32, 'big') for val in evals])
+        for evals in zip(*polynomials)])
+    mtrees.append(dim_mtree)
+  return mtrees
+
 def get_computational_trace(inp, steps, constants, step_fn):
   """Get the computational trace for the STARK.
 
@@ -31,7 +52,10 @@ def get_computational_trace(inp, steps, constants, step_fn):
   for i in range(steps - 1):
     poly_constants = [constants[d][i] for d in range(deg)]
     # TODO(rbharath): Is there off-by-one error on round_contants?
-    computational_trace.append(step_fn(f, computational_trace[-1], poly_constants))
+    next_state = step_fn(f, computational_trace[-1], poly_constants)
+    if isinstance(next_state, int):
+      next_state = [next_state]
+    computational_trace.append(next_state)
   output = computational_trace[-1]
   print('Done generating computational trace')
   return computational_trace, output
@@ -59,7 +83,11 @@ class Computation(object):
     state. A state here is either an int of a list of ints of
     length dims.
   """
-  def __init__(self, inp, steps, constants, step_fn):
+  def __init__(self, dims, inp, steps, constants, step_fn):
+    self.dims = dims
+    # Handle 1-d case
+    if isinstance(inp, int):
+      inp = [inp]
     self.inp = inp
     self.steps = steps
     self.constants = constants
@@ -84,16 +112,16 @@ class StarkParams(object):
     self.xs = get_power_cycle(self.G2, modulus)
     self.last_step_position = self.xs[(comp.steps - 1) * extension_factor]
 
-def construct_computation_polynomial(comp, params, dims=1):
+def construct_computation_polynomial(comp, params):
   """Constructs polynomial for the given computation."""
   # Interpolate the computational trace into a polynomial P,
   # with each step along a successive power of G1
   computational_trace_polynomial = fft(
       comp.computational_trace, params.modulus, params.G1,
-      inv=True, dims=dims)
+      inv=True, dims=comp.dims)
   assert len(computational_trace_polynomial) == comp.steps
   p_evaluations = fft(computational_trace_polynomial,
-      params.modulus, params.G2, dims=dims)
+      params.modulus, params.G2, dims=comp.dims)
   assert len(p_evaluations) == comp.steps*params.extension_factor
   print(
       'Converted computational steps into a polynomial and low-degree extended it'
@@ -101,7 +129,7 @@ def construct_computation_polynomial(comp, params, dims=1):
   return p_evaluations
 
 def construct_constraint_polynomial(comp, params,
-    p_evaluations, dims=1):
+    p_evaluations):
   """Construct the constraint polynomial for the given tape.
 
   This function constructs a constraint polynomial for the
@@ -111,7 +139,9 @@ def construct_constraint_polynomial(comp, params,
   deg = len(comp.constants)
   constants_extensions = []
   for d in range(deg):
-    deg_constants = comp.constants[d]
+    # The extra wrapping is some plumbing since the fft expects a sequence
+    # of states, where a state is a list.
+    deg_constants = [[constant] for constant in comp.constants[d]]
     skips2 = comp.steps // len(deg_constants)
     # Constants are a 1-d sequence
     constants_mini_polynomial = fft(
@@ -132,13 +162,19 @@ def construct_constraint_polynomial(comp, params,
   # C(P(x), P(g1*x), K(x)) = P(g1*x) - step_fn(P(x), K(x))
   # here K(x) contains the constants.
   p_next_step_evals = [p_evaluations[(i + params.extension_factor) % params.precision] for i in range(params.precision)]
+  # constants_extensions[d] selects constants for the degree d term
+  # constants_extensions[d][i] selects the degree d term for i-th step
+  # constants_extensions[d][i][0] unpacks the output of fft() which adds an extra list
   step_p_evals = [comp.step_fn(
-    f, p_evaluations[i], [constants_extensions[d][i] for d in range(deg)]) for i in range(params.precision)]
-  c_of_p_evals = [[p_next[dim] - step_p[dim] % params.modulus for dim in range(dims)] for (p_next, step_p) in zip(p_next_step_evals, step_p_evals)]
+    f, p_evaluations[i], [constants_extensions[d][i][0] for d in range(deg)]) for i in range(params.precision)]
+  # Another wrapping/unwrapping operation
+  if comp.dims == 1:
+    step_p_evals = [[val] for val in step_p_evals]
+  c_of_p_evals = [[p_next[dim] - step_p[dim] % params.modulus for dim in range(comp.dims)] for (p_next, step_p) in zip(p_next_step_evals, step_p_evals)]
   print('Computed C(P, K) polynomial')
   return c_of_p_evals
 
-def construct_remainder_polynomial(comp, params, c_of_p_evaluations, dims=1):
+def construct_remainder_polynomial(comp, params, c_of_p_evaluations):
   """Computes the remainder polynomial for the STARK.
   
   Compute D(x) = C(P(x), P(g1*x), K(x)) / Z(x)
@@ -153,27 +189,22 @@ def construct_remainder_polynomial(comp, params, c_of_p_evaluations, dims=1):
   # (x_i - x_{step-1}) list
   z_den_evaluations = [params.xs[i] - params.last_step_position for i in range(params.precision)]
   d_evaluations = [
-      [int(cp[dim] * zd * zni % modulus) for dim in range(dims)]
+      [int(cp[dim] * zd * zni % modulus) for dim in range(comp.dims)]
       for cp, zd, zni in zip(c_of_p_evaluations, z_den_evaluations, z_num_inv)
   ]
   print('Computed D polynomial')
   return d_evaluations
 
-def construct_boundary_polynomial(comp, params, p_evaluations,
-    dims=1):
+def construct_boundary_polynomial(comp, params, p_evaluations):
   """Polynomial encoding boundary constraints on tape.
   
   Compute interpolant of ((1, input), (x_atlast_step, output))
   """
-  if dims == 1:
-    inp = [comp.inp]
-    output = [comp.output]
-  else:
-    inp = comp.inp
-    output = comp.output
+  inp = comp.inp
+  output = comp.output
   i_evaluations = []
   inv_z2_evaluations = []
-  for dim in range(dims):
+  for dim in range(comp.dims):
     inp_dim = inp[dim]
     out_dim = output[dim]
     interpolant = f.lagrange_interp_2([1, params.last_step_position], [inp_dim, out_dim])
@@ -183,8 +214,8 @@ def construct_boundary_polynomial(comp, params, p_evaluations,
     # Append to list
     i_evaluations.append(i_evaluations_dim)
     inv_z2_evaluations.append(inv_z2_evaluations_dim)
-  i_evaluations = [np.array([i_evaluations[dim][j] for dim in range(dims)]) for j in range(params.precision)]
-  inv_z2_evaluations = [np.array([inv_z2_evaluations[dim][j] for dim in range(dims)]) for j in range(params.precision)]
+  i_evaluations = [np.array([i_evaluations[dim][j] for dim in range(comp.dims)]) for j in range(params.precision)]
+  inv_z2_evaluations = [np.array([inv_z2_evaluations[dim][j] for dim in range(comp.dims)]) for j in range(params.precision)]
   # B = (P - I) / Z2
   b_evaluations = [
       ((p - i) * invq) % modulus
@@ -234,10 +265,14 @@ def compute_pseudorandom_linear_combination(comp, params, mtree, d_evaluations, 
   for i in range(1, params.precision):
     powers.append(powers[-1] * G2_to_the_steps % params.modulus)
 
-  l_evaluations = [(d_evaluations[i] + p_evaluations[i] * k1 +
-                    p_evaluations[i] * k2 * powers[i] + b_evaluations[i] * k3 +
-                    b_evaluations[i] * powers[i] * k4) % modulus
-                   for i in range(params.precision)]
+  l_evaluations = []
+  for dim in range(comp.dims):
+    l_evaluations_dim = [(
+      d_evaluations[i][dim] + p_evaluations[i][dim] * k1 +
+      p_evaluations[i][dim] * k2 * powers[i] + b_evaluations[i][dim] * k3 +
+      b_evaluations[i][dim] * powers[i] * k4) % modulus
+                     for i in range(params.precision)]
+    l_evaluations.append(l_evaluations_dim)
 
   print('Computed random linear combination')
   return l_evaluations
