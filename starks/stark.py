@@ -137,23 +137,24 @@ def construct_constraint_polynomial(comp, params,
   with MiMC.
   """
   deg = len(comp.constants)
+  # TODO(rbharath): I think this and the part in constraint_poly can be
+  # factored out
   constants_extensions = []
   for d in range(deg):
     # The extra wrapping is some plumbing since the fft expects a sequence
     # of states, where a state is a list.
     deg_constants = [[constant] for constant in comp.constants[d]]
-    skips2 = comp.steps // len(deg_constants)
     # Constants are a 1-d sequence
     constants_mini_polynomial = fft(
-        deg_constants, modulus, f.exp(params.G1, skips2),
+        deg_constants, modulus, params.G1,
         inv=True, dims=1)
     constants_mini_extension = fft(constants_mini_polynomial,
-        modulus, f.exp(params.G2, skips2), dims=1)
-    assert len(constants_mini_extension) == params.precision // skips2
+        modulus, params.G2, dims=1)
+    assert len(constants_mini_extension) == params.precision
     constants_extensions.append(constants_mini_extension)
   assert len(constants_extensions) == deg
   for extension in constants_extensions:
-    assert len(extension) == params.precision // skips2
+    assert len(extension) == params.precision 
   print(
       'Converted round constants into a polynomial and low-degree extended it')
 
@@ -320,7 +321,7 @@ def mk_proof(inp, steps, constants, step_fn, constraint_degree=2, dims=1, extens
   for poly_constants in constants:
     assert len(poly_constants) <= steps
 
-  comp = Computation(inp, steps, constants, step_fn)
+  comp = Computation(dims, inp, steps, constants, step_fn)
   params = StarkParams(comp, modulus, extension_factor)
   p_evaluations = construct_computation_polynomial(
       comp, params)
@@ -336,17 +337,21 @@ def mk_proof(inp, steps, constants, step_fn, constraint_degree=2, dims=1, extens
   b_evaluations = construct_boundary_polynomial(
       comp, params, p_evaluations)
 
+  polys = [p_evaluations, d_evaluations, b_evaluations]
   # Compute their Merkle root
-  mtree = merkelize([
-      pval.to_bytes(32, 'big') + dval.to_bytes(32, 'big') + bval.to_bytes(
-          32, 'big')
-      for pval, dval, bval in zip(p_evaluations, d_evaluations, b_evaluations)
-  ])
-  print('Computed hash root')
+  mtree = merkelize_polynomials(dims, polys)
+  #mtree = merkelize([
+  #    pval.to_bytes(32, 'big') + dval.to_bytes(32, 'big') + bval.to_bytes(
+  #        32, 'big')
+  #    for pval, dval, bval in zip(p_evaluations, d_evaluations, b_evaluations)
+  #])
+  #print('Computed hash root')
 
+  #l_evaluations = compute_pseudorandom_linear_combination(
+  #    comp, params, mtree, d_evaluations, p_evaluations,
+  #    b_evaluations)
   l_evaluations = compute_pseudorandom_linear_combination(
-      comp, params, mtree, d_evaluations, p_evaluations,
-      b_evaluations)
+      comp, params, mtree, polys)
   l_mtree = merkelize(l_evaluations)
 
   branches = compute_merkle_spot_checks(mtree, l_mtree, comp, params)
@@ -381,6 +386,7 @@ def verify_proof_at_position(comp, params, proof, ks, i, pos, constants_polynomi
                             branches[i * 3 + 1])
   l_of_x = verify_branch(l_root, pos, branches[i * 3 + 2], output_as_int=True)
 
+  # TODO(rbharath): This needs to undo the packing that's done in merkelize_polynomials
   p_of_x = int.from_bytes(mbranch1[:32], 'big')
   p_of_g1x = int.from_bytes(mbranch2[:32], 'big')
   d_of_x = int.from_bytes(mbranch1[32:64], 'big')
@@ -389,6 +395,8 @@ def verify_proof_at_position(comp, params, proof, ks, i, pos, constants_polynomi
   zvalue = f.div(f.exp(x, comp.steps) - 1, x - params.last_step_position)
   k_of_xs = []
   for constants_mini_polynomial in constants_polynomials:
+    # This is unwrapping the polynomial
+    constants_mini_polynomial = [val[0] for val in constants_mini_polynomial]
     k_of_x = f.eval_poly_at(constants_mini_polynomial, x)
     k_of_xs.append(k_of_x)
 
@@ -407,7 +415,7 @@ def verify_proof_at_position(comp, params, proof, ks, i, pos, constants_polynomi
 
 
 def verify_proof(inp, steps, constants, output, proof, step_fn,
-    constraint_degree=2, extension_factor=8):
+    constraint_degree=2, extension_factor=8, dims=1):
   """Verifies a STARK
   
   Parameters
@@ -418,23 +426,26 @@ def verify_proof(inp, steps, constants, output, proof, step_fn,
   start_time = time.time()
   assert steps <= 2**32 // extension_factor
   m_root, l_root, branches, fri_proof = proof
-  comp = Computation(inp, steps, constants, step_fn)
+  comp = Computation(dims, inp, steps, constants, step_fn)
   params = StarkParams(comp, modulus, extension_factor)
   # ALl constants should be of same length so we check the first
   assert is_a_power_of_2(steps)
   assert len(constants[0]) <= steps
 
   # Gets the polynomial representing the constants
-
+  # TODO(rbharath): I think this and the part in constraint_poly can be
+  # factored out
   deg = len(constants)
   constants_polynomials = []
   constants_extensions = []
   for d in range(deg):
-    deg_constants = constants[d]
+    # The extra wrapping is some plumbing since the fft expects a sequence
+    # of states, where a state is a list.
+    deg_constants = [[constant] for constant in comp.constants[d]]
     constants_mini_polynomial = fft(
-        deg_constants, modulus, f.exp(params.G2, params.extension_factor), inv=True)
-    constants_mini_extension = fft(
-        constants_mini_polynomial, modulus, params.G2)
+        deg_constants, modulus, f.exp(params.G2, params.extension_factor),
+        inv=True, dims=1)
+    constants_mini_extension = fft(constants_mini_polynomial, modulus, params.G2, dims=1)
     assert len(constants_mini_extension) == params.precision
     constants_polynomials.append(constants_mini_polynomial)
     constants_extensions.append(constants_mini_extension)

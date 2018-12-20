@@ -71,7 +71,7 @@ class TestStark(unittest.TestCase):
     polys = [p_evaluations, d_evaluations, b_evaluations]
     mtree = merkelize_polynomials(dims, polys)
     l_evaluations = compute_pseudorandom_linear_combination(
-        comp, params, mtree[0], polys)
+        comp, params, mtree, polys)
     l_mtree = merkelize(l_evaluations)
     l_root = l_mtree[1]
     fri_proof = prove_low_degree(
@@ -263,7 +263,6 @@ class TestStark(unittest.TestCase):
     comp = Computation(dims, inp, steps, constants, step_fn)
     params = StarkParams(comp, modulus, extension_factor)
 
-
     p_evaluations = construct_computation_polynomial(
         comp, params)
     c_of_p_evaluations = construct_constraint_polynomial(
@@ -275,12 +274,9 @@ class TestStark(unittest.TestCase):
 
     mtrees = merkelize_polynomials(dims, [p_evaluations, d_evaluations, b_evaluations])
 
-  ## TODO(rbharath): Fix this
   def test_higher_dim_proof(self):
     """
     Tests proof generation for multidimensional state.
-
-    TODO(rbharath): This test fails!!
     """
     dims = 2
     inp = [0, 1]
@@ -294,6 +290,28 @@ class TestStark(unittest.TestCase):
       return np.array([f_n, f_n_plus_1])
     proof = mk_proof(inp, steps, constants, fibonacci_step,
         dims=dims)
+
+  def test_higher_dim_proof_verification(self):
+    """
+    Tests proof generation and verification for multidimensional state.
+    """
+    dims = 2
+    inp = [0, 1]
+    steps = 8
+    constraint_degree = 4
+    # This is a place filler
+    constants = [[1] * steps]
+    def fibonacci_step(f, prev, constants):
+      f_n_minus_1 = prev[0]
+      f_n = prev[1]
+      f_n_plus_1 = f.add(f_n, f_n_minus_1)
+      return np.array([f_n, f_n_plus_1])
+    proof = mk_proof(inp, steps, constants, fibonacci_step,
+        dims=dims, constraint_degree=constraint_degree)
+    trace, output = get_computational_trace(
+        inp, steps, constants, fibonacci_step)
+    assert verify_proof(inp, steps, constants, output, proof,
+        fibonacci_step, dims=dims, constraint_degree=constraint_degree)
 
   def test_computation_polynomial(self):
     """
