@@ -45,7 +45,7 @@ class TestStark(unittest.TestCase):
     dims = 1
     inp = 5
     steps = 512
-    constraint_degree = 2
+    constraint_degree = 4
     round_constants = [i for i in range(steps)]
     scale_constants = [i for i in range(steps)]
     constants = [round_constants, scale_constants]
@@ -68,10 +68,26 @@ class TestStark(unittest.TestCase):
     b_evaluations = construct_boundary_polynomial(
         comp, params, p_evaluations)
 
-    mtrees = merkelize_polynomials(dims, [p_evaluations, d_evaluations, b_evaluations])
+    polys = [p_evaluations, d_evaluations, b_evaluations]
+    mtree = merkelize_polynomials(dims, polys)
     l_evaluations = compute_pseudorandom_linear_combination(
-        comp, params, mtrees[0], d_evaluations, p_evaluations,
-        b_evaluations)
+        comp, params, mtree[0], polys)
+    l_mtree = merkelize(l_evaluations)
+    l_root = l_mtree[1]
+    fri_proof = prove_low_degree(
+          l_evaluations,
+          params.G2,
+          steps * constraint_degree,
+          modulus,
+          exclude_multiples_of=extension_factor)
+
+    assert verify_low_degree_proof(
+        l_root,
+        params.G2,
+        fri_proof,
+        steps * constraint_degree,
+        modulus,
+        exclude_multiples_of=extension_factor)
 
   def test_higher_dimensional_trace(self):
     """
@@ -111,10 +127,10 @@ class TestStark(unittest.TestCase):
       return np.array([f_n, f_n_plus_1])
     extension_factor = 8
     modulus = 2**256 - 2**32 * 351 + 1
-    comp = Computation(inp, steps, constants, step_fn)
+    comp = Computation(dims, inp, steps, constants, step_fn)
     params = StarkParams(comp, modulus, extension_factor)
     comp_poly_evals = construct_computation_polynomial(
-        comp, params, dims=dims)
+        comp, params)
     assert len(comp_poly_evals) == steps * extension_factor
     for cval in comp_poly_evals:
       assert isinstance(cval, list)
@@ -138,12 +154,12 @@ class TestStark(unittest.TestCase):
       return np.array([f_n, f_n_plus_1])
     extension_factor = 8
     modulus = 2**256 - 2**32 * 351 + 1
-    comp = Computation(inp, steps, constants, step_fn)
+    comp = Computation(dims, inp, steps, constants, step_fn)
     params = StarkParams(comp, modulus, extension_factor)
     comp_poly_evals = construct_computation_polynomial(
-        comp, params, dims=dims)
+        comp, params)
     constraint_evals = construct_constraint_polynomial(
-        comp, params, comp_poly_evals, dims=dims)
+        comp, params, comp_poly_evals)
     assert len(constraint_evals) == steps * extension_factor
     for cval in constraint_evals:
       assert isinstance(cval, list)
@@ -169,15 +185,15 @@ class TestStark(unittest.TestCase):
       f_n_plus_1 = f.add(f_n, f_n_minus_1)
       return np.array([f_n, f_n_plus_1])
     ## Factoring out computation
-    comp = Computation(inp, steps, constants, step_fn)
+    comp = Computation(dims, inp, steps, constants, step_fn)
     params = StarkParams(comp, modulus, extension_factor)
 
     p_evaluations = construct_computation_polynomial(
-        comp, params, dims=dims)
+        comp, params)
     c_of_p_evaluations = construct_constraint_polynomial(
-        comp, params, p_evaluations, dims=dims)
+        comp, params, p_evaluations)
     d_evaluations = construct_remainder_polynomial(
-        comp, params, c_of_p_evaluations, dims=dims)
+        comp, params, c_of_p_evaluations)
     assert len(d_evaluations) == params.precision
     for ind, dval in enumerate(d_evaluations):
       assert isinstance(dval, list)
@@ -205,18 +221,18 @@ class TestStark(unittest.TestCase):
       f_n_plus_1 = f.add(f_n, f_n_minus_1)
       return np.array([f_n, f_n_plus_1])
     ## Factoring out computation
-    comp = Computation(inp, steps, constants, step_fn)
+    comp = Computation(dims, inp, steps, constants, step_fn)
     params = StarkParams(comp, modulus, extension_factor)
 
 
     p_evaluations = construct_computation_polynomial(
-        comp, params, dims=dims)
+        comp, params)
     c_of_p_evaluations = construct_constraint_polynomial(
-        comp, params, p_evaluations, dims=dims)
+        comp, params, p_evaluations)
     d_evaluations = construct_remainder_polynomial(
-        comp, params, c_of_p_evaluations, dims=dims)
+        comp, params, c_of_p_evaluations)
     b_evaluations = construct_boundary_polynomial(
-        comp, params, p_evaluations, dims=dims)
+        comp, params, p_evaluations)
     assert len(b_evaluations) == params.precision
     for ind, bval in enumerate(d_evaluations):
       assert isinstance(bval, list)
@@ -244,51 +260,40 @@ class TestStark(unittest.TestCase):
       f_n_plus_1 = f.add(f_n, f_n_minus_1)
       return np.array([f_n, f_n_plus_1])
     ## Factoring out computation
-    comp = Computation(inp, steps, constants, step_fn)
+    comp = Computation(dims, inp, steps, constants, step_fn)
     params = StarkParams(comp, modulus, extension_factor)
 
 
     p_evaluations = construct_computation_polynomial(
-        comp, params, dims=dims)
+        comp, params)
     c_of_p_evaluations = construct_constraint_polynomial(
-        comp, params, p_evaluations, dims=dims)
+        comp, params, p_evaluations)
     d_evaluations = construct_remainder_polynomial(
-        comp, params, c_of_p_evaluations, dims=dims)
+        comp, params, c_of_p_evaluations)
     b_evaluations = construct_boundary_polynomial(
-        comp, params, p_evaluations, dims=dims)
+        comp, params, p_evaluations)
 
-    mtrees = []
-    for dim in range(dims):
-      for pval, dval, bval in zip(p_evaluations, d_evaluations, b_evaluations):
-        byte_val = pval[dim].to_bytes(32, 'big') + dval[dim].to_bytes(32, 'big') + bval[dim].to_bytes(
-              32, 'big')
-      dim_mtree = merkelize([
-          pval[dim].to_bytes(32, 'big') + dval[dim].to_bytes(32, 'big') + bval[dim].to_bytes(
-              32, 'big')
-          for pval, dval, bval in zip(p_evaluations,
-            d_evaluations, b_evaluations)
-      ])
-      mtrees.append(dim_mtree)
+    mtrees = merkelize_polynomials(dims, [p_evaluations, d_evaluations, b_evaluations])
 
   ## TODO(rbharath): Fix this
-  #def test_higher_dim_proof(self):
-  #  """
-  #  Tests proof generation for multidimensional state.
+  def test_higher_dim_proof(self):
+    """
+    Tests proof generation for multidimensional state.
 
-  #  TODO(rbharath): This test fails!!
-  #  """
-  #  dims = 2
-  #  inp = [0, 1]
-  #  steps = 8
-  #  # This is a place filler
-  #  constants = [[1] * steps]
-  #  def fibonacci_step(f, prev, constants):
-  #    f_n_minus_1 = prev[0]
-  #    f_n = prev[1]
-  #    f_n_plus_1 = f.add(f_n, f_n_minus_1)
-  #    return np.array([f_n, f_n_plus_1])
-  #  proof = mk_proof(inp, steps, constants, fibonacci_step,
-  #      dims=dims)
+    TODO(rbharath): This test fails!!
+    """
+    dims = 2
+    inp = [0, 1]
+    steps = 8
+    # This is a place filler
+    constants = [[1] * steps]
+    def fibonacci_step(f, prev, constants):
+      f_n_minus_1 = prev[0]
+      f_n = prev[1]
+      f_n_plus_1 = f.add(f_n, f_n_minus_1)
+      return np.array([f_n, f_n_plus_1])
+    proof = mk_proof(inp, steps, constants, fibonacci_step,
+        dims=dims)
 
   def test_computation_polynomial(self):
     """
@@ -302,7 +307,7 @@ class TestStark(unittest.TestCase):
     def step_fn(f, value, constants):
       # 2value**2 + constant
       return f.add(f.mul(f.exp(value, 2), 2), constants[0])
-    comp = Computation(inp, steps, constants, step_fn)
+    comp = Computation(dims, inp, steps, constants, step_fn)
     params = StarkParams(comp, modulus, extension_factor)
     comp_poly_evals = construct_computation_polynomial(
         comp, params)

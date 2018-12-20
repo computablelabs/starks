@@ -21,7 +21,10 @@ spot_check_security_factor = 80
 def merkelize_polynomials(dims, polynomials):
   """Given a list of polynomial evaluations, merkelizes them together.
 
-  Each dimension is merkelized seperately.
+  Each leaf of the Merkle tree contains the concatenation of the values of
+  each polynomial in polynomials at a given index. If the polynomials are
+  multidimensional, the per-dimension leaves are concatenated to form one
+  joint leaf.
 
   Parameters
   ----------
@@ -31,13 +34,10 @@ def merkelize_polynomials(dims, polynomials):
     Each element much be a list of evaluations of a given poly. All of
     these should have the same length.
   """
-  mtrees = []
-  for dim in range(dims):
-    dim_mtree = merkelize([
-        b''.join([val[dim].to_bytes(32, 'big') for val in evals])
-        for evals in zip(*polynomials)])
-    mtrees.append(dim_mtree)
-  return mtrees
+  mtree = merkelize([
+      b''.join([val[dim].to_bytes(32, 'big') for val in evals for dim in range(dims)])
+      for evals in zip(*polynomials)])
+  return mtree
 
 def get_computational_trace(inp, steps, constants, step_fn):
   """Get the computational trace for the STARK.
@@ -238,7 +238,7 @@ def construct_boundary_polynomial(comp, params, p_evaluations):
   #return b_evaluations
 
 
-def compute_pseudorandom_linear_combination(comp, params, mtree, d_evaluations, p_evaluations, b_evaluations):
+def compute_pseudorandom_linear_combination(comp, params, mtree, polys):
   """Computes a pseudorandom linear combination of polys
 
   A FRI proofs of low degree for a polynomial takes space.
@@ -248,14 +248,13 @@ def compute_pseudorandom_linear_combination(comp, params, mtree, d_evaluations, 
   generated for all of them. The chances of a collision are
   low.
   """
+  byte_list = [b'0x01', b'0x02', b'0x03', b'0x04']
   # Based on the hashes of P, D and B, we select a random
   # linear combination of P * x^steps, P, B * x^steps, B and
   # D, and prove the low-degreeness of that, instead of
   # proving the low-degreeness of P, B and D separately
-  k1 = int.from_bytes(blake(mtree[1] + b'\x01'), 'big')
-  k2 = int.from_bytes(blake(mtree[1] + b'\x02'), 'big')
-  k3 = int.from_bytes(blake(mtree[1] + b'\x03'), 'big')
-  k4 = int.from_bytes(blake(mtree[1] + b'\x04'), 'big')
+  ks = [int.from_bytes(blake(mtree[1] + byte_list[ind]), 'big') for ind in range(len(polys))]
+
 
   # Compute the linear combination. We don't even both
   # calculating it in coefficient form; we just compute the
@@ -265,14 +264,14 @@ def compute_pseudorandom_linear_combination(comp, params, mtree, d_evaluations, 
   for i in range(1, params.precision):
     powers.append(powers[-1] * G2_to_the_steps % params.modulus)
 
-  l_evaluations = []
+  l_evaluations_per_dim = []
   for dim in range(comp.dims):
-    l_evaluations_dim = [(
-      d_evaluations[i][dim] + p_evaluations[i][dim] * k1 +
-      p_evaluations[i][dim] * k2 * powers[i] + b_evaluations[i][dim] * k3 +
-      b_evaluations[i][dim] * powers[i] * k4) % modulus
-                     for i in range(params.precision)]
-    l_evaluations.append(l_evaluations_dim)
+    l_evaluations_dim = [sum([p_evals[i][dim] + p_evals[i][dim] * k * powers[i] for (p_evals, k) in zip(polys, ks)]) % modulus for i in range(params.precision)]
+    l_evaluations_per_dim.append(l_evaluations_dim)
+
+  l_byte_list = [("0x0%d" % i).encode("UTF-8") for i in range(len(polys), len(polys) + comp.dims)]
+  l_ks = [int.from_bytes(blake(mtree[1] + l_byte_list[ind]), 'big') for ind in range(comp.dims)]
+  l_evaluations = [sum([l_evals_dim[i] + l_evals_dim[i] * l_k * powers[i] for (l_evals_dim, l_k) in zip(l_evaluations_per_dim, l_ks)]) % modulus for i in range(params.precision)]
 
   print('Computed random linear combination')
   return l_evaluations
@@ -324,7 +323,7 @@ def mk_proof(inp, steps, constants, step_fn, constraint_degree=2, dims=1, extens
   comp = Computation(inp, steps, constants, step_fn)
   params = StarkParams(comp, modulus, extension_factor)
   p_evaluations = construct_computation_polynomial(
-      comp, params, dims=dims)
+      comp, params)
 
   # Construct the constraint polynomial (represented as a list
   # of point evaluations)
@@ -332,10 +331,10 @@ def mk_proof(inp, steps, constants, step_fn, constraint_degree=2, dims=1, extens
       comp, params, p_evaluations)
 
   d_evaluations = construct_remainder_polynomial(
-      comp, params, c_of_p_evaluations, dims=dims)
+      comp, params, c_of_p_evaluations)
 
   b_evaluations = construct_boundary_polynomial(
-      comp, params, p_evaluations, dims=dims)
+      comp, params, p_evaluations)
 
   # Compute their Merkle root
   mtree = merkelize([
