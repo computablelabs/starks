@@ -3,10 +3,16 @@ import time
 import numpy as np
 from starks.utils import mimc
 from starks.merkle_tree import merkelize
+from starks.merkle_tree import verify_branch
+from starks.merkle_tree import mk_branch
+from starks.merkle_tree import blake
 from starks.fft import fft 
 from starks.fri import prove_low_degree 
 from starks.fri import verify_low_degree_proof 
+from starks.utils import get_pseudorandom_indices
 from starks.stark import get_power_cycle 
+from starks.stark import get_power_cycle 
+from starks.stark import unpack_merkle_leaf
 from starks.stark import mk_proof
 from starks.stark import Computation
 from starks.stark import StarkParams 
@@ -18,6 +24,7 @@ from starks.stark import construct_remainder_polynomial
 from starks.stark import construct_boundary_polynomial 
 from starks.stark import compute_pseudorandom_linear_combination
 from starks.stark import merkelize_polynomials 
+from starks.stark import compute_merkle_spot_checks
 from starks.poly_utils import PrimeField
 from starks.compression import bin_length
 from starks.compression import compress_branches
@@ -38,14 +45,34 @@ class TestStark(unittest.TestCase):
     round_constants = [2, 7]
     val = mimc(inp, steps, round_constants)
 
-  def test_compute_pseudorandom_combination(self):
+  def test_unpack_merkle_leaf(self):
     """
-    Tests computation of pseudorandom combinations.
+    Tests that merkle leaf unpacking works correctly.
+    """
+    leaf_parts = []
+    dims = 2
+    num_polys = 3
+    count = 0
+    for poly_ind in range(num_polys):
+      for dim in range(dims):
+        count_bytes = count.to_bytes(32, 'big')
+        leaf_parts.append(count_bytes)
+        count += 1
+    leaf = b''.join(leaf_parts)
+    vals = unpack_merkle_leaf(leaf, dims, num_polys)
+    assert len(vals) == len(leaf_parts)
+    for ind, val in enumerate(vals):
+      assert val == leaf_parts[ind]
+
+  def test_get_pseudorandom_indices(self):
+    """
+    Tests that pseudorandom indices are computed correctly.
     """
     dims = 1
     inp = 5
     steps = 512
     constraint_degree = 4
+    spot_check_security_factor = 80
     round_constants = [i for i in range(steps)]
     scale_constants = [i for i in range(steps)]
     constants = [round_constants, scale_constants]
@@ -73,6 +100,97 @@ class TestStark(unittest.TestCase):
     l_evaluations = compute_pseudorandom_linear_combination(
         comp, params, mtree, polys)
     l_mtree = merkelize(l_evaluations)
+
+    # TODO(rbharath): I'm copy-pasting test setup here. There
+    # ought to be a simpler way to do this.
+    # TODO(rbharath): Can simplify this test with just a
+    # random seed.
+    indices = get_pseudorandom_indices(l_mtree[1],
+        params.precision, count=spot_check_security_factor,
+        exclude_multiples_of=params.extension_factor)
+    assert len(indices) == spot_check_security_factor
+
+  def test_compute_merkle_spot_checks(self):
+    """
+    Tests that merkle spot checks are constructed correctly.
+    """
+    dims = 1
+    inp = 5
+    steps = 512
+    constraint_degree = 4
+    spot_check_security_factor = 80
+    round_constants = [i for i in range(steps)]
+    scale_constants = [i for i in range(steps)]
+    constants = [round_constants, scale_constants]
+    modulus = 2**256 - 2**32 * 351 + 1
+    extension_factor = 8
+    f = PrimeField(modulus)
+    ## Factoring out computation
+    def step_fn(f, value, constants):
+      # c_1*value**2 + c_0
+      return f.add(f.mul(constants[1], f.exp(value[0], 2)), constants[0])
+    comp = Computation(dims, inp, steps, constants, step_fn)
+    params = StarkParams(comp, modulus, extension_factor)
+
+    p_evaluations = construct_computation_polynomial(
+        comp, params)
+    c_of_p_evaluations = construct_constraint_polynomial(
+        comp, params, p_evaluations)
+    d_evaluations = construct_remainder_polynomial(
+        comp, params, c_of_p_evaluations)
+    b_evaluations = construct_boundary_polynomial(
+        comp, params, p_evaluations)
+
+    polys = [p_evaluations, d_evaluations, b_evaluations]
+    mtree = merkelize_polynomials(dims, polys)
+    l_evaluations = compute_pseudorandom_linear_combination(
+        comp, params, mtree, polys)
+    l_mtree = merkelize(l_evaluations)
+
+    # Compute merkle spot checks
+    branches = compute_merkle_spot_checks(mtree, l_mtree,
+        comp, params, samples=spot_check_security_factor)
+
+    # Each spot check returns 3 branches, m[pos], m[pos+extension_factor], l[pos] 
+    assert len(branches) == 3*spot_check_security_factor
+
+  def test_compute_pseudorandom_combination(self):
+    """
+    Tests computation of pseudorandom combinations.
+    """
+    dims = 1
+    inp = 5
+    steps = 512
+    constraint_degree = 4
+    round_constants = [i for i in range(steps)]
+    scale_constants = [i for i in range(steps)]
+    spot_check_security_factor = 80
+    constants = [round_constants, scale_constants]
+    modulus = 2**256 - 2**32 * 351 + 1
+    extension_factor = 8
+    f = PrimeField(modulus)
+    ## Factoring out computation
+    def step_fn(f, value, constants):
+      # c_1*value**2 + c_0
+      return f.add(f.mul(constants[1], f.exp(value[0], 2)), constants[0])
+    comp = Computation(dims, inp, steps, constants, step_fn)
+    params = StarkParams(comp, modulus, extension_factor)
+
+    p_evaluations = construct_computation_polynomial(
+        comp, params)
+    c_of_p_evaluations = construct_constraint_polynomial(
+        comp, params, p_evaluations)
+    d_evaluations = construct_remainder_polynomial(
+        comp, params, c_of_p_evaluations)
+    b_evaluations = construct_boundary_polynomial(
+        comp, params, p_evaluations)
+
+    polys = [p_evaluations, d_evaluations, b_evaluations]
+    mtree = merkelize_polynomials(dims, polys)
+    l_evaluations = compute_pseudorandom_linear_combination(
+        comp, params, mtree, polys)
+    l_mtree = merkelize(l_evaluations)
+    m_root = mtree[1]
     l_root = l_mtree[1]
     fri_proof = prove_low_degree(
           l_evaluations,
@@ -89,6 +207,63 @@ class TestStark(unittest.TestCase):
         modulus,
         exclude_multiples_of=extension_factor)
 
+    # TODO(rbharath): Factor this into function?
+    byte_list = [b'0x01', b'0x02', b'0x03', b'0x04']
+    ks = [int.from_bytes(blake(mtree[1] + byte_list[ind]), 'big') for ind in range(len(polys))]
+
+    branches = compute_merkle_spot_checks(mtree, l_mtree, comp, params)
+    #branches = []
+    positions = get_pseudorandom_indices(l_mtree[1],
+        params.precision, count=spot_check_security_factor,
+        exclude_multiples_of=params.extension_factor)
+
+    for i, pos in enumerate(positions):
+      print("pos")
+      print(pos)
+      branch1 = mk_branch(mtree, pos)
+      mbranch1 = verify_branch(m_root, pos, branch1)
+      unpacked_leaf1 = unpack_merkle_leaf(mbranch1, comp.dims, 3)
+      next_pos = (pos + params.extension_factor) % params.precision
+      print("next_pos")
+      print(next_pos)
+      branch2 = mk_branch(mtree, next_pos) 
+      mbranch2 = verify_branch(m_root, next_pos, branch2)
+      unpacked_leaf2 = unpack_merkle_leaf(mbranch2, comp.dims, 3)
+
+      # Check that p_of_x was recovered correctly
+      p_of_x = p_evaluations[pos]
+      p_of_x_recovered = [int.from_bytes(p_of_x_dim, 'big') for p_of_x_dim in unpacked_leaf1[:comp.dims]]
+      assert len(p_of_x) == len(p_of_x_recovered)
+      for dim in range(comp.dims):
+        assert p_of_x[dim] == p_of_x_recovered[dim]
+
+      # Check that p_of_g1x was recovered correctly
+      # TODO(rbharath): This is breaking down!!
+      p_of_g1x = p_evaluations[next_pos]
+      p_of_g1x_recovered = [int.from_bytes(p_of_g1x_dim, 'big') for p_of_g1x_dim in unpacked_leaf2[:comp.dims]]
+      assert len(p_of_g1x) == len(p_of_g1x_recovered)
+      for dim in range(comp.dims):
+        assert p_of_g1x[dim] == p_of_g1x_recovered[dim]
+
+      d_of_x = d_evaluations[pos]
+      d_of_x_recovered = [int.from_bytes(d_of_x_dim, 'big') for d_of_x_dim in unpacked_leaf1[comp.dims:2*comp.dims]]
+      assert len(d_of_x) == len(d_of_x_recovered)
+      for dim in range(comp.dims):
+        assert d_of_x[dim] == d_of_x_recovered[dim]
+
+      b_of_x = b_evaluations[pos]
+      b_of_x_recovered = [int.from_bytes(b_of_x_dim, 'big') for b_of_x_dim in unpacked_leaf1[2*comp.dims:]]
+      assert len(b_of_x) == len(b_of_x_recovered)
+      for dim in range(comp.dims):
+        assert b_of_x[dim] == b_of_x_recovered[dim]
+
+      x = f.exp(params.G2, pos)
+      zvalue = f.div(f.exp(x, comp.steps) - 1, x - params.last_step_position)
+
+      # TODO(rbharath): Next step in debugging is to verify
+      # that the transition conditions hold by extracting the
+      # constants polynomial.
+      
   def test_higher_dimensional_trace(self):
     """
     Checks trace generation for multidimensional state.

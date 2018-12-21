@@ -34,10 +34,48 @@ def merkelize_polynomials(dims, polynomials):
     Each element much be a list of evaluations of a given poly. All of
     these should have the same length.
   """
+  print("dims")
+  print(dims)
+  print("len(list(zip(*polynomials))[0])")
+  print(len(list(zip(*polynomials))[0]))
+  print("len(polynomials[0])")
+  print(len(polynomials[0]))
+  print("len(list(zip(*polynomials)))")
+  print(len(list(zip(*polynomials))))
+  # Note len(mtree) == 2 * precision now
   mtree = merkelize([
       b''.join([val[dim].to_bytes(32, 'big') for val in evals for dim in range(dims)])
       for evals in zip(*polynomials)])
+  # Note len(mtree_leaf) == 32 * dims * #polys
+  # Note that this code packs each Merkle leaf as
+  # polyval_1_dim_1 polyval_1_dim_2 poly_val_2_dim_1 poly_val_2_dim_2 ...
+  # In the common case this is
+  # [p_of_x_dim_1 p_of_x_dim_2 .. d_of_x_dim_1 d_of_x_dim_2... b_of_x_dim_1 b_of_x_dim_2]
+  print("len(mtree)")
+  print(len(mtree))
+  print("len(mtree[-1])")
+  print(len(mtree[-1]))
   return mtree
+
+def unpack_merkle_leaf(leaf, dims, num_polys):
+  """Unpacks a merkle leaf created by merkelize_polynomials.
+
+  Note that the packing in each Merkle leaf is
+
+  polyval_1_dim_1 polyval_1_dim_2 poly_val_2_dim_1 poly_val_2_dim_2 ...
+
+  Each value is encoded in 32 bytes, so the total length of
+  the leaf is 32 * num_polys * dims bytes.
+  """
+  vals = []
+  for poly_ind in range(num_polys):
+    for dim in range(dims):
+      start_index = 32 * (poly_ind * dims + dim)
+      end_index = 32 * (poly_ind * dims + dim + 1)
+      byte_val = leaf[start_index:end_index]
+      vals.append(byte_val)
+  return vals
+
 
 def get_computational_trace(inp, steps, constants, step_fn):
   """Get the computational trace for the STARK.
@@ -270,6 +308,8 @@ def compute_pseudorandom_linear_combination(comp, params, mtree, polys):
     l_evaluations_dim = [sum([p_evals[i][dim] + p_evals[i][dim] * k * powers[i] for (p_evals, k) in zip(polys, ks)]) % modulus for i in range(params.precision)]
     l_evaluations_per_dim.append(l_evaluations_dim)
 
+  # A deterministic procedure for pseudorandomly combining
+  # dimensions
   l_byte_list = [("0x0%d" % i).encode("UTF-8") for i in range(len(polys), len(polys) + comp.dims)]
   l_ks = [int.from_bytes(blake(mtree[1] + l_byte_list[ind]), 'big') for ind in range(comp.dims)]
   l_evaluations = [sum([l_evals_dim[i] + l_evals_dim[i] * l_k * powers[i] for (l_evals_dim, l_k) in zip(l_evaluations_per_dim, l_ks)]) % modulus for i in range(params.precision)]
@@ -277,12 +317,11 @@ def compute_pseudorandom_linear_combination(comp, params, mtree, polys):
   print('Computed random linear combination')
   return l_evaluations
 
-def compute_merkle_spot_checks(mtree, l_mtree, comp, params):
+def compute_merkle_spot_checks(mtree, l_mtree, comp, params, samples=spot_check_security_factor):
   """Computes pseudorandom spot checks of Merkle tree."""
   # Do some spot checks of the Merkle tree at pseudo-random
   # coordinates, excluding multiples of `extension_factor`
   branches = []
-  samples = spot_check_security_factor
   positions = get_pseudorandom_indices(
       l_mtree[1], params.precision, samples, exclude_multiples_of=params.extension_factor)
   for pos in positions:
@@ -381,16 +420,38 @@ def verify_proof_at_position(comp, params, proof, ks, i, pos, constants_polynomi
   # linear combination.
   x_to_the_steps = f.exp(x, comp.steps)
   # TODO(rbharath): Why do i*3, i*3+1, i*3+2 make sense?
+  # Recall m is the merkle tree of the raw polynomials, and l
+  # is the merkle tree of the pseudorandom combination
+  # polynomial.
+  # Leaf node from m[pos]
+  print("pos")
+  print(pos)
   mbranch1 = verify_branch(m_root, pos, branches[i * 3])
-  mbranch2 = verify_branch(m_root, (pos + params.extension_factor) % params.precision,
-                            branches[i * 3 + 1])
-  l_of_x = verify_branch(l_root, pos, branches[i * 3 + 2], output_as_int=True)
+  unpacked_leaf1 = unpack_merkle_leaf(mbranch1, comp.dims, 3)
+  print("len(unpacked_leaf1)")
+  print(len(unpacked_leaf1))
+  # Leaf node from m[pos + extension_factor]
+  mbranch2 = verify_branch(
+      m_root,
+      (pos + params.extension_factor) % params.precision,
+      branches[i * 3 + 1])
+  unpacked_leaf2 = unpack_merkle_leaf(mbranch2, comp.dims, 3)
+  print("len(unpacked_leaf2)")
+  print(len(unpacked_leaf2))
+  # Leaf node from l[pos]
+  l_of_x = verify_branch(l_root, pos, branches[i * 3 + 2],
+      output_as_int=True)
 
   # TODO(rbharath): This needs to undo the packing that's done in merkelize_polynomials
-  p_of_x = int.from_bytes(mbranch1[:32], 'big')
-  p_of_g1x = int.from_bytes(mbranch2[:32], 'big')
-  d_of_x = int.from_bytes(mbranch1[32:64], 'big')
-  b_of_x = int.from_bytes(mbranch1[64:], 'big')
+  # polys = [p_evaluations, d_evaluations, b_evaluations]
+  #p_of_x = int.from_bytes(mbranch1[:32], 'big')
+  p_of_x = [int.from_bytes(p_of_x_dim, 'big') for p_of_x_dim in unpacked_leaf1[:comp.dims]]
+  #p_of_g1x = int.from_bytes(mbranch2[:32], 'big')
+  p_of_g1x = [int.from_bytes(p_of_g1x_dim, 'big') for p_of_g1x_dim in unpacked_leaf2[:comp.dims]]
+  #d_of_x = int.from_bytes(mbranch1[32:64], 'big')
+  d_of_x = [int.from_bytes(d_of_x_dim, 'big') for d_of_x_dim in unpacked_leaf1[comp.dims:2*comp.dims]]
+  #b_of_x = int.from_bytes(mbranch1[64:], 'big')
+  b_of_x = [int.from_bytes(b_of_x_dim, 'big') for b_of_x_dim in unpacked_leaf1[2*comp.dims:]]
 
   zvalue = f.div(f.exp(x, comp.steps) - 1, x - params.last_step_position)
   k_of_xs = []
@@ -401,7 +462,14 @@ def verify_proof_at_position(comp, params, proof, ks, i, pos, constants_polynomi
     k_of_xs.append(k_of_x)
 
   # Check transition constraints C(P(x)) = Z(x) * D(x)
-  assert (p_of_g1x - comp.step_fn(f, p_of_x, k_of_xs) - zvalue * d_of_x) % modulus == 0
+  f_of_p_of_x = comp.step_fn(f, p_of_x, k_of_xs)
+  for dim in range(comp.dims):
+    p_of_g1x_dim = p_of_g1x[dim]
+    p_of_x_dim = p_of_x[dim]
+    d_of_x_dim = d_of_x[dim]
+    f_of_p_of_x_dim = f_of_p_of_x[dim]
+    assert (p_of_g1x_dim - f_of_p_of_x_dim - zvalue * d_of_x_dim) % modulus == 0
+  #assert (p_of_g1x - comp.step_fn(f, p_of_x, k_of_xs) - zvalue * d_of_x) % modulus == 0
 
   # Check boundary constraints B(x) * Q(x) + I(x) = P(x)
   interpolant = f.lagrange_interp_2([1, params.last_step_position], [comp.inp, comp.output])

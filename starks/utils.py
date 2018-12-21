@@ -29,9 +29,18 @@ def get_power_cycle(r, modulus):
 
 
 def get_pseudorandom_indices(seed, modulus, count, exclude_multiples_of=0):
-  """Extract pseudorandom indices from entropy"""
+  """Extract pseudorandom indices from entropy
+
+  Draws pseudorandom numbers from a given range while avoiding
+  a subset (multiples of a forbidden value). For example, to
+  sample random indices from a list of length 512 while
+  avoiding indices that are multiples of 32.
+  """
   assert modulus < 2**24
   data = seed
+  # Note that we must have len(data) >= 4 * count. This code #
+  # expands data to have necessary length. Think of this as an
+  # entropy expansion step.
   while len(data) < 4 * count:
     data += blake(data[-32:])
   if exclude_multiples_of == 0:
