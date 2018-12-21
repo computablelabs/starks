@@ -11,7 +11,7 @@ from starks.fri import prove_low_degree
 from starks.fri import verify_low_degree_proof 
 from starks.utils import get_pseudorandom_indices
 from starks.stark import get_power_cycle 
-from starks.stark import get_power_cycle 
+from starks.stark import construct_constants_polynomials
 from starks.stark import unpack_merkle_leaf
 from starks.stark import mk_proof
 from starks.stark import Computation
@@ -176,6 +176,8 @@ class TestStark(unittest.TestCase):
     comp = Computation(dims, inp, steps, constants, step_fn)
     params = StarkParams(comp, modulus, extension_factor)
 
+    constants_extensions, constants_polynomials = \
+        construct_constants_polynomials(comp, params)
     p_evaluations = construct_computation_polynomial(
         comp, params)
     c_of_p_evaluations = construct_constraint_polynomial(
@@ -209,7 +211,8 @@ class TestStark(unittest.TestCase):
 
     # TODO(rbharath): Factor this into function?
     byte_list = [b'0x01', b'0x02', b'0x03', b'0x04']
-    ks = [int.from_bytes(blake(mtree[1] + byte_list[ind]), 'big') for ind in range(len(polys))]
+    ks = [int.from_bytes(blake(mtree[1] + byte_list[ind]), 'big') for ind in range(4)]
+    k1, k2, k3, k4 = ks
 
     branches = compute_merkle_spot_checks(mtree, l_mtree, comp, params)
     #branches = []
@@ -218,17 +221,16 @@ class TestStark(unittest.TestCase):
         exclude_multiples_of=params.extension_factor)
 
     for i, pos in enumerate(positions):
-      print("pos")
-      print(pos)
       branch1 = mk_branch(mtree, pos)
       mbranch1 = verify_branch(m_root, pos, branch1)
       unpacked_leaf1 = unpack_merkle_leaf(mbranch1, comp.dims, 3)
       next_pos = (pos + params.extension_factor) % params.precision
-      print("next_pos")
-      print(next_pos)
       branch2 = mk_branch(mtree, next_pos) 
       mbranch2 = verify_branch(m_root, next_pos, branch2)
       unpacked_leaf2 = unpack_merkle_leaf(mbranch2, comp.dims, 3)
+      # Leaf node from l[pos]
+      l_of_x = verify_branch(l_root, pos, branches[i * 3 + 2],
+          output_as_int=True)
 
       # Check that p_of_x was recovered correctly
       p_of_x = p_evaluations[pos]
@@ -258,11 +260,34 @@ class TestStark(unittest.TestCase):
         assert b_of_x[dim] == b_of_x_recovered[dim]
 
       x = f.exp(params.G2, pos)
+      x_to_the_steps = f.exp(x, comp.steps)
       zvalue = f.div(f.exp(x, comp.steps) - 1, x - params.last_step_position)
+      k_of_xs = []
+      for constants_mini_polynomial in constants_polynomials:
+        # This is unwrapping the polynomial
+        constants_mini_polynomial = [val[0] for val in constants_mini_polynomial]
+        k_of_x = f.eval_poly_at(constants_mini_polynomial, x)
+        k_of_xs.append(k_of_x)
+      f_of_p_of_x = comp.step_fn(f, p_of_x, k_of_xs)
+      f_of_p_of_x_recovered = comp.step_fn(f, p_of_x, k_of_xs)
+      assert f_of_p_of_x == f_of_p_of_x_recovered
+      assert (p_of_g1x[0] - f_of_p_of_x - zvalue * d_of_x[0]) % modulus == 0
+      assert (p_of_g1x_recovered[0] - f_of_p_of_x_recovered - zvalue * d_of_x_recovered[0]) % modulus == 0
 
-      # TODO(rbharath): Next step in debugging is to verify
-      # that the transition conditions hold by extracting the
-      # constants polynomial.
+      zeropoly2 = f.mul_polys([-1, 1], [-params.last_step_position, 1])
+      for dim in range(comp.dims):
+        interpolant_dim = f.lagrange_interp_2([1, params.last_step_position], [comp.inp[dim], comp.output[dim]])
+        assert (p_of_x[dim] - b_of_x[dim] * f.eval_poly_at(zeropoly2, x) - f.eval_poly_at(interpolant_dim, x)) % modulus == 0
+
+      # Check correctness of the linear combination
+      for dim in range(comp.dims):
+        print("type(l_of_x)")
+        print(type(l_of_x))
+        print("(l_of_x - d_of_x[dim] - k1 * p_of_x[dim] - k2 * p_of_x[dim] * x_to_the_steps - k3 * b_of_x[dim] - k4 * b_of_x[dim] * x_to_the_steps) % modulus")
+        print((l_of_x - d_of_x[dim] - k1 * p_of_x[dim] - k2 * p_of_x[dim] * x_to_the_steps - k3 * b_of_x[dim] - k4 * b_of_x[dim] * x_to_the_steps) % modulus)
+
+        # TODO(rbharath): I think the pseudorandom combination step is
+        # incorrect. Need to fix!
       
   def test_higher_dimensional_trace(self):
     """

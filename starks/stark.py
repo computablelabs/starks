@@ -34,14 +34,6 @@ def merkelize_polynomials(dims, polynomials):
     Each element much be a list of evaluations of a given poly. All of
     these should have the same length.
   """
-  print("dims")
-  print(dims)
-  print("len(list(zip(*polynomials))[0])")
-  print(len(list(zip(*polynomials))[0]))
-  print("len(polynomials[0])")
-  print(len(polynomials[0]))
-  print("len(list(zip(*polynomials)))")
-  print(len(list(zip(*polynomials))))
   # Note len(mtree) == 2 * precision now
   mtree = merkelize([
       b''.join([val[dim].to_bytes(32, 'big') for val in evals for dim in range(dims)])
@@ -51,10 +43,6 @@ def merkelize_polynomials(dims, polynomials):
   # polyval_1_dim_1 polyval_1_dim_2 poly_val_2_dim_1 poly_val_2_dim_2 ...
   # In the common case this is
   # [p_of_x_dim_1 p_of_x_dim_2 .. d_of_x_dim_1 d_of_x_dim_2... b_of_x_dim_1 b_of_x_dim_2]
-  print("len(mtree)")
-  print(len(mtree))
-  print("len(mtree[-1])")
-  print(len(mtree[-1]))
   return mtree
 
 def unpack_merkle_leaf(leaf, dims, num_polys):
@@ -150,6 +138,31 @@ class StarkParams(object):
     self.xs = get_power_cycle(self.G2, modulus)
     self.last_step_position = self.xs[(comp.steps - 1) * extension_factor]
 
+def construct_constants_polynomials(comp, params):
+  """Transforms constants into polynomials"""
+  constants_polynomials = []
+  constants_extensions = []
+  deg = len(comp.constants)
+  for d in range(deg):
+    # The extra wrapping is some plumbing since the fft expects a sequence
+    # of states, where a state is a list.
+    deg_constants = [[constant] for constant in comp.constants[d]]
+    # Constants are a 1-d sequence
+    constants_mini_polynomial = fft(
+        deg_constants, modulus, params.G1,
+        inv=True, dims=1)
+    constants_mini_extension = fft(constants_mini_polynomial,
+        modulus, params.G2, dims=1)
+    assert len(constants_mini_extension) == params.precision
+    constants_polynomials.append(constants_mini_polynomial)
+    constants_extensions.append(constants_mini_extension)
+  assert len(constants_extensions) == deg
+  for extension in constants_extensions:
+    assert len(extension) == params.precision 
+  print(
+      'Converted round constants into a polynomial and low-degree extended it')
+  return constants_extensions, constants_polynomials
+
 def construct_computation_polynomial(comp, params):
   """Constructs polynomial for the given computation."""
   # Interpolate the computational trace into a polynomial P,
@@ -177,25 +190,26 @@ def construct_constraint_polynomial(comp, params,
   deg = len(comp.constants)
   # TODO(rbharath): I think this and the part in constraint_poly can be
   # factored out
-  constants_extensions = []
-  for d in range(deg):
-    # The extra wrapping is some plumbing since the fft expects a sequence
-    # of states, where a state is a list.
-    deg_constants = [[constant] for constant in comp.constants[d]]
-    # Constants are a 1-d sequence
-    constants_mini_polynomial = fft(
-        deg_constants, modulus, params.G1,
-        inv=True, dims=1)
-    constants_mini_extension = fft(constants_mini_polynomial,
-        modulus, params.G2, dims=1)
-    assert len(constants_mini_extension) == params.precision
-    constants_extensions.append(constants_mini_extension)
-  assert len(constants_extensions) == deg
-  for extension in constants_extensions:
-    assert len(extension) == params.precision 
-  print(
-      'Converted round constants into a polynomial and low-degree extended it')
-
+#  constants_extensions = []
+#  for d in range(deg):
+#    # The extra wrapping is some plumbing since the fft expects a sequence
+#    # of states, where a state is a list.
+#    deg_constants = [[constant] for constant in comp.constants[d]]
+#    # Constants are a 1-d sequence
+#    constants_mini_polynomial = fft(
+#        deg_constants, modulus, params.G1,
+#        inv=True, dims=1)
+#    constants_mini_extension = fft(constants_mini_polynomial,
+#        modulus, params.G2, dims=1)
+#    assert len(constants_mini_extension) == params.precision
+#    constants_extensions.append(constants_mini_extension)
+#  assert len(constants_extensions) == deg
+#  for extension in constants_extensions:
+#    assert len(extension) == params.precision 
+#  print(
+#      'Converted round constants into a polynomial and low-degree extended it')
+#
+  constants_extensions, _ = construct_constants_polynomials(comp, params)
   # Create the composed polynomial such that
   #### C(P(x), P(g1*x), K(x)) = P(g1*x) - P(x)**3 - K(x)
   # C(P(x), P(g1*x), K(x)) = P(g1*x) - step_fn(P(x), K(x))
@@ -402,7 +416,6 @@ def mk_proof(inp, steps, constants, step_fn, constraint_degree=2, dims=1, extens
       prove_low_degree(
           l_evaluations,
           params.G2,
-          # TODO(rbharath): Why is this 2x?
           steps * constraint_degree,
           modulus,
           exclude_multiples_of=extension_factor)
@@ -419,25 +432,18 @@ def verify_proof_at_position(comp, params, proof, ks, i, pos, constants_polynomi
   # sense here?  I think this is to compute the pseudorandom
   # linear combination.
   x_to_the_steps = f.exp(x, comp.steps)
-  # TODO(rbharath): Why do i*3, i*3+1, i*3+2 make sense?
   # Recall m is the merkle tree of the raw polynomials, and l
   # is the merkle tree of the pseudorandom combination
   # polynomial.
   # Leaf node from m[pos]
-  print("pos")
-  print(pos)
   mbranch1 = verify_branch(m_root, pos, branches[i * 3])
   unpacked_leaf1 = unpack_merkle_leaf(mbranch1, comp.dims, 3)
-  print("len(unpacked_leaf1)")
-  print(len(unpacked_leaf1))
   # Leaf node from m[pos + extension_factor]
   mbranch2 = verify_branch(
       m_root,
       (pos + params.extension_factor) % params.precision,
       branches[i * 3 + 1])
   unpacked_leaf2 = unpack_merkle_leaf(mbranch2, comp.dims, 3)
-  print("len(unpacked_leaf2)")
-  print(len(unpacked_leaf2))
   # Leaf node from l[pos]
   l_of_x = verify_branch(l_root, pos, branches[i * 3 + 2],
       output_as_int=True)
@@ -500,23 +506,24 @@ def verify_proof(inp, steps, constants, output, proof, step_fn,
   assert is_a_power_of_2(steps)
   assert len(constants[0]) <= steps
 
-  # Gets the polynomial representing the constants
-  # TODO(rbharath): I think this and the part in constraint_poly can be
-  # factored out
-  deg = len(constants)
-  constants_polynomials = []
-  constants_extensions = []
-  for d in range(deg):
-    # The extra wrapping is some plumbing since the fft expects a sequence
-    # of states, where a state is a list.
-    deg_constants = [[constant] for constant in comp.constants[d]]
-    constants_mini_polynomial = fft(
-        deg_constants, modulus, f.exp(params.G2, params.extension_factor),
-        inv=True, dims=1)
-    constants_mini_extension = fft(constants_mini_polynomial, modulus, params.G2, dims=1)
-    assert len(constants_mini_extension) == params.precision
-    constants_polynomials.append(constants_mini_polynomial)
-    constants_extensions.append(constants_mini_extension)
+  ## Gets the polynomial representing the constants
+  ## TODO(rbharath): I think this and the part in constraint_poly can be
+  ## factored out
+  #deg = len(constants)
+  #constants_polynomials = []
+  #constants_extensions = []
+  #for d in range(deg):
+  #  # The extra wrapping is some plumbing since the fft expects a sequence
+  #  # of states, where a state is a list.
+  #  deg_constants = [[constant] for constant in comp.constants[d]]
+  #  constants_mini_polynomial = fft(
+  #      deg_constants, modulus, f.exp(params.G2, params.extension_factor),
+  #      inv=True, dims=1)
+  #  constants_mini_extension = fft(constants_mini_polynomial, modulus, params.G2, dims=1)
+  #  assert len(constants_mini_extension) == params.precision
+  #  constants_polynomials.append(constants_mini_polynomial)
+  #  constants_extensions.append(constants_mini_extension)
+  constants_extension, constants_polynomials = construct_constants_polynomials(comp, params)
 
   # Verifies the low-degree proofs
   assert verify_low_degree_proof(
