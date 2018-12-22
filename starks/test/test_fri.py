@@ -18,7 +18,7 @@ class TestFRI(unittest.TestCase):
     degree = 4
     modulus = 31
     # 1 + 2x + 3x^2 + 4 x^3 mod 31
-    poly = list(range(degree))
+    poly = [[val] for val in list(range(degree))]
     # TODO(rbharath): How does the choice of the n-th root of
     # unity make a difference in the fft?
 
@@ -26,6 +26,7 @@ class TestFRI(unittest.TestCase):
     # This provides us a 6-th root of unity (z^6 = 1)
     root_of_unity = pow(3, (modulus - 1) // 6, modulus)
     evaluations = fft(poly, modulus, root_of_unity)
+    evaluations = [val[0] for val in evaluations]
     assert len(evaluations) == 6
 
     # This is a low degree polynomial so we hit the special
@@ -38,12 +39,13 @@ class TestFRI(unittest.TestCase):
     """Tests proof generation on high degree polynomials"""
     steps = 512
     # Some round constants borrowed from MiMC
-    poly = [(i**7) ^ 42 for i in range(steps)]
+    poly = [[(i**7) ^ 42] for i in range(steps)]
     modulus = 2**256 - 2**32 * 351 + 1
     f = PrimeField(modulus)
     # Root of unity such that x^steps=1
     G = f.exp(7, (modulus - 1) // steps)
     evaluations = fft(poly, modulus, G)
+    evaluations = [val[0] for val in evaluations]
     # We're trying to prove this is a (steps-1)-degree
     # polnomial
     # degree = (steps-1) + 1 = steps
@@ -66,15 +68,18 @@ class TestFRI(unittest.TestCase):
 
   def test_verify_low_degree_proof(self):
     """Verify a low degree proof"""
+    dims = 1
     modulus = 31
     steps = 512
     degree = steps
-    poly = [(i**7) ^ 42 for i in range(steps)]
+    poly = [[(i**7) ^ 42] for i in range(steps)]
     modulus = 2**256 - 2**32 * 351 + 1
     f = PrimeField(modulus)
     # Root of unity such that x^steps=1
     G = f.exp(7, (modulus - 1) // steps)
-    evaluations = fft(poly, modulus, G)
+    evaluations = fft(poly, modulus, G, dims=dims)
+    # Unwrap the fft wrapping
+    evaluations = [val[0] for val in evaluations]
     e_mtree = merkelize(evaluations)
 
     # This is a low degree polynomial so we hit the special
@@ -86,10 +91,11 @@ class TestFRI(unittest.TestCase):
 
   def test_fri(self):
     """Pure FRI tests"""
-    poly = list(range(4096))
+    poly = [[val] for val in list(range(4096))]
     modulus = 2**256 - 2**32 * 351 + 1
     root_of_unity = pow(7, (modulus - 1) // 16384, modulus)
     evaluations = fft(poly, modulus, root_of_unity)
+    evaluations = [val[0] for val in evaluations]
     proof = prove_low_degree(evaluations, root_of_unity, 4096, modulus)
     print("Approx proof length: %d" % bin_length(compress_fri(proof)))
     assert verify_low_degree_proof(
