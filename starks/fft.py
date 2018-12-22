@@ -29,9 +29,6 @@ def _fft(vals, modulus, roots_of_unity):
 
 def fft(vals, modulus, root_of_unity, inv=False, dims=1):
   """Computes FFT for potentially multidimensional sequences"""
-  #if dims == 1:
-  #  return fft_1d(vals, modulus, root_of_unity, inv)
-  #else:
   fft_vals = []
   for dim in range(dims):
     vals_dim = [val[dim] for val in vals]

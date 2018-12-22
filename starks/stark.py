@@ -11,12 +11,8 @@ modulus = 2**256 - 2**32 * 351 + 1
 f = PrimeField(modulus)
 nonresidue = 7
 
-# Number of bits of security in Merkle-tree check
+# Number of branches used for Merkle-tree check
 spot_check_security_factor = 80
-# TODO(rbharath): Is this the Galois extension degree?
-# I think this is a security factor that gives us more control
-# over the security level of the computation, but not sure.
-#extension_factor = 8
 
 def merkelize_polynomials(dims, polynomials):
   """Given a list of polynomial evaluations, merkelizes them together.
@@ -169,7 +165,18 @@ class StarkParams(object):
     self.last_step_position = self.xs[(comp.steps - 1) * extension_factor]
 
 def construct_constants_polynomials(comp, params):
-  """Transforms constants into polynomials"""
+  """Transforms constants into polynomials
+  
+  TODO(rbharath): Refactoring the constants list to be a list of step-wise
+  constants might be better.
+
+  The constants needed for a computation are encoded as a list of lists.
+  Each of these lists is of length comp.steps. These encapsulate the
+  external state for the computation at each step. This function
+  interpolates these constants lists into polynomials. These are used by
+  the prover and the verifier to respectively prove and verify facts about
+  computation.
+  """
   constants_polynomials = []
   constants_extensions = []
   deg = len(comp.constants)
@@ -488,7 +495,7 @@ def verify_proof_at_position(comp, params, ks, proof, i, pos, constants_polynomi
   l_of_x = verify_branch(l_root, pos, branches[i * 3 + 2],
       output_as_int=True)
 
-  # TODO(rbharath): This needs to undo the packing that's done in merkelize_polynomials
+  # This undoes the packing that's done in merkelize_polynomials
   # polys = [p_evaluations, d_evaluations, b_evaluations]
   p_of_x = [int.from_bytes(p_of_x_dim, 'big') for p_of_x_dim in unpacked_leaf1[:comp.dims]]
   p_of_g1x = [int.from_bytes(p_of_g1x_dim, 'big') for p_of_g1x_dim in unpacked_leaf2[:comp.dims]]
@@ -511,7 +518,6 @@ def verify_proof_at_position(comp, params, ks, proof, i, pos, constants_polynomi
     d_of_x_dim = d_of_x[dim]
     f_of_p_of_x_dim = f_of_p_of_x[dim]
     assert (p_of_g1x_dim - f_of_p_of_x_dim - zvalue * d_of_x_dim) % modulus == 0
-  #assert (p_of_g1x - comp.step_fn(f, p_of_x, k_of_xs) - zvalue * d_of_x) % modulus == 0
 
   # Check boundary constraints B(x) * Q(x) + I(x) = P(x)
   zeropoly2 = f.mul_polys([-1, 1], [-params.last_step_position, 1])
