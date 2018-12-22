@@ -22,6 +22,8 @@ from starks.stark import construct_computation_polynomial
 from starks.stark import construct_constraint_polynomial 
 from starks.stark import construct_remainder_polynomial 
 from starks.stark import construct_boundary_polynomial 
+from starks.stark import get_pseudorandom_ks
+from starks.stark import compute_pseudorandom_linear_combination_1d
 from starks.stark import compute_pseudorandom_linear_combination
 from starks.stark import merkelize_polynomials 
 from starks.stark import compute_merkle_spot_checks
@@ -154,9 +156,62 @@ class TestStark(unittest.TestCase):
     # Each spot check returns 3 branches, m[pos], m[pos+extension_factor], l[pos] 
     assert len(branches) == 3*spot_check_security_factor
 
-  def test_compute_pseudorandom_combination(self):
+  def test_compute_pseudorandom_combination_1d(self):
     """
-    Tests computation of pseudorandom combinations.
+    Tests compute pseudorandom linear combination for 1-dimension
+    """
+    dims = 1
+    round_constants = [i for i in range(512)]
+    scale_constants = [i for i in range(512)]
+    constants = [round_constants, scale_constants]
+    modulus = 2**256 - 2**32 * 351 + 1
+    extension_factor = 8
+    f = PrimeField(modulus)
+    ## Factoring out computation
+    def step_fn(f, value, constants):
+      # c_1*value**2 + c_0
+      return f.add(f.mul(constants[1], f.exp(value[0], 2)), constants[0])
+    comp = Computation(dims, 5, 512, constants, step_fn)
+    params = StarkParams(comp, modulus, extension_factor)
+
+    constants_extensions, constants_polynomials = \
+        construct_constants_polynomials(comp, params)
+    p_evaluations = construct_computation_polynomial(
+        comp, params)
+    c_of_p_evaluations = construct_constraint_polynomial(
+        comp, params, p_evaluations)
+    d_evaluations = construct_remainder_polynomial(
+        comp, params, c_of_p_evaluations)
+    b_evaluations = construct_boundary_polynomial(
+        comp, params, p_evaluations)
+
+    polys = [p_evaluations, d_evaluations, b_evaluations]
+    mtree = merkelize_polynomials(dims, polys)
+    l_evaluations_per_dim = compute_pseudorandom_linear_combination_1d(
+        comp, params, mtree, polys)
+    m_root = mtree[1]
+
+    for i, pos in enumerate(range(params.precision)):
+      p_of_x = p_evaluations[pos]
+      next_pos = (pos + params.extension_factor) % params.precision
+      p_of_g1x = p_evaluations[next_pos]
+      d_of_x = d_evaluations[pos]
+      b_of_x = b_evaluations[pos]
+
+      x = f.exp(params.G2, pos)
+      x_to_the_steps = f.exp(x, comp.steps)
+
+      # Leaf node from l[pos]
+      k1, k2, k3, k4 = get_pseudorandom_ks(mtree, 4)
+      for dim in range(comp.dims):
+        l_evaluations_dim = l_evaluations_per_dim[dim]
+        l_of_x_dim = l_evaluations_dim[pos]
+        assert (l_of_x_dim - d_of_x[dim] - k1 * p_of_x[dim] - k2 * p_of_x[dim] * x_to_the_steps - k3 * b_of_x[dim] - k4 * b_of_x[dim] * x_to_the_steps) % modulus == 0
+
+
+  def test_1d_end_to_end(self):
+    """
+    Tests stark end-to-end for 1d example 
     """
     dims = 1
     inp = 5

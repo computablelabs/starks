@@ -34,15 +34,15 @@ def merkelize_polynomials(dims, polynomials):
     Each element much be a list of evaluations of a given poly. All of
     these should have the same length.
   """
+  # Note len(mtree_leaf) == 32 * dims * len(polys)
   # Note len(mtree) == 2 * precision now
-  mtree = merkelize([
-      b''.join([val[dim].to_bytes(32, 'big') for val in evals for dim in range(dims)])
-      for evals in zip(*polynomials)])
-  # Note len(mtree_leaf) == 32 * dims * #polys
-  # Note that this code packs each Merkle leaf as
+  # This code packs each Merkle leaf as
   # polyval_1_dim_1 polyval_1_dim_2 poly_val_2_dim_1 poly_val_2_dim_2 ...
   # In the common case this is
   # [p_of_x_dim_1 p_of_x_dim_2 .. d_of_x_dim_1 d_of_x_dim_2... b_of_x_dim_1 b_of_x_dim_2]
+  mtree = merkelize([
+      b''.join([val[dim].to_bytes(32, 'big') for val in evals for dim in range(dims)])
+      for evals in zip(*polynomials)])
   return mtree
 
 def unpack_merkle_leaf(leaf, dims, num_polys):
@@ -54,6 +54,15 @@ def unpack_merkle_leaf(leaf, dims, num_polys):
 
   Each value is encoded in 32 bytes, so the total length of
   the leaf is 32 * num_polys * dims bytes.
+
+  Parameters
+  ----------
+  leaf: bytestring
+    A bytestring holding the Merkle leaf
+  dims: Int
+    The dimensionality of the state space
+  num_polys: int
+    The number of polynomials
   """
   vals = []
   for poly_ind in range(num_polys):
@@ -72,6 +81,12 @@ def get_computational_trace(inp, steps, constants, step_fn):
   ----------
   inp: Int
     The input for the computation
+  steps: Int
+    The number of steps in the computation
+  constants: List
+    List of constants defining the computation in question
+  step_fn: Function
+    A function which maps one state to the next state.
   """
   computational_trace = [inp]
   deg = len(constants)
@@ -95,6 +110,8 @@ class Computation(object):
 
   Fields
   ------
+  dims: Int
+    The dimensionality of the state space for the computation.
   inp: Int or List
     Either a single int or a list of integers of length dims
   steps: Int
@@ -124,6 +141,19 @@ class Computation(object):
 class StarkParams(object):
   """Holds the cryptographic parameters needed for STARK"""
   def __init__(self, comp, modulus, extension_factor):
+    """
+    Parameters
+    ----------
+    comp: Computation
+      A Computation object 
+    modulus: Int
+      A prime p that defines finite field Z/p
+    extension_factor: Int
+      A power of two which is the degree to which the trace is expanded
+      when  constructing polynomials. For example, a trace of length 512
+      with an extension_factor of 8 would construct polynomial evaluations
+      on a 4096 elements.
+    """
     self.modulus = modulus
     self.extension_factor = extension_factor
     self.precision = comp.steps * extension_factor
@@ -188,28 +218,8 @@ def construct_constraint_polynomial(comp, params,
   with MiMC.
   """
   deg = len(comp.constants)
-  # TODO(rbharath): I think this and the part in constraint_poly can be
-  # factored out
-#  constants_extensions = []
-#  for d in range(deg):
-#    # The extra wrapping is some plumbing since the fft expects a sequence
-#    # of states, where a state is a list.
-#    deg_constants = [[constant] for constant in comp.constants[d]]
-#    # Constants are a 1-d sequence
-#    constants_mini_polynomial = fft(
-#        deg_constants, modulus, params.G1,
-#        inv=True, dims=1)
-#    constants_mini_extension = fft(constants_mini_polynomial,
-#        modulus, params.G2, dims=1)
-#    assert len(constants_mini_extension) == params.precision
-#    constants_extensions.append(constants_mini_extension)
-#  assert len(constants_extensions) == deg
-#  for extension in constants_extensions:
-#    assert len(extension) == params.precision 
-#  print(
-#      'Converted round constants into a polynomial and low-degree extended it')
-#
   constants_extensions, _ = construct_constants_polynomials(comp, params)
+
   # Create the composed polynomial such that
   #### C(P(x), P(g1*x), K(x)) = P(g1*x) - P(x)**3 - K(x)
   # C(P(x), P(g1*x), K(x)) = P(g1*x) - step_fn(P(x), K(x))
@@ -253,43 +263,57 @@ def construct_boundary_polynomial(comp, params, p_evaluations):
   
   Compute interpolant of ((1, input), (x_atlast_step, output))
   """
-  inp = comp.inp
-  output = comp.output
   i_evaluations = []
   inv_z2_evaluations = []
+  zeropoly2 = f.mul_polys([-1, 1], [-params.last_step_position, 1])
   for dim in range(comp.dims):
-    inp_dim = inp[dim]
-    out_dim = output[dim]
-    interpolant = f.lagrange_interp_2([1, params.last_step_position], [inp_dim, out_dim])
+    interpolant = f.lagrange_interp_2([1, params.last_step_position], [comp.inp[dim], comp.output[dim]])
     i_evaluations_dim = [f.eval_poly_at(interpolant, x) for x in params.xs]
-    zeropoly2 = f.mul_polys([-1, 1], [-params.last_step_position, 1])
     inv_z2_evaluations_dim = f.multi_inv([f.eval_poly_at(zeropoly2, x) for x in params.xs])
     # Append to list
     i_evaluations.append(i_evaluations_dim)
     inv_z2_evaluations.append(inv_z2_evaluations_dim)
-  i_evaluations = [np.array([i_evaluations[dim][j] for dim in range(comp.dims)]) for j in range(params.precision)]
-  inv_z2_evaluations = [np.array([inv_z2_evaluations[dim][j] for dim in range(comp.dims)]) for j in range(params.precision)]
+  i_evaluations = [[i_evaluations[dim][j] for dim in range(comp.dims)] for j in range(params.precision)]
+  inv_z2_evaluations = [[inv_z2_evaluations[dim][j] for dim in range(comp.dims)] for j in range(params.precision)]
   # B = (P - I) / Z2
-  b_evaluations = [
-      ((p - i) * invq) % modulus
-      for p, i, invq in zip(p_evaluations, i_evaluations, inv_z2_evaluations)
-      ]
+  b_evaluations = []
+  for p, i, invq in zip(p_evaluations, i_evaluations, inv_z2_evaluations):
+    b_evaluations_dim = [
+      ((p[dim] - i[dim]) * invq[dim]) % modulus for dim in range(comp.dims) ]
+    b_evaluations.append(b_evaluations_dim)
   print('Computed B polynomial')
   return b_evaluations
-  #interpolant = f.lagrange_interp_2([1, params.last_step_position], [comp.inp, comp.output])
-  #i_evaluations = [f.eval_poly_at(interpolant, x) for x in params.xs]
 
-  #zeropoly2 = f.mul_polys([-1, 1], [-params.last_step_position, 1])
-  #inv_z2_evaluations = f.multi_inv([f.eval_poly_at(zeropoly2, x) for x in params.xs])
+def get_pseudorandom_ks(mtree, num):
+  """Computes pseudorandom values from mtree root for linear combo."""
+  if num > 4:
+    raise ValueError("Num <= 4 only supported for now")
+  byte_list = [b'0x01', b'0x02', b'0x03', b'0x04']
+  ks = [int.from_bytes(blake(mtree[1] + byte_list[ind]), 'big') for ind in range(num)]
+  return ks
 
-  ## B = (P - I) / Z2
-  #b_evaluations = [
-  #    ((p - i) * invq) % modulus
-  #    for p, i, invq in zip(p_evaluations, i_evaluations, inv_z2_evaluations)
-  #]
-  #print('Computed B polynomial')
-  #return b_evaluations
+def compute_pseudorandom_linear_combination_1d(comp, params, mtree, polys):
+  """Computes the pseudorandom linear combination for 1-d"""
+  # Based on the hashes of P, D and B, we select a random
+  # linear combination of P * x^steps, P, B * x^steps, B and
+  # D, and prove the low-degreeness of that, instead of
+  # proving the low-degreeness of P, B and D separately
+  k1, k2, k3, k4 = get_pseudorandom_ks(mtree, 4)
+  # TODO(rbharath): This isn't general, but fix later
+  [p_evaluations, d_evaluations, b_evaluations] = polys
+  # Compute the linear combination. We don't even both
+  # calculating it in coefficient form; we just compute the
+  # evaluations
+  G2_to_the_steps = f.exp(params.G2, comp.steps)
+  powers = [1]
+  for i in range(1, params.precision):
+    powers.append(powers[-1] * G2_to_the_steps % params.modulus)
 
+  l_evaluations_per_dim = []
+  for dim in range(comp.dims):
+    l_evaluations_dim = [d_evaluations[i][dim] + p_evaluations[i][dim] * k1 + p_evaluations[i][dim] * k2 * powers[i] + b_evaluations[i][dim] * k3 + b_evaluations[i][dim] * k4 * powers[i] for i in range(params.precision)]
+    l_evaluations_per_dim.append(l_evaluations_dim)
+  return l_evaluations_per_dim
 
 def compute_pseudorandom_linear_combination(comp, params, mtree, polys):
   """Computes a pseudorandom linear combination of polys
@@ -301,36 +325,20 @@ def compute_pseudorandom_linear_combination(comp, params, mtree, polys):
   generated for all of them. The chances of a collision are
   low.
   """
-  byte_list = [b'0x01', b'0x02', b'0x03', b'0x04']
-  # Based on the hashes of P, D and B, we select a random
-  # linear combination of P * x^steps, P, B * x^steps, B and
-  # D, and prove the low-degreeness of that, instead of
-  # proving the low-degreeness of P, B and D separately
-  ks = [int.from_bytes(blake(mtree[1] + byte_list[ind]), 'big') for ind in range(len(polys))]
 
-
-  # Compute the linear combination. We don't even both
-  # calculating it in coefficient form; we just compute the
-  # evaluations
-  G2_to_the_steps = f.exp(params.G2, comp.steps)
-  powers = [1]
-  for i in range(1, params.precision):
-    powers.append(powers[-1] * G2_to_the_steps % params.modulus)
-
-  l_evaluations_per_dim = []
-  for dim in range(comp.dims):
-    l_evaluations_dim = [sum([p_evals[i][dim] + p_evals[i][dim] * k * powers[i] for (p_evals, k) in zip(polys, ks)]) % modulus for i in range(params.precision)]
-    l_evaluations_per_dim.append(l_evaluations_dim)
-
-  # A deterministic procedure for pseudorandomly combining
-  # dimensions
-  l_byte_list = [("0x0%d" % i).encode("UTF-8") for i in range(len(polys), len(polys) + comp.dims)]
-  l_ks = [int.from_bytes(blake(mtree[1] + l_byte_list[ind]), 'big') for ind in range(comp.dims)]
-  l_evaluations = [sum([l_evals_dim[i] + l_evals_dim[i] * l_k * powers[i] for (l_evals_dim, l_k) in zip(l_evaluations_per_dim, l_ks)]) % modulus for i in range(params.precision)]
+  ## A deterministic procedure for pseudorandomly combining
+  ## dimensions
+  #l_byte_list = [("0x0%d" % i).encode("UTF-8") for i in range(len(polys), len(polys) + comp.dims)]
+  #l_ks = [int.from_bytes(blake(mtree[1] + l_byte_list[ind]), 'big') for ind in range(comp.dims)]
+  #l_evaluations = [sum([l_evals_dim[i] + l_evals_dim[i] * l_k * powers[i] for (l_evals_dim, l_k) in zip(l_evaluations_per_dim, l_ks)]) % modulus for i in range(params.precision)]
 
   print('Computed random linear combination')
-  return l_evaluations
+  #return l_evaluations
+  return l_evaluations_per_dim
 
+# TODO(rbharath): This function is poorly structured since it computes spot
+# checks for both the mtree and the ltree simultaneously. This makes
+# refactoring challenging. Break up and separate in future PR.
 def compute_merkle_spot_checks(mtree, l_mtree, comp, params, samples=spot_check_security_factor):
   """Computes pseudorandom spot checks of Merkle tree."""
   # Do some spot checks of the Merkle tree at pseudo-random
