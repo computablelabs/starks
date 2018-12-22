@@ -1,5 +1,4 @@
 import time
-import numpy as np
 from starks.merkle_tree import merkelize, mk_branch, verify_branch, blake
 from starks.compression import compress_fri, decompress_fri, compress_branches, decompress_branches, bin_length
 from starks.poly_utils import PrimeField
