@@ -85,9 +85,8 @@ def get_computational_trace(inp, steps, constants, step_fn):
     A function which maps one state to the next state.
   """
   computational_trace = [inp]
-  deg = len(constants)
   for i in range(steps - 1):
-    poly_constants = [constants[d][i] for d in range(deg)]
+    poly_constants = constants[i]
     # TODO(rbharath): Is there off-by-one error on round_contants?
     next_state = step_fn(f, computational_trace[-1], poly_constants)
     if isinstance(next_state, int):
@@ -179,11 +178,12 @@ def construct_constants_polynomials(comp, params):
   """
   constants_polynomials = []
   constants_extensions = []
-  deg = len(comp.constants)
+  # This is safe since 
+  deg = len(comp.constants[0])
   for d in range(deg):
     # The extra wrapping is some plumbing since the fft expects a sequence
     # of states, where a state is a list.
-    deg_constants = [[constant] for constant in comp.constants[d]]
+    deg_constants = [constant[d] for constant in comp.constants[d]]
     # Constants are a 1-d sequence
     constants_mini_polynomial = fft(
         deg_constants, modulus, params.G1,
