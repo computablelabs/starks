@@ -10,7 +10,6 @@ from starks.fri import prove_low_degree
 from starks.fri import verify_low_degree_proof 
 from starks.utils import get_pseudorandom_indices
 from starks.stark import get_power_cycle 
-from starks.stark import construct_constants_polynomials
 from starks.stark import unpack_merkle_leaf
 from starks.stark import mk_proof
 from starks.stark import Computation
@@ -21,6 +20,7 @@ from starks.stark import construct_computation_polynomial
 from starks.stark import construct_constraint_polynomial 
 from starks.stark import construct_remainder_polynomial 
 from starks.stark import construct_boundary_polynomial 
+from starks.stark import construct_constants_polynomials
 from starks.stark import get_pseudorandom_ks
 from starks.stark import compute_pseudorandom_linear_combination_1d
 from starks.stark import compute_pseudorandom_linear_combination
@@ -119,9 +119,7 @@ class TestStark(unittest.TestCase):
     steps = 512
     constraint_degree = 4
     spot_check_security_factor = 80
-    round_constants = [i for i in range(steps)]
-    scale_constants = [i for i in range(steps)]
-    constants = [round_constants, scale_constants]
+    constants = [[i, i] for i in range(steps)]
     modulus = 2**256 - 2**32 * 351 + 1
     extension_factor = 8
     f = PrimeField(modulus)
@@ -159,9 +157,7 @@ class TestStark(unittest.TestCase):
     Tests compute pseudorandom linear combination for 1-dimension
     """
     dims = 1
-    round_constants = [i for i in range(512)]
-    scale_constants = [i for i in range(512)]
-    constants = [round_constants, scale_constants]
+    constants = [[i, i] for i in range(512)]
     modulus = 2**256 - 2**32 * 351 + 1
     extension_factor = 8
     f = PrimeField(modulus)
@@ -212,9 +208,7 @@ class TestStark(unittest.TestCase):
     Tests compute pseudorandom linear combination 
     """
     dims = 1
-    round_constants = [i for i in range(512)]
-    scale_constants = [i for i in range(512)]
-    constants = [round_constants, scale_constants]
+    constants = [[i, i] for i in range(512)]
     modulus = 2**256 - 2**32 * 351 + 1
     extension_factor = 8
     f = PrimeField(modulus)
@@ -270,10 +264,8 @@ class TestStark(unittest.TestCase):
     inp = [5]
     steps = 512
     constraint_degree = 4
-    round_constants = [i for i in range(steps)]
-    scale_constants = [i for i in range(steps)]
+    constants = [[i, i] for i in range(steps)]
     spot_check_security_factor = 80
-    constants = [round_constants, scale_constants]
     modulus = 2**256 - 2**32 * 351 + 1
     extension_factor = 8
     f = PrimeField(modulus)
@@ -441,7 +433,7 @@ class TestStark(unittest.TestCase):
     inp = [0, 1]
     steps = 512
     # This is a place filler
-    constants = [[]] * steps
+    constants = [[1]] * steps
     def step_fn(f, prev, constants):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
@@ -451,12 +443,12 @@ class TestStark(unittest.TestCase):
     modulus = 2**256 - 2**32 * 351 + 1
     comp = Computation(dims, inp, steps, constants, step_fn)
     params = StarkParams(comp, modulus, extension_factor)
-    comp_poly_evals = construct_constants_polynomial(
+    extensions, polys = construct_constants_polynomials(
         comp, params)
-    assert len(comp_poly_evals) == steps * extension_factor
-    for cval in comp_poly_evals:
-      assert isinstance(cval, list)
-      assert len(cval) == dims
+    assert len(extensions) == 1
+    assert len(polys) == 1
+    assert len(extensions[0]) == params.precision
+    assert len(polys[0]) == steps 
 
 
   def test_higher_dim_constraint_polynomial(self):
@@ -697,8 +689,8 @@ class TestStark(unittest.TestCase):
     steps = 512
     # TODO(rbharath): Why do these constants make sense? Read
     # MiMC paper to see if justification.
-    constants = [(i**7) ^ 42 for i in range(64)]
-    round_constants = constants * (steps // 64)
+    constants = [[(i**7) ^ 42] for i in range(64)]
+    constants = constants * (steps // 64)
 
     modulus = 2**256 - 2**32 * 351 + 1
     f = PrimeField(modulus)
@@ -708,7 +700,7 @@ class TestStark(unittest.TestCase):
       inp = state[0]
       return [f.add(f.exp(inp, 3), constants[0])]
 
-    proof = mk_proof(inp, steps, [round_constants], mimc_step,
+    proof = mk_proof(inp, steps, constants, mimc_step,
         constraint_degree=4)
     assert isinstance(proof, list)
     assert len(proof) == 4
@@ -725,7 +717,7 @@ class TestStark(unittest.TestCase):
     constraint_degree = 4
     # TODO(rbharath): Why do these constants make sense? Read
     # MiMC paper to see if justification.
-    round_constants = [(i**7) ^ 42 for i in range(steps)]
+    constants = [[(i**7) ^ 42] for i in range(steps)]
     modulus = 2**256 - 2**32 * 351 + 1
     f = PrimeField(modulus)
 
@@ -735,14 +727,14 @@ class TestStark(unittest.TestCase):
       value = state[0]
       return [f.add(f.mul(f.exp(value, 2), 2), constants[0])]
 
-    proof = mk_proof(inp, steps, [round_constants],
+    proof = mk_proof(inp, steps, constants,
                      quadratic_step, constraint_degree=4)
     assert isinstance(proof, list)
     assert len(proof) == 4
     (m_root, l_root, branches, fri_proof) = proof
     trace, output = get_computational_trace(
-        inp, steps, [round_constants], quadratic_step)
-    result = verify_proof(inp, steps, [round_constants],
+        inp, steps, constants, quadratic_step)
+    result = verify_proof(inp, steps, constants,
                           output, proof, quadratic_step,
                           constraint_degree=4)
     assert result
@@ -754,7 +746,7 @@ class TestStark(unittest.TestCase):
     dims = 1
     inp = [5]
     steps = 512
-    round_constants = [i for i in range(steps)]
+    constants = [[i] for i in range(steps)]
     modulus = 2**256 - 2**32 * 351 + 1
     f = PrimeField(modulus)
 
@@ -764,15 +756,15 @@ class TestStark(unittest.TestCase):
       value = state[0]
       return [f.add(f.exp(value, 3), f.add(f.mul(f.exp(value, 2), 2), constants[0]))]
 
-    proof = mk_proof(inp, steps, [round_constants],
+    proof = mk_proof(inp, steps, constants,
                      cubic_step, dims=dims,
                      constraint_degree=4)
     assert isinstance(proof, list)
     assert len(proof) == 4
     (m_root, l_root, branches, fri_proof) = proof
     trace, output = get_computational_trace(
-        inp, steps, [round_constants], cubic_step)
-    result = verify_proof(inp, steps, [round_constants],
+        inp, steps, constants, cubic_step)
+    result = verify_proof(inp, steps, constants,
                           output, proof, cubic_step,
                           constraint_degree=4)
     assert result
@@ -785,8 +777,8 @@ class TestStark(unittest.TestCase):
     inp = [5]
     steps = 512
     constraint_degree = 4
-    constants = [(i**7) ^ 42 for i in range(64)]
-    round_constants = constants * (steps // 64) 
+    constants = [[(i**7) ^ 42] for i in range(64)]
+    constants = constants * (steps // 64) 
 
     modulus = 2**256 - 2**32 * 351 + 1
 
@@ -794,12 +786,12 @@ class TestStark(unittest.TestCase):
       inp = state[0]
       return [f.add(f.exp(inp, 3), constants[0])]
 
-    proof = mk_proof(inp, steps, [round_constants], mimc_step,
+    proof = mk_proof(inp, steps, constants, mimc_step,
         constraint_degree=constraint_degree)
 
     # The actual MiMC result
-    output = mimc(inp[0], steps, round_constants)
-    result = verify_proof(inp, steps, [round_constants], output, proof,
+    output = mimc(inp[0], steps, [val[0] for val in constants])
+    result = verify_proof(inp, steps, constants, output, proof,
         mimc_step, constraint_degree=constraint_degree)
     assert result
 
@@ -811,7 +803,7 @@ class TestStark(unittest.TestCase):
     steps = 512
     # TODO(rbharath): Why do these constants make sense? Read
     # MiMC paper to see if justification.
-    round_constants = [0 for i in range(512)]
+    constants = [[0]] * 512
     modulus = 2**256 - 2**32 * 351 + 1
     f = PrimeField(modulus)
 
@@ -820,13 +812,13 @@ class TestStark(unittest.TestCase):
       value = state[0]
       return [f.add(f.add(f.mul(3, value), 4), constants[0])]
 
-    proof = mk_proof(inp, steps, [round_constants], affine_step,
+    proof = mk_proof(inp, steps, constants, affine_step,
         constraint_degree=4)
     assert isinstance(proof, list)
     assert len(proof) == 4
     (m_root, l_root, branches, fri_proof) = proof
-    _, output = get_computational_trace(inp, steps, [round_constants], affine_step)
-    result = verify_proof(inp, steps, [round_constants], output, proof,
+    _, output = get_computational_trace(inp, steps, constants, affine_step)
+    result = verify_proof(inp, steps, constants, output, proof,
                           affine_step, constraint_degree=4)
     assert result
 
@@ -838,9 +830,7 @@ class TestStark(unittest.TestCase):
     inp = [5]
     steps = 512
     constraint_degree = 4
-    round_constants = [i for i in range(steps)]
-    scale_constants = [i for i in range(steps)]
-    constants = [round_constants, scale_constants]
+    constants = [[i, i] for i in range(steps)]
     modulus = 2**256 - 2**32 * 351 + 1
     extension_factor = 8
     f = PrimeField(modulus)
@@ -890,9 +880,7 @@ class TestStark(unittest.TestCase):
     inp = [5]
     steps = 512
     constraint_degree = 4
-    round_constants = [i for i in range(steps)]
-    scale_constants = [i for i in range(steps)]
-    constants = [round_constants, scale_constants]
+    constants = [[i, i] for i in range(steps)]
     modulus = 2**256 - 2**32 * 351 + 1
     f = PrimeField(modulus)
 
@@ -921,14 +909,7 @@ class TestStark(unittest.TestCase):
     inp = [5]
     steps = 512
     constraint_degree = 8
-    zero_constants = [i for i in range(steps)]
-    one_constants = [i for i in range(steps)]
-    two_constants = [i for i in range(steps)]
-    three_constants = [i for i in range(steps)]
-    four_constants = [i for i in range(steps)]
-    five_constants = [i for i in range(steps)]
-    constants = [zero_constants, one_constants, two_constants,
-        three_constants, four_constants, five_constants]
+    constants = [[i]*6 for i in range(steps)]
     modulus = 2**256 - 2**32 * 351 + 1
     f = PrimeField(modulus)
 

@@ -178,12 +178,12 @@ def construct_constants_polynomials(comp, params):
   """
   constants_polynomials = []
   constants_extensions = []
-  # This is safe since 
+  # This is safe since steps > 0
   deg = len(comp.constants[0])
   for d in range(deg):
     # The extra wrapping is some plumbing since the fft expects a sequence
     # of states, where a state is a list.
-    deg_constants = [constant[d] for constant in comp.constants[d]]
+    deg_constants = [[step_constants[d]] for step_constants in comp.constants]
     # Constants are a 1-d sequence
     constants_mini_polynomial = fft(
         deg_constants, modulus, params.G1,
@@ -224,18 +224,18 @@ def construct_constraint_polynomial(comp, params,
   given computational tape. For now, this function only works
   with MiMC.
   """
-  deg = len(comp.constants)
-  constants_extensions, _ = construct_constants_polynomials(comp, params)
+  deg = len(comp.constants[0])
+  extensions, _ = construct_constants_polynomials(comp, params)
 
   # Create the composed polynomial such that
   # C(P(x), P(g1*x), K(x)) = P(g1*x) - step_fn(P(x), K(x))
   # here K(x) contains the constants.
   p_next_step_evals = [p_evaluations[(i + params.extension_factor) % params.precision] for i in range(params.precision)]
-  # constants_extensions[d] selects constants for the degree d term
-  # constants_extensions[d][i] selects the degree d term for i-th step
-  # constants_extensions[d][i][0] unpacks the output of fft() which adds an extra list
+  # extensions[d] selects constants for the degree d term
+  # extensions[d][i] selects the degree d term for i-th step
+  # extensions[d][i][0] unpacks the output of fft() which adds an extra list
   step_p_evals = [comp.step_fn(
-    f, p_evaluations[i], [constants_extensions[d][i][0] for d in range(deg)]) for i in range(params.precision)]
+    f, p_evaluations[i], [extensions[d][i][0] for d in range(deg)]) for i in range(params.precision)]
   c_of_p_evals = [[p_next[dim] - step_p[dim] % params.modulus for dim in range(comp.dims)] for (p_next, step_p) in zip(p_next_step_evals, step_p_evals)]
   print('Computed C(P, K) polynomial')
   return c_of_p_evals
