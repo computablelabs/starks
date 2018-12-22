@@ -61,6 +61,7 @@ def mk_branch(tree, index):
 
 
 def verify_branch(root, index, proof, output_as_int=False):
+  """Verifies the proof and returns the leaf on the branch"""
   index = get_index_in_permuted(index, 2**len(proof) // 2)
   # I think this is a bug. Should be 2**len(proof) // 2
   # But I think it's OK since we're only doing parity checks
