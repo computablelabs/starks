@@ -1,6 +1,5 @@
 import unittest
 import time
-import numpy as np
 from starks.utils import mimc
 from starks.merkle_tree import merkelize
 from starks.merkle_tree import verify_branch
@@ -402,7 +401,7 @@ class TestStark(unittest.TestCase):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
       f_n_plus_1 = f.add(f_n, f_n_minus_1)
-      return np.array([f_n, f_n_plus_1])
+      return [f_n, f_n_plus_1]
     trace, output = get_computational_trace(inp, steps,
         constants, fibonacci_step)
     assert list(trace[0]) == [0, 1]
@@ -425,7 +424,7 @@ class TestStark(unittest.TestCase):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
       f_n_plus_1 = f.add(f_n, f_n_minus_1)
-      return np.array([f_n, f_n_plus_1])
+      return [f_n, f_n_plus_1]
     extension_factor = 8
     modulus = 2**256 - 2**32 * 351 + 1
     comp = Computation(dims, inp, steps, constants, step_fn)
@@ -452,7 +451,7 @@ class TestStark(unittest.TestCase):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
       f_n_plus_1 = f.add(f_n, f_n_minus_1)
-      return np.array([f_n, f_n_plus_1])
+      return [f_n, f_n_plus_1]
     extension_factor = 8
     modulus = 2**256 - 2**32 * 351 + 1
     comp = Computation(dims, inp, steps, constants, step_fn)
@@ -484,7 +483,7 @@ class TestStark(unittest.TestCase):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
       f_n_plus_1 = f.add(f_n, f_n_minus_1)
-      return np.array([f_n, f_n_plus_1])
+      return [f_n, f_n_plus_1]
     ## Factoring out computation
     comp = Computation(dims, inp, steps, constants, step_fn)
     params = StarkParams(comp, modulus, extension_factor)
@@ -520,7 +519,7 @@ class TestStark(unittest.TestCase):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
       f_n_plus_1 = f.add(f_n, f_n_minus_1)
-      return np.array([f_n, f_n_plus_1])
+      return [f_n, f_n_plus_1]
     ## Factoring out computation
     comp = Computation(dims, inp, steps, constants, step_fn)
     params = StarkParams(comp, modulus, extension_factor)
@@ -559,7 +558,7 @@ class TestStark(unittest.TestCase):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
       f_n_plus_1 = f.add(f_n, f_n_minus_1)
-      return np.array([f_n, f_n_plus_1])
+      return [f_n, f_n_plus_1]
     ## Factoring out computation
     comp = Computation(dims, inp, steps, constants, step_fn)
     params = StarkParams(comp, modulus, extension_factor)
@@ -588,7 +587,7 @@ class TestStark(unittest.TestCase):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
       f_n_plus_1 = f.add(f_n, f_n_minus_1)
-      return np.array([f_n, f_n_plus_1])
+      return [f_n, f_n_plus_1]
     proof = mk_proof(inp, steps, constants, fibonacci_step,
         dims=dims)
 
@@ -606,7 +605,7 @@ class TestStark(unittest.TestCase):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
       f_n_plus_1 = f.add(f_n, f_n_minus_1)
-      return np.array([f_n, f_n_plus_1])
+      return [f_n, f_n_plus_1]
     proof = mk_proof(inp, steps, constants, fibonacci_step,
         dims=dims, constraint_degree=constraint_degree)
     trace, output = get_computational_trace(
