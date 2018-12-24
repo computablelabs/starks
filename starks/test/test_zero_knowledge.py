@@ -10,6 +10,8 @@ from starks.zero_knowledge import run_protocol
 from starks.zero_knowledge import convince_beyond_doubt
 from starks.zero_knowledge import ZKProver
 from starks.zero_knowledge import ZKVerifier
+from starks.zero_knowledge import messages_from_protocol
+from starks.zero_knowledge import simulate_protocol
 
 class TestZeroKnowledge(unittest.TestCase):
   """
@@ -165,3 +167,32 @@ class TestZeroKnowledge(unittest.TestCase):
 
     assert apply_isomorphism(G1, f) == G2
     assert apply_isomorphism(G2, finv) == G1
+
+  def test_messages_from_protocol(self):
+    """Test retrieving the messages traded in the protocol."""
+    G1 = [(1, 2), (1, 4), (1, 3), (2, 5), (2, 5), (3, 6), (5, 6)]
+    perm_list = random_permutation(6)
+    perm_f = make_permutation_function(perm_list)
+    G2 = apply_isomorphism(G1, perm_f)
+    messages = messages_from_protocol(G1, G2, perm_list)
+    assert len(messages) == 3
+
+  def test_simulate_protocol(self):
+    """Test that simulation of protocol works.
+
+    Simulating a protocl is how the zero-knowledgeness of the protocol is proved.
+    """
+    G1 = [(1, 2), (1, 4), (1, 3), (2, 5), (2, 5), (3, 6), (5, 6)]
+    perm_list = random_permutation(6)
+    perm_f = make_permutation_function(perm_list)
+    G2 = apply_isomorphism(G1, perm_f)
+    sim_messages = simulate_protocol(G1, G2)
+    assert len(sim_messages) == 3
+
+  def test_convince_beyond_doubt(self):
+    """Test convincing beyond doubt."""
+    G1 = [(1, 2), (1, 4), (1, 3), (2, 5), (2, 5), (3, 6), (5, 6)]
+    perm_list = random_permutation(6)
+    perm_f = make_permutation_function(perm_list)
+    G2 = apply_isomorphism(G1, perm_f)
+    convince_beyond_doubt(G1, G2, perm_list)
