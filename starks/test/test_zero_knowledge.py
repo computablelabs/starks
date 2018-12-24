@@ -55,7 +55,7 @@ class TestZeroKnowledge(unittest.TestCase):
     perm_f = make_permutation_function(perm_list)
     permuted_graph = apply_isomorphism(example_graph, perm_f)
     prover = ZKProver(example_graph, permuted_graph, perm_list)
-    H = prover.send_isomorphic_copy()
+    isomorphism, H = prover.send_isomorphic_copy()
     assert num_vertices(H) == num_vertices(example_graph)
     assert len(H) == len(example_graph)
 
@@ -70,10 +70,10 @@ class TestZeroKnowledge(unittest.TestCase):
     perm_f = make_permutation_function(perm_list)
     permuted_graph = apply_isomorphism(example_graph, perm_f)
     prover = ZKProver(example_graph, permuted_graph, perm_list)
-    H = prover.send_isomorphic_copy()
-    iso_1 = prover.prove_isomorphic_to(1)
+    isomorphism, H = prover.send_isomorphic_copy()
+    iso_1 = prover.prove_isomorphic_to(isomorphism, 1)
     assert isinstance(iso_1, types.FunctionType)
-    iso_2 = prover.prove_isomorphic_to(2)
+    iso_2 = prover.prove_isomorphic_to(isomorphism, 2)
     assert isinstance(iso_2, types.FunctionType)
 
   def test_zk_verifier_construction(self):
@@ -93,7 +93,7 @@ class TestZeroKnowledge(unittest.TestCase):
     prover = ZKProver(example_graph, permuted_graph, perm_list)
     H = prover.send_isomorphic_copy()
     verifier = ZKVerifier(example_graph, permuted_graph)
-    choice = verifier.choose_graph(H)
+    choice = verifier.choose_graph()
     assert choice in [1, 2]
 
   def test_zk_verifier_acceptance(self):
@@ -103,24 +103,25 @@ class TestZeroKnowledge(unittest.TestCase):
     perm_f = make_permutation_function(perm_list)
     permuted_graph = apply_isomorphism(example_graph, perm_f)
     prover = ZKProver(example_graph, permuted_graph, perm_list)
-    H = prover.send_isomorphic_copy()
+    (isomorphism, H) = prover.send_isomorphic_copy()
     verifier = ZKVerifier(example_graph, permuted_graph)
-    choice = verifier.choose_graph(H)
-    witness = prover.prove_isomorphic_to(choice)
-    assert verifier.accepts(witness)
+    choice = verifier.choose_graph()
+    witness = prover.prove_isomorphic_to(isomorphism, choice)
+    assert verifier.accepts(witness, choice, H)
 
-  # TODO(rbharath): This breaks!! Why??
   def test_zk_verifier_id_acceptance(self):
+    random.seed(0)
     G1 = [(1, 2), (1, 4), (1, 3), (2, 5), (2, 5), (3, 6), (5, 6)]
-    G2 = [(1, 2), (1, 4), (1, 3), (2, 5), (2, 5), (3, 6), (5, 6), (1,6)]
-    perm_list = [1, 2, 3, 4, 5, 6]
+    G2 = [(1, 2), (1, 4), (1, 3), (2, 5), (2, 5), (3, 6), (5, 6)]
+    perm_list = [0, 1, 2, 3, 4, 5]
+    perm = make_permutation_function(perm_list)
     prover = ZKProver(G1, G2, perm_list)
     verifier = ZKVerifier(G1, G2)
 
-    H = prover.send_isomorphic_copy()
-    choice = verifier.choose_graph(H)
-    witness = prover.prove_isomorphic_to(choice)
-    assert verifier.accepts(witness)
+    (isomorphism, H) = prover.send_isomorphic_copy()
+    choice = verifier.choose_graph()
+    witness = prover.prove_isomorphic_to(isomorphism, choice)
+    assert verifier.accepts(witness, choice, H)
 
   def test_zk_verifier_nonacceptance(self):
     """Tests verifier rejects wrong isomorphism."""
@@ -133,11 +134,11 @@ class TestZeroKnowledge(unittest.TestCase):
     success = False
     for i in range(trials):
       prover = ZKProver(G1, G2, perm_list)
-      H = prover.send_isomorphic_copy()
       verifier = ZKVerifier(G1, G2)
-      choice = verifier.choose_graph(H)
-      witness = prover.prove_isomorphic_to(choice)
-      result = verifier.accepts(witness)
+      (isomorphism, H) = prover.send_isomorphic_copy()
+      choice = verifier.choose_graph()
+      witness = prover.prove_isomorphic_to(isomorphism, choice)
+      result = verifier.accepts(witness, choice, H)
       if not result:
         success = True
       results.append(result)
@@ -149,9 +150,7 @@ class TestZeroKnowledge(unittest.TestCase):
     perm_list = random_permutation(6)
     perm_f = make_permutation_function(perm_list)
     G2 = apply_isomorphism(G1, perm_f)
-    result = run_protocol(G1, G2, perm_list)
-    print("result")
-    print(result)
+    assert run_protocol(G1, G2, perm_list)
 
   def test_basic(self):
     """Basic test in original source."""

@@ -36,6 +36,9 @@ class ZKProver(object):
   transcripts. Applying an isomorphism to the trace doesn't quite work
   since we would need to encode the isomorphism in the step transition
   somehow.
+
+  TODO(rbharath): This class has a stateful design that makes debugging
+  really painful. Minimize this.
   """
 
   def __init__(self, G1, G2, isomorphism):
@@ -50,7 +53,7 @@ class ZKProver(object):
     G2: Graph
       Second Graph
     isomorphism: function
-      A function implementing an isomorphism
+      A function implementing an isomorphism mapping G1 to G2
     """
     self.G1 = G1
     self.G2 = G2
@@ -67,21 +70,21 @@ class ZKProver(object):
 
     H = apply_isomorphism(self.G1, pi)
 
-    self.state = isomorphism
-    return H
+    return (isomorphism, H)
 
-  def prove_isomorphic_to(self, graph_choice):
+  def prove_isomorphic_to(self, isomorphism, graph_choice):
     """Prove isomorphic to either G1 or G2
 
     Must be called after a call to send_isomorphic_copy
 
     Parameters
     ----------
+    isomorphism: list
+      The isomorphism chosen to create H
     graph_choice: int
       Either 1 or 2 for G1 and G2 respectively.
     """
-    random_isomorphism = self.state
-    pi_inverse = make_inverse_permutation_function(random_isomorphism)
+    pi_inverse = make_inverse_permutation_function(isomorphism)
 
     if graph_choice == 1:
       return pi_inverse
@@ -94,6 +97,9 @@ class ZKVerifier(object):
   """Verifies that the prover is functioning correctly.
 
   TODO(rbharath): Create a better docstring.
+
+  TODO(rbharath): This class has a stateful design that makes debugging
+  really painful. Minimize this.
   """
 
   def __init__(self, G1, G2):
@@ -110,20 +116,18 @@ class ZKVerifier(object):
     self.n = num_vertices(G1)
     assert self.n == num_vertices(G2)
 
-  def choose_graph(self, H):
+  def choose_graph(self):
     """Makes a random choice between G1 and G2."""
     choice = random.choice([1, 2])
-    self.state = H, choice
     return choice
 
-  def accepts(self, isomorphism):
+  def accepts(self, isomorphism, choice, H):
     """
     Return True if and only if the given isomorphism
     is a valid isomorphism between the randomly
     chosen graph in the first step, and the H presented
     by the Prover.
     """
-    H, choice = self.state
     graph_to_check = [self.G1, self.G2][choice - 1]
     f = isomorphism
 
@@ -138,11 +142,11 @@ def run_protocol(G1, G2, isomorphism):
   p = ZKProver(G1, G2, isomorphism)
   v = ZKVerifier(G1, G2)
 
-  H = p.send_isomorphic_copy()
-  choice = v.choose_graph(H)
-  witness_isomorphism = p.prove_isomorphic_to(choice)
+  (isomorphism, H) = p.send_isomorphic_copy()
+  choice = v.choose_graph()
+  witness = p.prove_isomorphic_to(isomorphism, choice)
 
-  return v.accepts(witness_isomorphism)
+  return v.accepts(witness, choice, H)
 
 
 def convince_beyond_doubt(G1, G2, isomorphism, error_tolerance=1e-20):
@@ -161,7 +165,7 @@ def messagesFromProtocol(G1, G2, isomorphism):
   v = Verifier(G1, G2)
 
   H = p.send_isomorphic_copy()
-  choice = v.choose_graph(H)
+  choice = v.choose_graph()
   witnessIsomorphism = p.prove_isomorphic_to(choice)
 
   return [H, choice, witnessIsomorphism]
