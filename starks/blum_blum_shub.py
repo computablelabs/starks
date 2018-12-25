@@ -1,4 +1,4 @@
-from primality import probablyPrime
+from starks.primality import probablyPrime
 import random
 
 

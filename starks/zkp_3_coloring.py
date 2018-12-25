@@ -2,31 +2,38 @@ import random
 
 from starks.zero_knowledge import num_vertices
 from starks.zero_knowledge import random_permutation
-import blum_blum_shub
-import commitment
+from starks import blum_blum_shub
+from starks import commitment
 
 ONE_WAY_PERMUTATION = blum_blum_shub.blum_blum_shub(512)
 HARDCORE_PREDICATE = blum_blum_shub.parity
 
 
-class Prover(object):
+class ZK3ColProver(object):
+  """Proves in zero-knowledge a 3-coloring for a given graph.
+
+  TODO(rbharath): This class is pretty stateful. Swap out for a less stateful
+  implementation.
+  """
 
   def __init__(self,
                graph,
                coloring,
-               oneWayPermutation=ONE_WAY_PERMUTATION,
-               hardcorePredicate=HARDCORE_PREDICATE):
+               one_way_permutation=ONE_WAY_PERMUTATION,
+               hardcore_predicate=HARDCORE_PREDICATE):
     self.graph = [tuple(sorted(e)) for e in graph]
     self.coloring = coloring
     self.vertices = list(range(1, num_vertices(graph) + 1))
-    self.oneWayPermutation = oneWayPermutation
-    self.hardcorePredicate = hardcorePredicate
+    self.one_way_permutation = one_way_permutation
+    self.hardcore_predicate = hardcore_predicate
     self.vertexToScheme = None
 
-  def commitToColoring(self):
+  def commit_to_coloring(self):
+    """Commit to a coloring scheme"""
+
     self.vertexToScheme = {
-        v: commitment.BBSIntCommitmentScheme(2, self.oneWayPermutation,
-                                             self.hardcorePredicate)
+        v: commitment.BBSIntCommitmentScheme(2, self.one_way_permutation,
+                                             self.hardcore_predicate)
         for v in self.vertices
     }
 
@@ -38,7 +45,7 @@ class Prover(object):
         for (v, s) in self.vertexToScheme.items()
     }
 
-  def revealColors(self, u, v):
+  def reveal_colors(self, u, v):
     u, v = min(u, v), max(u, v)
     if not (u, v) in self.graph:
       raise Exception('Must query an edge!')
@@ -49,59 +56,56 @@ class Prover(object):
     )
 
 
-class Verifier(object):
+class ZK3ColVerifier(object):
+  """Verifies a zero-knowledge proof of 3-coloring."""
 
   def __init__(self,
                graph,
-               oneWayPermutation=ONE_WAY_PERMUTATION,
-               hardcorePredicate=HARDCORE_PREDICATE):
+               one_way_permutation=ONE_WAY_PERMUTATION,
+               hardcore_predicate=HARDCORE_PREDICATE):
     self.graph = [tuple(sorted(e)) for e in graph]
-    self.oneWayPermutation = oneWayPermutation
-    self.hardcorePredicate = hardcorePredicate
-    self.committedColoring = None
-    self.verifier = commitment.BBSIntCommitmentVerifier(2, oneWayPermutation,
-                                                        hardcorePredicate)
+    self.one_way_permutation = one_way_permutation
+    self.hardcore_predicate = hardcore_predicate
+    self.committed_coloring = None
+    self.verifier = commitment.BBSIntCommitmentVerifier(2, one_way_permutation,
+                                                        hardcore_predicate)
 
-  def chooseEdge(self, committedColoring):
-    self.committedColoring = committedColoring
-    self.chosenEdge = random.choice(self.graph)
-    return self.chosenEdge
+  def choose_edge(self, committed_coloring):
+    self.committed_coloring = committed_coloring
+    self.chosen_edge = random.choice(self.graph)
+    return self.chosen_edge
 
   def accepts(self, revealed):
-    revealedColors = []
+    revealed_colors = []
 
-    for (w, bitSecrets) in zip(self.chosenEdge, revealed):
-      trueColor = self.verifier.decode(bitSecrets, self.committedColoring[w])
-      revealedColors.append(trueColor)
-      if not self.verifier.verify(bitSecrets, self.committedColoring[w]):
+    for (w, bitSecrets) in zip(self.chosen_edge, revealed):
+      trueColor = self.verifier.decode(bitSecrets, self.committed_coloring[w])
+      revealed_colors.append(trueColor)
+      if not self.verifier.verify(bitSecrets, self.committed_coloring[w]):
         return False
 
-    return revealedColors[0] != revealedColors[1]
+    return revealed_colors[0] != revealed_colors[1]
 
 
-def runProtocol(G, coloring, securityParameter=512):
-  oneWayPermutation = blum_blum_shub.blum_blum_shub(securityParameter)
-  hardcorePredicate = blum_blum_shub.parity
+def run_protocol(G, coloring, security_parameter=512):
+  """Runs one round of the 3 coloring protocol for two graphs."""
+  one_way_permutation = blum_blum_shub.blum_blum_shub(security_parameter)
+  hardcore_predicate = blum_blum_shub.parity
 
-  prover = Prover(G, coloring, oneWayPermutation, hardcorePredicate)
-  verifier = Verifier(G, oneWayPermutation, hardcorePredicate)
+  prover = ZK3ColProver(G, coloring, one_way_permutation, hardcore_predicate)
+  verifier = ZK3ColVerifier(G, one_way_permutation, hardcore_predicate)
 
-  committedColoring = prover.commitToColoring()
-  chosenEdge = verifier.chooseEdge(committedColoring)
+  committed_coloring = prover.commit_to_coloring()
+  chosen_edge = verifier.choose_edge(committed_coloring)
 
-  revealed = prover.revealColors(*chosenEdge)
-  revealedColors = (
-      verifier.verifier.decode(revealed[0], committedColoring[chosenEdge[0]]),
-      verifier.verifier.decode(revealed[1], committedColoring[chosenEdge[1]]),
+  revealed = prover.reveal_colors(*chosen_edge)
+  revealed_colors = (
+      verifier.verifier.decode(revealed[0], committed_coloring[chosen_edge[0]]),
+      verifier.verifier.decode(revealed[1], committed_coloring[chosen_edge[1]]),
   )
-  isValid = verifier.accepts(revealed)
+  is_valid = verifier.accepts(revealed)
 
   print("{} != {} and commitment is valid? {}".format(
-      revealedColors[0], revealedColors[1], isValid))
+      revealed_colors[0], revealed_colors[1], is_valid))
 
-  return isValid
-
-
-if __name__ == "__main__":
-  for _ in range(30):
-    runProtocol(exampleGraph, exampleColoring, securityParameter=10)
+  return is_valid
