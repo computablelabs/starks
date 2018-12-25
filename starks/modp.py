@@ -19,7 +19,7 @@ class _Modular(FieldElement):
 # is good style or not.
 @memoize
 def IntegersModP(p):
-  # assume p is prime
+  """Assume p is prime"""
 
   class IntegerModP(_Modular):
 

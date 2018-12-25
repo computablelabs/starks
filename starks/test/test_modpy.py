@@ -1,5 +1,6 @@
 import unittest
 from starks.modp import IntegersModP
+from starks.rationals_modp import RationalsModP
 
 class TestModP(unittest.TestCase):
   """Basic tests for Mod-p numbers."""
@@ -32,3 +33,19 @@ class TestModP(unittest.TestCase):
     assert modM(2**32) != modM(2**64)
     assert modM(2**64) != modM(2**128)
     assert modM(2**256) == modM(2**32 * 351 - 1)
+
+  def test_rationals_construction(self):
+    """Test that rationals can be constructed."""
+    modulus = 3
+    ratmod3 = RationalsModP(modulus)
+    rational = ratmod3(1, 2) # 1/2
+
+  def test_rationals_arithmetic(self):
+    """Test that rational arithmetic is sensible."""
+    modulus = 11 
+    ratmod = RationalsModP(modulus)
+    assert ratmod(1, 2) * ratmod(1, 2) == ratmod(1, 4) 
+    print("ratmod(3, 4) * ratmod(5, 6)")
+    print(ratmod(3, 4) * ratmod(5, 6))
+    assert ratmod(3, 4) * ratmod(5, 6) == ratmod(5, 8) 
+
