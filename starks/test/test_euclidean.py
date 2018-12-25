@@ -1,16 +1,7 @@
 import unittest
 from starks.euclidean import gcd
 from starks.euclidean import extended_euclidean_algorithm
-
-
-def run_foo(expected, actual):
-  if expected != actual:
-    import sys, traceback
-    (filename, lineno, container, code) = traceback.extract_stack()[-2]
-    print("Test: %r failed on line %d in file %r.\nExpected %r but got %r\n" %
-          (code, lineno, filename, expected, actual))
-
-    sys.exit(1)
+from starks.modp import IntegersModP
 
 
 class TestEuclidean(unittest.TestCase):
@@ -32,4 +23,19 @@ class TestEuclidean(unittest.TestCase):
     assert extended_euclidean_algorithm(4864, 3458) == (32, -45, 38)
     assert 32 * 4864- 45 * 3458 == 38
     assert extended_euclidean_algorithm(3458, 4864) == (-45, 32, 38)
+
+  def test_mod_2_gcd(self):
+    """Test that the GCD works in mod-2 arithmetic."""
+    Mod2 = IntegersModP(2)
+    assert Mod2(1) == gcd(Mod2(1), Mod2(0))
+    assert Mod2(1) == gcd(Mod2(1), Mod2(1))
+    assert Mod2(0) == gcd(Mod2(2), Mod2(2))
+
+  def test_mod_7_gcd(self):
+    """Test that the GCD works in mod-7 arithmetic."""
+    Mod7 = IntegersModP(7)
+    # TODO(rbharath): Why are these modular equations right? Is there a way to
+    # do simple mental arithmetic to calculate these values?
+    assert Mod7(6) == gcd(Mod7(6), Mod7(14))
+    assert Mod7(2) == gcd(Mod7(6), Mod7(9))
 

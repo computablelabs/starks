@@ -2,12 +2,13 @@ import random
 
 
 class CommitmentScheme(object):
+  """An abstract superclass for a commitment scheme."""
 
   def __init__(self, oneWayPermutation, hardcorePredicate, securityParameter):
-    '''
+    """
     oneWayPermutation: int -> int
     hardcorePredicate: int -> {0, 1}
-    '''
+    """
     self.oneWayPermutation = oneWayPermutation
     self.hardcorePredicate = hardcorePredicate
     self.securityParameter = securityParameter
@@ -68,10 +69,10 @@ class BBSIntCommitmentScheme(CommitmentScheme):
                oneWayPermutation,
                hardcorePredicate,
                securityParameter=512):
-    '''
-            A commitment scheme for integers of a prespecified length `numBits`. Applies the
-            bit commitment scheme to each bit independently.
-        '''
+    """
+    A commitment scheme for integers of a prespecified length `numBits`. Applies the
+    bit commitment scheme to each bit independently.
+    """
     self.schemes = [
         BBSBitCommitmentScheme(oneWayPermutation, hardcorePredicate,
                                securityParameter) for _ in range(numBits)
