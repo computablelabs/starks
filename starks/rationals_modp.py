@@ -72,6 +72,7 @@ def RationalsModP(p):
       return isinstance(other, IntegerModP) is False or (
           (self.m * other.n) % RationalModP.p != (other.m * self.n) % RationalModP.p)
 
+    # TODO(rbharath): This should be possible to implement. Think more about it.
     #@typecheck
     #def __divmod__(self, divisor):
     #  q, r = divmod(self.n, divisor.n)

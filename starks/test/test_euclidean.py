@@ -39,3 +39,10 @@ class TestEuclidean(unittest.TestCase):
     assert Mod7(6) == gcd(Mod7(6), Mod7(14))
     assert Mod7(2) == gcd(Mod7(6), Mod7(9))
 
+  def test_mod_large_gcd(self):
+    """Test that GCD works with a larger prime."""
+    ModHuge = IntegersModP(9923)
+    assert ModHuge(38) == gcd(ModHuge(4864), ModHuge(3458))
+    assert (ModHuge(32), ModHuge(-45), ModHuge(38)) == extended_euclidean_algorithm(
+      ModHuge(4864), ModHuge(3458))
+

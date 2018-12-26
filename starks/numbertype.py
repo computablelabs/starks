@@ -83,8 +83,8 @@ class DomainElement(object):
 
     return R
 
-  # requires the additional % operator (i.e. a Euclidean Domain)
   def powmod(self, n, modulus):
+    """requires the additional % operator (i.e. a Euclidean Domain)"""
     if type(n) is not int:
       raise TypeError
 

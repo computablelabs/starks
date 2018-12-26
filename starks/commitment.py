@@ -4,16 +4,16 @@ import random
 class CommitmentScheme(object):
   """An abstract superclass for a commitment scheme."""
 
-  def __init__(self, oneWayPermutation, hardcorePredicate, securityParameter):
+  def __init__(self, oneWayPermutation, hardcorePredicate, security_parameter):
     """
     oneWayPermutation: int -> int
     hardcorePredicate: int -> {0, 1}
     """
     self.oneWayPermutation = oneWayPermutation
     self.hardcorePredicate = hardcorePredicate
-    self.securityParameter = securityParameter
+    self.security_parameter = security_parameter
 
-    # a random string of length `self.securityParameter` used only once per commitment
+    # a random string of length `self.security_parameter` used only once per commitment
     self.secret = self.generateSecret()
 
   def generateSecret(self):
@@ -31,7 +31,7 @@ class BBSBitCommitmentScheme(CommitmentScheme):
   def generateSecret(self):
     # the secret is a random quadratic residue
     self.secret = self.oneWayPermutation(
-        random.getrandbits(self.securityParameter))
+        random.getrandbits(self.security_parameter))
     return self.secret
 
   def commit(self, bit):
@@ -68,16 +68,16 @@ class BBSIntCommitmentScheme(CommitmentScheme):
                numBits,
                oneWayPermutation,
                hardcorePredicate,
-               securityParameter=512):
+               security_parameter=512):
     """
     A commitment scheme for integers of a prespecified length `numBits`. Applies the
     bit commitment scheme to each bit independently.
     """
     self.schemes = [
         BBSBitCommitmentScheme(oneWayPermutation, hardcorePredicate,
-                               securityParameter) for _ in range(numBits)
+                               security_parameter) for _ in range(numBits)
     ]
-    super().__init__(oneWayPermutation, hardcorePredicate, securityParameter)
+    super().__init__(oneWayPermutation, hardcorePredicate, security_parameter)
 
   def generateSecret(self):
     self.secret = [x.secret for x in self.schemes]
@@ -118,13 +118,13 @@ class BBSIntCommitmentVerifier(object):
 
 if __name__ == "__main__":
   import blum_blum_shub
-  securityParameter = 10
-  oneWayPerm = blum_blum_shub.blum_blum_shub(securityParameter)
+  security_parameter = 10
+  one_way_perm = blum_blum_shub.blum_blum_shub(security_parameter)
   hardcorePred = blum_blum_shub.parity
 
   print('Bit commitment')
-  scheme = BBSBitCommitmentScheme(oneWayPerm, hardcorePred, securityParameter)
-  verifier = BBSBitCommitmentVerifier(oneWayPerm, hardcorePred)
+  scheme = BBSBitCommitmentScheme(one_way_perm, hardcorePred, security_parameter)
+  verifier = BBSBitCommitmentVerifier(one_way_perm, hardcorePred)
 
   for _ in range(10):
     bit = random.choice([0, 1])
@@ -136,8 +136,8 @@ if __name__ == "__main__":
     print('{} == {}? {}; {} {}'.format(bit, trueBit, valid, secret, commitment))
 
   print('Int commitment')
-  scheme = BBSIntCommitmentScheme(10, oneWayPerm, hardcorePred)
-  verifier = BBSIntCommitmentVerifier(10, oneWayPerm, hardcorePred)
+  scheme = BBSIntCommitmentScheme(10, one_way_perm, hardcorePred)
+  verifier = BBSIntCommitmentVerifier(10, one_way_perm, hardcorePred)
   choices = list(range(1024))
   for _ in range(10):
     theInt = random.choice(choices)
