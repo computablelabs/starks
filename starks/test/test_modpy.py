@@ -42,10 +42,31 @@ class TestModP(unittest.TestCase):
 
   def test_rationals_arithmetic(self):
     """Test that rational arithmetic is sensible."""
-    modulus = 11 
+    modulus = 31 
     ratmod = RationalsModP(modulus)
     assert ratmod(1, 2) * ratmod(1, 2) == ratmod(1, 4) 
-    print("ratmod(3, 4) * ratmod(5, 6)")
-    print(ratmod(3, 4) * ratmod(5, 6))
     assert ratmod(3, 4) * ratmod(5, 6) == ratmod(5, 8) 
+    assert 1 / ratmod(3, 4) == ratmod(4, 3) 
+    assert 1 + ratmod(1, 2) == ratmod(3, 2)
+    assert -ratmod(1, 2) == ratmod(-1, 2)
+    assert 1 - ratmod(1, 2) == ratmod(1, 2)
+
+  def test_count_unique_rationals(self):
+    """Test count of unique number of rational numbers
+    
+    |Q/p| == p by some abstract algebra. Check this maps out in our implementation. 
+    """
+    modulus = 7
+    ratmod = RationalsModP(modulus)
+    uniques = []
+    for num in range(modulus):
+      for den in range(1, modulus):
+        cur = ratmod(num, den)
+        is_unique = True 
+        for unique in uniques:
+          if cur == unique:
+            is_unique = False
+        if is_unique:
+          uniques.append(cur)
+    assert len(uniques) == modulus
 

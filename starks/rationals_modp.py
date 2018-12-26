@@ -3,6 +3,7 @@
 Q/p is the field of fractiosn over Z/p. This is canonically isomorphic to Z/p
 but can be useful to have a separate representation for experimentation.
 """
+from starks.euclidean import gcd
 from starks.numbertype import FieldElement
 from starks.numbertype import memoize
 from starks.numbertype import typecheck
@@ -14,12 +15,24 @@ def RationalsModP(p):
   """Assume p is a prime."""
 
   class RationalModP(_Modular):
-    """A rational modulo p"""
+    """A rational modulo p
+    
+    The rational is stored with numerator and denominator relatively prime.
+    This is done to prevent growth in numerator or denominator which causes
+    overflow and makes math harder. 
+    """
 
-    def __init__(self, m, n):
+    def __init__(self, m, n=1):
+      """Constructor for rationals.
+
+      If denominator is not specified, set it to 1.
+      """
       try:
-        self.m = int(m) % RationalModP.p
-        self.n = int(n) % RationalModP.p
+        num = int(m) % RationalModP.p
+        den = int(n) % RationalModP.p
+        common = gcd(num, den)
+        self.m = num // common
+        self.n = den // common
       except:
         raise TypeError("Can't cast type %s to %s in __init__" %
                         (type(n).__name__, type(self).__name__))
@@ -30,30 +43,34 @@ def RationalsModP(p):
     def __add__(self, other):
       num = (self.m * other.n + other.m * self.n) % RationalModP.p
       den = (self.n * other.n) % RationalModP.p
-      return RationalModP(num, den)
+      common = gcd(num, den)
+      return RationalModP(num // common, den // common)
 
     @typecheck
     def __sub__(self, other):
       num = (self.m * other.n - other.m * self.n) % RationalModP.p
       den = (self.n * other.n) % RationalModP.p
-      return RationalModP(num, den)
+      common = gcd(num, den)
+      return RationalModP(num // common, den // common)
 
     @typecheck
     def __mul__(self, other):
       num = (self.m * other.m) % RationalModP.p
-      den = (self.n * self.n) % RationalModP.p
+      den = (self.n * other.n) % RationalModP.p
       return RationalModP(num, den)
 
     def __neg__(self):
-      return RationalModP(-self.n, self.m)
+      return RationalModP(-self.m, self.n)
 
     @typecheck
     def __eq__(self, other):
-      return isinstance(other, RationalModP) and (self.m * other.n == other.m * self.n) 
+      return isinstance(other, RationalModP) and (
+          (self.m * other.n) % RationalModP.p == (other.m * self.n) % RationalModP.p)
 
     @typecheck
     def __ne__(self, other):
-      return isinstance(other, IntegerModP) is False or (self.m * other.n != other.m * self.n)
+      return isinstance(other, IntegerModP) is False or (
+          (self.m * other.n) % RationalModP.p != (other.m * self.n) % RationalModP.p)
 
     #@typecheck
     #def __divmod__(self, divisor):
