@@ -160,20 +160,20 @@ def convince_beyond_doubt(G1, G2, isomorphism, error_tolerance=1e-20):
     print(probability_fooled)
 
 
-def messagesFromProtocol(G1, G2, isomorphism):
-  p = Prover(G1, G2, isomorphism)
-  v = Verifier(G1, G2)
+def messages_from_protocol(G1, G2, isomorphism):
+  p = ZKProver(G1, G2, isomorphism)
+  v = ZKVerifier(G1, G2)
 
-  H = p.send_isomorphic_copy()
+  isomorphism, H = p.send_isomorphic_copy()
   choice = v.choose_graph()
-  witnessIsomorphism = p.prove_isomorphic_to(choice)
+  witness_isomorphism = p.prove_isomorphic_to(isomorphism, choice)
 
-  return [H, choice, witnessIsomorphism]
+  return [H, choice, witness_isomorphism]
 
 
-def simulateProtocol(G1, G2):
+def simulate_protocol(G1, G2):
   # Construct data drawn from the same distribution as what is
-  # returned by messagesFromProtocol
+  # returned by messages_from_protocol
   choice = random.choice([1, 2])
   G = [G1, G2][choice - 1]
   n = num_vertices(G)
