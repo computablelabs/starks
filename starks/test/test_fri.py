@@ -6,6 +6,7 @@ from starks.merkle_tree import merkelize
 from starks.poly_utils import PrimeField
 from starks.compression import bin_length
 from starks.compression import compress_fri
+from starks.modp import IntegersModP
 
 
 class TestFRI(unittest.TestCase):
@@ -17,14 +18,16 @@ class TestFRI(unittest.TestCase):
     """Test proof on low degree implementation"""
     degree = 4
     modulus = 31
+    mod31 = IntegersModP(31)
     # 1 + 2x + 3x^2 + 4 x^3 mod 31
-    poly = [[val] for val in list(range(degree))]
+    poly = [[mod31(val)] for val in list(range(degree))]
     # TODO(rbharath): How does the choice of the n-th root of
     # unity make a difference in the fft?
 
     # A root of unity is a number such that z^n = 1
     # This provides us a 6-th root of unity (z^6 = 1)
-    root_of_unity = pow(3, (modulus - 1) // 6, modulus)
+    #root_of_unity = pow(3, (modulus - 1) // 6, modulus)
+    root_of_unity = mod31(3)**((modulus-1)//6)
     evaluations = fft(poly, modulus, root_of_unity)
     evaluations = [val[0] for val in evaluations]
     assert len(evaluations) == 6
@@ -38,12 +41,13 @@ class TestFRI(unittest.TestCase):
   def test_high_degree_prove(self):
     """Tests proof generation on high degree polynomials"""
     steps = 512
-    # Some round constants borrowed from MiMC
-    poly = [[(i**7) ^ 42] for i in range(steps)]
     modulus = 2**256 - 2**32 * 351 + 1
-    f = PrimeField(modulus)
+    mod = IntegersModP(modulus)
+    # Some round constants borrowed from MiMC
+    poly = [[mod((i**7) ^ 42)] for i in range(steps)]
     # Root of unity such that x^steps=1
-    G = f.exp(7, (modulus - 1) // steps)
+    #G = f.exp(7, (modulus - 1) // steps)
+    G = mod(7)**((modulus-1)//steps)
     evaluations = fft(poly, modulus, G)
     evaluations = [val[0] for val in evaluations]
     # We're trying to prove this is a (steps-1)-degree

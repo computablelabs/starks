@@ -1,10 +1,20 @@
 import unittest
+from starks.utils import mimc
 from starks.utils import get_power_cycle 
 
 class TestUtils(unittest.TestCase):
   """
   Basic tests for utils functions 
   """
+  def test_mimc(self):
+    """
+    Basic tests of MiMC.
+    """
+    inp = 5
+    steps = 3
+    round_constants = [2, 7]
+    val = mimc(inp, steps, round_constants)
+
   def test_get_power_cycle(self):
     """Basic test for power cycle."""
     modulus = 31 

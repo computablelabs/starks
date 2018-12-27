@@ -82,6 +82,11 @@ def IntegersModP(p):
     def __int__(self):
       return self.n
 
+    # TODO(rbharath): Can this method be done better?
+    def to_bytes(self):
+      return self.n.to_bytes(32, 'big')
+
+
   IntegerModP.p = p
   IntegerModP.__name__ = 'Z/%d' % (p)
   IntegerModP.englishName = 'IntegersMod%d' % (p)

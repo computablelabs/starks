@@ -1,21 +1,16 @@
 from starks.merkle_tree import merkelize, mk_branch, verify_branch
 from starks.utils import get_power_cycle, get_pseudorandom_indices
-from starks.poly_utils import PrimeField
+#from starks.poly_utils import PrimeField
 
 # The number of spot checks performed at each recursion of the
 # FRI proof.
-fri_spot_check_security_factor = 40
 
-# TODO(rbharath): Why are quartics used everywhere in this
-# file? Any specific reason or could cubics or whatever work
-# too?
-# I think we could use a cubic; main trick here is that we
-# need a low degree polynomial.
 def prove_low_degree(values,
                      root_of_unity,
                      maxdeg_plus_1,
                      modulus,
-                     exclude_multiples_of=0):
+                     exclude_multiples_of=0,
+                     fri_spot_check_security_factor=40):
   """
   Generate an FRI proof that the polynomial that has the
   specified values at successive powers of the specified root
@@ -27,7 +22,7 @@ def prove_low_degree(values,
   Note that if values is a n-degree polynomial, root_of_unity
   should be a n-th root of unity.
   """
-  f = PrimeField(modulus)
+  #f = PrimeField(modulus)
   print('Proving %d values are degree <= %d' % (len(values), maxdeg_plus_1))
 
   # If the degree we are checking for is less than or equal to
@@ -35,10 +30,16 @@ def prove_low_degree(values,
   # TODO(rbharath): Why does this make sense?
   if maxdeg_plus_1 <= 16:
     print('Produced FRI proof')
-    return [[x.to_bytes(32, 'big') for x in values]]
+    #return [[x.to_bytes(32, 'big') for x in values]]
+    return [[x.to_bytes() for x in values]]
 
   # Calculate the set of x coordinates
   xs = get_power_cycle(root_of_unity, modulus)
+  ###############################################
+  print("type(xs[0])")
+  print(type(xs[0]))
+  ###############################################
+  
   assert len(values) == len(xs)
 
   # Put the values into a Merkle tree. This is the root that
@@ -92,9 +93,10 @@ def verify_low_degree_proof(merkle_root,
                             proof,
                             maxdeg_plus_1,
                             modulus,
-                            exclude_multiples_of=0):
+                            exclude_multiples_of=0,
+                            fri_spot_check_security_factor=40):
   """Verify an FRI proof"""
-  f = PrimeField(modulus)
+  #f = PrimeField(modulus)
 
   # Calculate which root of unity we're working with
   testval = root_of_unity

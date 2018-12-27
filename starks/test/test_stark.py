@@ -37,15 +37,6 @@ class TestStark(unittest.TestCase):
   Basic tests for Stark construction implementation. 
   """
 
-  def test_mimc(self):
-    """
-    Basic tests of MiMC.
-    """
-    inp = 5
-    steps = 3
-    round_constants = [2, 7]
-    val = mimc(inp, steps, round_constants)
-
   def test_unpack_merkle_leaf(self):
     """
     Tests that merkle leaf unpacking works correctly.
