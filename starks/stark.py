@@ -7,12 +7,7 @@ from starks.fri import prove_low_degree, verify_low_degree_proof
 from starks.utils import get_power_cycle, get_pseudorandom_indices, is_a_power_of_2
 from starks.air import Computation
 
-#modulus = 2**256 - 2**32 * 351 + 1
-#f = PrimeField(modulus)
-#nonresidue = 7
-
 # Number of branches used for Merkle-tree check
-spot_check_security_factor = 80
 
 def merkelize_polynomials(dims, polynomials):
   """Given a list of polynomial evaluations, merkelizes them together.
@@ -72,7 +67,7 @@ def unpack_merkle_leaf(leaf, dims, num_polys):
 
 class StarkParams(object):
   """Holds the cryptographic parameters needed for STARK"""
-  def __init__(self, field, comp, modulus, extension_factor):
+  def __init__(self, field, comp, modulus, extension_factor, spot_check_security_factor=80):
     """
     Parameters
     ----------
@@ -92,6 +87,7 @@ class StarkParams(object):
     self.modulus = modulus
     self.extension_factor = extension_factor
     self.precision = comp.steps * extension_factor
+    self.spot_check_security_factor = spot_check_security_factor
 
     # Root of unity such that x^precision=1
     self.G2 = self.field.exp(7, (modulus - 1) // self.precision)
@@ -304,7 +300,7 @@ def compute_pseudorandom_linear_combination(comp, params, mtree, polys):
 # TODO(rbharath): This function is poorly structured since it computes spot
 # checks for both the mtree and the ltree simultaneously. This makes
 # refactoring challenging. Break up and separate in future PR.
-def compute_merkle_spot_checks(mtree, l_mtree, comp, params, samples=spot_check_security_factor):
+def compute_merkle_spot_checks(mtree, l_mtree, comp, params, samples=80):
   """Computes pseudorandom spot checks of Merkle tree."""
   # Do some spot checks of the Merkle tree at pseudo-random
   # coordinates, excluding multiples of `extension_factor`
@@ -396,7 +392,7 @@ def verify_proof(comp, params, proof):
       exclude_multiples_of=comp.extension_factor)
 
   ## Performs the spot checks
-  samples = spot_check_security_factor
+  samples = params.spot_check_security_factor
   positions = get_pseudorandom_indices(
       l_root, params.precision, samples,
       exclude_multiples_of=params.extension_factor)
@@ -404,7 +400,7 @@ def verify_proof(comp, params, proof):
   for i, pos in enumerate(positions):
     verify_proof_at_position(comp, params, ks, proof, i, pos, constants_polynomials)
 
-  print('Verified %d consistency checks' % spot_check_security_factor)
+  print('Verified %d consistency checks' % params.spot_check_security_factor)
   print('Verified STARK in %.4f sec' % (time.time() - start_time))
   return True
 

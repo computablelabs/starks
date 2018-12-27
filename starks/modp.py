@@ -86,7 +86,3 @@ def IntegersModP(p):
   IntegerModP.__name__ = 'Z/%d' % (p)
   IntegerModP.englishName = 'IntegersMod%d' % (p)
   return IntegerModP
-
-
-if __name__ == "__main__":
-  mod7 = IntegersModP(7)

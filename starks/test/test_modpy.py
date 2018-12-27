@@ -1,6 +1,7 @@
 import unittest
 from starks.modp import IntegersModP
 from starks.rationals_modp import RationalsModP
+from starks.poly_utils import PrimeField
 
 class TestModP(unittest.TestCase):
   """Basic tests for Mod-p numbers."""
@@ -50,6 +51,16 @@ class TestModP(unittest.TestCase):
     assert 1 + ratmod(1, 2) == ratmod(3, 2)
     assert -ratmod(1, 2) == ratmod(-1, 2)
     assert 1 - ratmod(1, 2) == ratmod(1, 2)
+
+  def test_exponentiation(self):
+    """Tests that old and new multiplication match."""
+    steps = 512
+    modulus = 2**256 - 2**32 * 351 + 1
+    mod = IntegersModP(modulus)
+    f = PrimeField(modulus)
+    Gorig = f.exp(7, (modulus - 1) // steps)
+    G = mod(7)**((modulus - 1) // steps)
+    assert int(G) == Gorig
 
   def test_count_unique_rationals(self):
     """Test count of unique number of rational numbers
