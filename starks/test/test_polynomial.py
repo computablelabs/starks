@@ -107,3 +107,18 @@ class TestPolynomial(unittest.TestCase):
     assert polysMod5([1 / Mod5(7), 1, 7]) == polysMod5([1,7,49]) / polysMod5([7])
     assert polysMod11([1 / Mod11(7), 1, 7]) == polysMod11([1,7,49]) / polysMod11([7])
 
+  def test_polynomial_call(self):
+    """Test evaluation of polynomials."""
+    mod5 = IntegersModP(5)
+    polysMod5 = polynomials_over(mod5).factory
+    # 1 + x
+    poly = polysMod5([1, 1])
+    # z = 3
+    z = mod5(3)
+    assert z + 1 == poly(z)
+    # 1 + x + x^2 (1 + 3 + 9 == 13 == 3)
+    poly2 = polysMod5([1, 1, 1])
+    assert 1 + z + z**2 == poly2(z)
+    assert poly2(z) == mod5(3)
+
+

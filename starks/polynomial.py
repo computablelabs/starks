@@ -144,6 +144,16 @@ def polynomials_over(field=fractions.Fraction):
         raise ZeroDivisionError
       return divmod(self, divisor)[1]
 
+    # TODO(rbharath): Possibly type-check this.
+    def __call__(self, x):
+      y = 0
+      power_of_x = 1
+      for i, a in enumerate(self):
+        y += power_of_x * a 
+        power_of_x = (power_of_x * x)
+      return y
+
+
   def Zero():
     return Polynomial([])
 
