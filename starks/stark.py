@@ -1,11 +1,12 @@
 import time
 from starks.merkle_tree import merkelize, mk_branch, verify_branch, blake
 from starks.compression import compress_fri, decompress_fri, compress_branches, decompress_branches, bin_length
-from starks.poly_utils import PrimeField
+#from starks.poly_utils import PrimeField
 from starks.fft import fft
 from starks.fri import prove_low_degree, verify_low_degree_proof
 from starks.utils import get_power_cycle, get_pseudorandom_indices, is_a_power_of_2
 from starks.air import Computation
+from starks.poly_utils import multi_inv
 
 # Number of branches used for Merkle-tree check
 
@@ -90,10 +91,12 @@ class StarkParams(object):
     self.spot_check_security_factor = spot_check_security_factor
 
     # Root of unity such that x^precision=1
-    self.G2 = self.field.exp(7, (modulus - 1) // self.precision)
+    #self.G2 = self.field.exp(7, (modulus - 1) // self.precision)
+    self.G2 = 7**((modulus - 1) // self.precision)
 
     # Root of unity such that x^steps=1
-    self.G1 = self.field.exp(self.G2, extension_factor)
+    #self.G1 = self.field.exp(self.G2, extension_factor)
+    self.G1 = self.G2**extension_factor
 
     # Powers of the higher-order root of unity
     self.xs = get_power_cycle(self.G2, modulus)
@@ -160,7 +163,7 @@ def construct_constraint_polynomial(comp, params,
   given computational tape. For now, this function only works
   with MiMC.
   """
-  f = comp.field
+  #f = comp.field
   deg = len(comp.constants[0])
   extensions, _ = construct_constants_polynomials(comp, params)
 
@@ -173,7 +176,8 @@ def construct_constraint_polynomial(comp, params,
   # extensions[d][i][0] unpacks the output of fft() which adds an extra list
   step_p_evals = [comp.step_fn(
     f, p_evaluations[i], [extensions[d][i][0] for d in range(deg)]) for i in range(params.precision)]
-  c_of_p_evals = [[p_next[dim] - step_p[dim] % params.modulus for dim in range(comp.dims)] for (p_next, step_p) in zip(p_next_step_evals, step_p_evals)]
+  #c_of_p_evals = [[p_next[dim] - step_p[dim] % params.modulus for dim in range(comp.dims)] for (p_next, step_p) in zip(p_next_step_evals, step_p_evals)]
+  c_of_p_evals = [[p_next[dim] - step_p[dim] for dim in range(comp.dims)] for (p_next, step_p) in zip(p_next_step_evals, step_p_evals)]
   print('Computed C(P, K) polynomial')
   return c_of_p_evals
 
@@ -189,11 +193,13 @@ def construct_remainder_polynomial(comp, params, c_of_p_evaluations):
   z_num_evaluations = [
       params.xs[(i * comp.steps) % params.precision] - 1 for i in range(params.precision)
   ]
-  z_num_inv = f.multi_inv(z_num_evaluations)
+  #z_num_inv = f.multi_inv(z_num_evaluations)
+  z_num_inv = multi_inv(z_num_evaluations)
   # (x_i - x_{step-1}) list
   z_den_evaluations = [params.xs[i] - params.last_step_position for i in range(params.precision)]
   d_evaluations = [
-      [int(cp[dim] * zd * zni % params.modulus) for dim in range(comp.dims)]
+      #[int(cp[dim] * zd * zni % params.modulus) for dim in range(comp.dims)]
+      [cp[dim] * zd * zni for dim in range(comp.dims)]
       for cp, zd, zni in zip(c_of_p_evaluations, z_den_evaluations, z_num_inv)
   ]
   print('Computed D polynomial')
@@ -204,14 +210,20 @@ def construct_boundary_polynomial(comp, params, p_evaluations):
   
   Compute interpolant of ((1, input), (x_atlast_step, output))
   """
-  f = comp.field
+  field = comp.field
+  polysOver = polynomials_over(field).factory
   i_evaluations = []
   inv_z2_evaluations = []
-  zeropoly2 = f.mul_polys([-1, 1], [-params.last_step_position, 1])
+  #zeropoly2 = f.mul_polys([-1, 1], [-params.last_step_position, 1])
+  zeropoly2 = polysOver([-1, 1])*polysOver([-params.last_step_position, 1])
   for dim in range(comp.dims):
-    interpolant = f.lagrange_interp_2([1, params.last_step_position], [comp.inp[dim], comp.output[dim]])
-    i_evaluations_dim = [f.eval_poly_at(interpolant, x) for x in params.xs]
-    inv_z2_evaluations_dim = f.multi_inv([f.eval_poly_at(zeropoly2, x) for x in params.xs])
+    #interpolant = f.lagrange_interp_2([1, params.last_step_position], [comp.inp[dim], comp.output[dim]])
+    interpolant = lagrange_interp_2(polysOver([1, params.last_step_position]),
+        polysOver([comp.inp[dim], comp.output[dim]]))
+    #i_evaluations_dim = [f.eval_poly_at(interpolant, x) for x in params.xs]
+    i_evaluations_dim = [interpolant(x) for x in params.xs]
+    #inv_z2_evaluations_dim = f.multi_inv([f.eval_poly_at(zeropoly2, x) for x in params.xs])
+    inv_z2_evaluations_dim = multi_inv([zeropoly2(x) for x in params.xs])
     # Append to list
     i_evaluations.append(i_evaluations_dim)
     inv_z2_evaluations.append(inv_z2_evaluations_dim)
@@ -221,7 +233,8 @@ def construct_boundary_polynomial(comp, params, p_evaluations):
   b_evaluations = []
   for p, i, invq in zip(p_evaluations, i_evaluations, inv_z2_evaluations):
     b_evaluations_dim = [
-      ((p[dim] - i[dim]) * invq[dim]) % params.modulus for dim in range(comp.dims) ]
+      #((p[dim] - i[dim]) * invq[dim]) % params.modulus for dim in range(comp.dims) ]
+      (p[dim] - i[dim]) * invq[dim] for dim in range(comp.dims) ]
     b_evaluations.append(b_evaluations_dim)
   print('Computed B polynomial')
   return b_evaluations
@@ -269,14 +282,17 @@ def compute_pseudorandom_linear_combination_1d(comp, params, mtree, polys):
   # Compute the linear combination. We don't even both
   # calculating it in coefficient form; we just compute the
   # evaluations
-  G2_to_the_steps = f.exp(params.G2, comp.steps)
+  #G2_to_the_steps = f.exp(params.G2, comp.steps)
+  G2_to_the_steps = params.G2**comp.steps
   powers = [1]
   for i in range(1, params.precision):
-    powers.append(powers[-1] * G2_to_the_steps % params.modulus)
+    #powers.append(powers[-1] * G2_to_the_steps % params.modulus)
+    powers.append(powers[-1] * G2_to_the_steps)
 
   l_evaluations_per_dim = []
   for dim in range(comp.dims):
-    l_evaluations_dim = [(d_evaluations[i][dim] + p_evaluations[i][dim] * k1 + p_evaluations[i][dim] * k2 * powers[i] + b_evaluations[i][dim] * k3 + b_evaluations[i][dim] * k4 * powers[i]) % params.modulus for i in range(params.precision)]
+    #l_evaluations_dim = [(d_evaluations[i][dim] + p_evaluations[i][dim] * k1 + p_evaluations[i][dim] * k2 * powers[i] + b_evaluations[i][dim] * k3 + b_evaluations[i][dim] * k4 * powers[i]) % params.modulus for i in range(params.precision)]
+    l_evaluations_dim = [(d_evaluations[i][dim] + p_evaluations[i][dim] * k1 + p_evaluations[i][dim] * k2 * powers[i] + b_evaluations[i][dim] * k3 + b_evaluations[i][dim] * k4 * powers[i]) for i in range(params.precision)]
     l_evaluations_per_dim.append(l_evaluations_dim)
   return l_evaluations_per_dim
 
@@ -286,14 +302,17 @@ def compute_pseudorandom_linear_combination(comp, params, mtree, polys):
   A deterministic procedure for pseudorandomly combining dimensions
   """
   f = comp.field
-  G2_to_the_steps = f.exp(params.G2, comp.steps)
+  #G2_to_the_steps = f.exp(params.G2, comp.steps)
+  G2_to_the_steps = params.G2**comp.steps
   powers = [1]
   for i in range(1, params.precision):
-    powers.append(powers[-1] * G2_to_the_steps % params.modulus)
+    #powers.append(powers[-1] * G2_to_the_steps % params.modulus)
+    powers.append(powers[-1] * G2_to_the_steps)
   l_evaluations_per_dim = compute_pseudorandom_linear_combination_1d(comp,
       params, mtree, polys)
   l_ks = get_pseudorandom_ks(mtree[1], comp.dims)
-  l_evaluations = [sum([l_evals_dim[i] + l_evals_dim[i] * l_k * powers[i] for (l_evals_dim, l_k) in zip(l_evaluations_per_dim, l_ks)]) % params.modulus for i in range(params.precision)]
+  #l_evaluations = [sum([l_evals_dim[i] + l_evals_dim[i] * l_k * powers[i] for (l_evals_dim, l_k) in zip(l_evaluations_per_dim, l_ks)]) % params.modulus for i in range(params.precision)]
+  l_evaluations = [sum([l_evals_dim[i] + l_evals_dim[i] * l_k * powers[i] for (l_evals_dim, l_k) in zip(l_evaluations_per_dim, l_ks)]) for i in range(params.precision)]
   print('Computed random linear combination')
   return l_evaluations
 
@@ -447,13 +466,15 @@ def verify_proof_at_position(comp, params, ks, proof, i, pos, constants_polynomi
     p_of_x_dim = p_of_x[dim]
     d_of_x_dim = d_of_x[dim]
     f_of_p_of_x_dim = f_of_p_of_x[dim]
-    assert (p_of_g1x_dim - f_of_p_of_x_dim - zvalue * d_of_x_dim) % params.modulus == 0
+    #assert (p_of_g1x_dim - f_of_p_of_x_dim - zvalue * d_of_x_dim) % params.modulus == 0
+    assert (p_of_g1x_dim - f_of_p_of_x_dim - zvalue * d_of_x_dim) == 0
 
   # Check boundary constraints B(x) * Q(x) + I(x) = P(x)
   zeropoly2 = comp.field.mul_polys([-1, 1], [-params.last_step_position, 1])
   for dim in range(comp.dims):
     interpolant_dim = comp.field.lagrange_interp_2([1, params.last_step_position], [comp.inp[dim], comp.output[dim]])
-    assert (p_of_x[dim] - b_of_x[dim] * comp.field.eval_poly_at(zeropoly2, x) - comp.field.eval_poly_at(interpolant_dim, x)) % params.modulus == 0
+    #assert (p_of_x[dim] - b_of_x[dim] * comp.field.eval_poly_at(zeropoly2, x) - comp.field.eval_poly_at(interpolant_dim, x)) % params.modulus == 0
+    assert (p_of_x[dim] - b_of_x[dim] * comp.field.eval_poly_at(zeropoly2, x) - comp.field.eval_poly_at(interpolant_dim, x)) == 0
 
   # TODO(rbharath): I'm commenting this out for now, but I think commenting
   # out this check breaks security guarantees!! To fix this, we need a way

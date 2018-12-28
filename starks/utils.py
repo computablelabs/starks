@@ -1,5 +1,6 @@
-from starks.merkle_tree import blake
 import time
+from starks.merkle_tree import blake
+from starks.modp import IntegersModP
 
 # TODO(rbharath): Wait, does Vitalik's blog post claim that
 # the verifier complexity is linear; Nah looks like t*log(t)
@@ -22,9 +23,11 @@ def get_power_cycle(r, modulus):
   Get the set of powers of R, until but not including when the
   powers loop back to 1
   """
-  o = [1, r]
+  mod = IntegersModP(modulus)
+  o = [mod(1), r]
   while o[-1] != 1:
-    o.append((o[-1] * r) % modulus)
+    #o.append((o[-1] * r) % modulus)
+    o.append(o[-1] * r)
   return o[:-1]
 
 

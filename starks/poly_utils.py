@@ -28,44 +28,6 @@ def multi_inv(values):
     inv = inv * (values[i - 1] or 1)
   return outputs
 
-## Evaluate a polynomial at a point
-## Arithmetic for polynomials
-#def add_polys(self, a, b):
-#  return [((a[i] if i < len(a) else 0) +
-#           (b[i] if i < len(b) else 0)) % self.modulus
-#          for i in range(max(len(a), len(b)))]
-#
-#def sub_polys(self, a, b):
-#  return [((a[i] if i < len(a) else 0) -
-#           (b[i] if i < len(b) else 0)) % self.modulus
-#          for i in range(max(len(a), len(b)))]
-
-#def mul_by_const(self, a, c):
-#  return [(x * c) % self.modulus for x in a]
-
-#def mul_polys(self, a, b):
-#  o = [0] * (len(a) + len(b) - 1)
-#  for i, aval in enumerate(a):
-#    for j, bval in enumerate(b):
-#      o[i + j] += a[i] * b[j]
-#  return [x % self.modulus for x in o]
-
-#def div_polys(self, a, b):
-#  assert len(a) >= len(b)
-#  a = [x for x in a]
-#  o = []
-#  apos = len(a) - 1
-#  bpos = len(b) - 1
-#  diff = apos - bpos
-#  while diff >= 0:
-#    quot = self.div(a[apos], b[bpos])
-#    o.insert(0, quot)
-#    for i in range(bpos, -1, -1):
-#      a[diff + i] -= b[i] * quot
-#    apos -= 1
-#    diff -= 1
-#  return [x % self.modulus for x in o]
-
 def zpoly(modulus, roots):
   """Build a polynomial with the specified roots over Z/modulus.
   
@@ -238,41 +200,3 @@ def multi_interp_4(modulus, xsets, ysets):
                eq3.coefficients[i] * inv_y3) for i in range(4)]))
   # assert o == [self.lagrange_interp_4(xs, ys) for xs, ys in zip(xsets, ysets)]
   return o
-
-#class PrimeField():
-#  """
-#  Creates an object that includes convenience operations for
-#  numbers and polynomials in some prime field
-#  """
-#
-#  def __init__(self, modulus):
-#    assert pow(2, modulus, modulus) == 2
-#    self.modulus = modulus
-#
-#  def add(self, x, y):
-#    return (x + y) % self.modulus
-#
-#  def sub(self, x, y):
-#    return (x - y) % self.modulus
-#
-#  def mul(self, x, y):
-#    return (x * y) % self.modulus
-#
-#  def exp(self, x, p):
-#    return pow(x, p, self.modulus)
-#
-#  # Modular inverse using the extended Euclidean algorithm
-#  def inv(self, a):
-#    if a == 0:
-#      return 0
-#    lm, hm = 1, 0
-#    low, high = a % self.modulus, self.modulus
-#    while low > 1:
-#      r = high // low
-#      nm, new = hm - lm * r, high - low * r
-#      lm, low, hm, high = nm, new, lm, low
-#    return lm % self.modulus
-#
-#
-#  def div(self, x, y):
-#    return self.mul(x, self.inv(y))

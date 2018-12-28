@@ -26,7 +26,8 @@ from starks.stark import compute_pseudorandom_linear_combination_1d
 from starks.stark import compute_pseudorandom_linear_combination
 from starks.stark import merkelize_polynomials 
 from starks.stark import compute_merkle_spot_checks
-from starks.poly_utils import PrimeField
+#from starks.poly_utils import PrimeField
+from starks.modp import IntegersModP
 from starks.compression import bin_length
 from starks.compression import compress_branches
 from starks.compression import compress_fri
@@ -67,13 +68,13 @@ class TestStark(unittest.TestCase):
     spot_check_security_factor = 80
     constants = [[i, i] for i in range(steps)]
     modulus = 2**256 - 2**32 * 351 + 1
+    field = IntegersModP(modulus)
     extension_factor = 8
-    field = PrimeField(modulus)
     ## Factoring out computation
     def step_fn(f, state, constants):
       # c_1*value**2 + c_0
-      value = state[0]
-      return [f.add(f.mul(constants[1], f.exp(value, 2)), constants[0])]
+      #return [f.add(f.mul(constants[1], f.exp(value, 2)), constants[0])]
+      return [constants[1]*state[0]**2 + constants[0]]
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)
     params = StarkParams(field, comp, modulus, extension_factor)
