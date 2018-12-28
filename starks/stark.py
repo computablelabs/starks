@@ -1,7 +1,13 @@
 import time
-from starks.merkle_tree import merkelize, mk_branch, verify_branch, blake
-from starks.compression import compress_fri, decompress_fri, compress_branches, decompress_branches, bin_length
-#from starks.poly_utils import PrimeField
+from starks.merkle_tree import blake
+from starks.merkle_tree import verify_branch
+from starks.merkle_tree import mk_branch
+from starks.merkle_tree import merkelize
+from starks.merkle_tree import merkelize_polynomials
+from starks.merkle_tree import unpack_merkle_leaf
+from starks.polynomial import polynomials_over
+from starks.poly_utils import lagrange_interp_2 
+from starks.numbertype import FieldElement
 from starks.fft import fft
 from starks.fri import prove_low_degree, verify_low_degree_proof
 from starks.utils import get_power_cycle, get_pseudorandom_indices, is_a_power_of_2
@@ -10,72 +16,18 @@ from starks.poly_utils import multi_inv
 
 # Number of branches used for Merkle-tree check
 
-def merkelize_polynomials(dims, polynomials):
-  """Given a list of polynomial evaluations, merkelizes them together.
-
-  Each leaf of the Merkle tree contains the concatenation of the values of
-  each polynomial in polynomials at a given index. If the polynomials are
-  multidimensional, the per-dimension leaves are concatenated to form one
-  joint leaf.
-
-  Parameters
-  ----------
-  dims: Int
-    Dimensionality
-  polynomials: List
-    Each element much be a list of evaluations of a given poly. All of
-    these should have the same length.
-  """
-  # Note len(mtree_leaf) == 32 * dims * len(polys)
-  # Note len(mtree) == 2 * precision now
-  # This code packs each Merkle leaf as
-  # polyval_1_dim_1 polyval_1_dim_2 poly_val_2_dim_1 poly_val_2_dim_2 ...
-  # In the common case this is
-  # [p_of_x_dim_1 p_of_x_dim_2 .. d_of_x_dim_1 d_of_x_dim_2... b_of_x_dim_1 b_of_x_dim_2]
-  mtree = merkelize([
-      b''.join([val[dim].to_bytes(32, 'big') for val in evals for dim in range(dims)])
-      for evals in zip(*polynomials)])
-  return mtree
-
-def unpack_merkle_leaf(leaf, dims, num_polys):
-  """Unpacks a merkle leaf created by merkelize_polynomials.
-
-  Note that the packing in each Merkle leaf is
-
-  polyval_1_dim_1 polyval_1_dim_2 poly_val_2_dim_1 poly_val_2_dim_2 ...
-
-  Each value is encoded in 32 bytes, so the total length of
-  the leaf is 32 * num_polys * dims bytes.
-
-  Parameters
-  ----------
-  leaf: bytestring
-    A bytestring holding the Merkle leaf
-  dims: Int
-    The dimensionality of the state space
-  num_polys: int
-    The number of polynomials
-  """
-  vals = []
-  for poly_ind in range(num_polys):
-    for dim in range(dims):
-      start_index = 32 * (poly_ind * dims + dim)
-      end_index = 32 * (poly_ind * dims + dim + 1)
-      byte_val = leaf[start_index:end_index]
-      vals.append(byte_val)
-  return vals
-
 
 class StarkParams(object):
   """Holds the cryptographic parameters needed for STARK"""
-  def __init__(self, field, comp, modulus, extension_factor, spot_check_security_factor=80):
+  def __init__(self, field, steps: int, modulus: FieldElement,
+      extension_factor: int, spot_check_security_factor: int =80):
     """
     Parameters
     ----------
     field: Field
       The Field in which computation is permored
-    comp: Computation
-      A Computation object 
+    steps: int 
+      The number of steps in Computation 
     modulus: Int
       A prime p that defines finite field Z/p
     extension_factor: Int
@@ -87,20 +39,20 @@ class StarkParams(object):
     self.field = field
     self.modulus = modulus
     self.extension_factor = extension_factor
-    self.precision = comp.steps * extension_factor
+    self.precision = steps * extension_factor
     self.spot_check_security_factor = spot_check_security_factor
 
     # Root of unity such that x^precision=1
     #self.G2 = self.field.exp(7, (modulus - 1) // self.precision)
-    self.G2 = 7**((modulus - 1) // self.precision)
+    self.G2 = field(7)**((modulus - 1) // self.precision)
 
     # Root of unity such that x^steps=1
     #self.G1 = self.field.exp(self.G2, extension_factor)
     self.G1 = self.G2**extension_factor
 
-    # Powers of the higher-order root of unity
+    ## Powers of the higher-order root of unity
     self.xs = get_power_cycle(self.G2, modulus)
-    self.last_step_position = self.xs[(comp.steps - 1) * extension_factor]
+    self.last_step_position = self.xs[(steps - 1) * extension_factor]
 
 def construct_constants_polynomials(comp, params):
   """Transforms constants into polynomials
@@ -143,6 +95,11 @@ def construct_computation_polynomial(comp, params):
   """Constructs polynomial for the given computation."""
   # Interpolate the computational trace into a polynomial P,
   # with each step along a successive power of G1
+  #########################################################
+  print("type(comp.computational_trace[0][0])")
+  print(type(comp.computational_trace[0][0]))
+  #assert 0 == 1
+  #########################################################
   computational_trace_polynomial = fft(
       comp.computational_trace, params.modulus, params.G1,
       inv=True, dims=comp.dims)
@@ -175,7 +132,7 @@ def construct_constraint_polynomial(comp, params,
   # extensions[d][i] selects the degree d term for i-th step
   # extensions[d][i][0] unpacks the output of fft() which adds an extra list
   step_p_evals = [comp.step_fn(
-    f, p_evaluations[i], [extensions[d][i][0] for d in range(deg)]) for i in range(params.precision)]
+    comp.field, p_evaluations[i], [extensions[d][i][0] for d in range(deg)]) for i in range(params.precision)]
   #c_of_p_evals = [[p_next[dim] - step_p[dim] % params.modulus for dim in range(comp.dims)] for (p_next, step_p) in zip(p_next_step_evals, step_p_evals)]
   c_of_p_evals = [[p_next[dim] - step_p[dim] for dim in range(comp.dims)] for (p_next, step_p) in zip(p_next_step_evals, step_p_evals)]
   print('Computed C(P, K) polynomial')
@@ -218,7 +175,7 @@ def construct_boundary_polynomial(comp, params, p_evaluations):
   zeropoly2 = polysOver([-1, 1])*polysOver([-params.last_step_position, 1])
   for dim in range(comp.dims):
     #interpolant = f.lagrange_interp_2([1, params.last_step_position], [comp.inp[dim], comp.output[dim]])
-    interpolant = lagrange_interp_2(polysOver([1, params.last_step_position]),
+    interpolant = lagrange_interp_2(params.modulus, polysOver([1, params.last_step_position]),
         polysOver([comp.inp[dim], comp.output[dim]]))
     #i_evaluations_dim = [f.eval_poly_at(interpolant, x) for x in params.xs]
     i_evaluations_dim = [interpolant(x) for x in params.xs]
@@ -427,8 +384,10 @@ def verify_proof_at_position(comp, params, ks, proof, i, pos, constants_polynomi
   """Verifies merkle proof at given position in extended trace"""
   k1, k2, k3, k4 = ks
   m_root, l_root, branches, fri_proof = proof
-  x = comp.field.exp(params.G2, pos)
-  x_to_the_steps = comp.field.exp(x, comp.steps)
+  #x = comp.field.exp(params.G2, pos)
+  x = params.G2**pos
+  #x_to_the_steps = comp.field.exp(x, comp.steps)
+  x_to_the_steps = x**comp.steps
   # Recall m is the merkle tree of the raw polynomials, and l
   # is the merkle tree of the pseudorandom combination
   # polynomial. Leaf node from m[pos]
@@ -451,7 +410,8 @@ def verify_proof_at_position(comp, params, ks, proof, i, pos, constants_polynomi
   d_of_x = [int.from_bytes(d_of_x_dim, 'big') for d_of_x_dim in unpacked_leaf1[comp.dims:2*comp.dims]]
   b_of_x = [int.from_bytes(b_of_x_dim, 'big') for b_of_x_dim in unpacked_leaf1[2*comp.dims:]]
 
-  zvalue = comp.field.div(comp.field.exp(x, comp.steps) - 1, x - params.last_step_position)
+  #zvalue = comp.field.div(comp.field.exp(x, comp.steps) - 1, x - params.last_step_position)
+  zvalue = (x**comp.steps - 1)/(x - params.last_step_position)
   k_of_xs = []
   for constants_mini_polynomial in constants_polynomials:
     # This is unwrapping the polynomial

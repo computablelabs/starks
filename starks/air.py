@@ -41,8 +41,6 @@ def get_computational_trace(f, inp, steps, constants, step_fn):
     poly_constants = constants[i]
     # TODO(rbharath): Is there off-by-one error on round_contants?
     next_state = step_fn(f, computational_trace[-1], poly_constants)
-    if isinstance(next_state, int):
-      next_state = [next_state]
     computational_trace.append(next_state)
   output = computational_trace[-1]
   print('Done generating computational trace')

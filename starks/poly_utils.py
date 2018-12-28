@@ -136,6 +136,13 @@ def lagrange_interp_4(modulus, xs, ys):
 def lagrange_interp_2(modulus, xs, ys):
   mod = IntegersModP(modulus)
   polysOverMod = polynomials_over(mod).factory
+  ###############################################
+  if not isinstance(xs, list):
+    xs = xs.coefficients
+  if not isinstance(ys, list):
+    ys = ys.coefficients
+
+  ###############################################
   m = modulus
   #eq0 = [-xs[1] % m, 1]
   eq0 = polysOverMod([-xs[1], 1])
@@ -150,7 +157,8 @@ def lagrange_interp_2(modulus, xs, ys):
   inv_y0 = ys[0] * invall * e1
   inv_y1 = ys[1] * invall * e0
   #return [(eq0[i] * inv_y0 + eq1[i] * inv_y1) % m for i in range(2)]
-  return [(eq0.coefficients[i] * inv_y0 + eq1.coefficients[i] * inv_y1) for i in range(2)]
+  #return [(eq0.coefficients[i] * inv_y0 + eq1.coefficients[i] * inv_y1) for i in range(2)]
+  return polysOverMod([(eq0.coefficients[i] * inv_y0 + eq1.coefficients[i] * inv_y1) for i in range(2)])
 
 #def multi_interp_4(self, xsets, ysets):
 def multi_interp_4(modulus, xsets, ysets):

@@ -1,7 +1,6 @@
 import unittest
 from starks.fft import fft
 from starks.fft import mul_polys
-from starks.poly_utils import PrimeField
 from starks.modp import IntegersModP
 
 class TestFFT(unittest.TestCase):
@@ -22,6 +21,24 @@ class TestFFT(unittest.TestCase):
     root_of_unity = mod31(3)**((modulus-1)//6)
     evaluations = fft(poly, modulus, root_of_unity)
     assert len(evaluations) == 6
+
+  def test_fft_inv(self):
+    """Test of Inverse FFT."""
+    modulus = 31 
+    mod31 = IntegersModP(31)
+    # 1 + 2x + 3x^2 + 4 x^3 mod 31
+    poly = [[mod31(val)] for val in range(4)] 
+    # TODO(rbharath): How does the choice of the n-th root of
+    # unity make a difference in the fft?
+
+    # A root of unity is a number such that z^n = 1
+    # This provides us a 6-th root of unity (z^6 = 1)
+    root_of_unity = mod31(3)**((modulus-1)//6)
+    evaluations = fft(poly, modulus, root_of_unity)
+    inv = fft(evaluations, modulus, root_of_unity, inv=True, dims=1)
+    # We get two extra terms since we chose a 6th-root of unity
+    assert inv == [[0], [1], [2], [3], [0], [0]]
+
 
   def test_fft_output_type(self):
     """The output of FFT should be in the field if input is in field."""

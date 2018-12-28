@@ -5,6 +5,8 @@ from starks.merkle_tree import merkelize
 from starks.merkle_tree import verify_branch
 from starks.merkle_tree import mk_branch
 from starks.merkle_tree import blake
+from starks.merkle_tree import merkelize_polynomials
+from starks.merkle_tree import unpack_merkle_leaf
 from starks.air import Computation
 from starks.air import get_computational_trace
 from starks.fft import fft 
@@ -12,7 +14,6 @@ from starks.fri import prove_low_degree
 from starks.fri import verify_low_degree_proof 
 from starks.utils import get_pseudorandom_indices
 from starks.stark import get_power_cycle 
-from starks.stark import unpack_merkle_leaf
 from starks.stark import mk_proof
 from starks.stark import StarkParams 
 from starks.stark import verify_proof
@@ -24,9 +25,7 @@ from starks.stark import construct_constants_polynomials
 from starks.stark import get_pseudorandom_ks
 from starks.stark import compute_pseudorandom_linear_combination_1d
 from starks.stark import compute_pseudorandom_linear_combination
-from starks.stark import merkelize_polynomials 
 from starks.stark import compute_merkle_spot_checks
-#from starks.poly_utils import PrimeField
 from starks.modp import IntegersModP
 from starks.compression import bin_length
 from starks.compression import compress_branches
@@ -56,6 +55,15 @@ class TestStark(unittest.TestCase):
     assert len(vals) == len(leaf_parts)
     for ind, val in enumerate(vals):
       assert val == leaf_parts[ind]
+
+  def test_stark_params(self):
+    """Test generation of stark parameters."""
+    steps = 512
+    modulus = 2**256 - 2**32 * 351 + 1
+    field = IntegersModP(modulus)
+    extension_factor = 8
+    # Only tests that constructor works implicitly
+    params = StarkParams(field, steps, modulus, extension_factor)
 
   def test_get_pseudorandom_indices(self):
     """
@@ -388,13 +396,13 @@ class TestStark(unittest.TestCase):
     inp = [0, 1]
     steps = 5
     modulus = 2**256 - 2**32 * 351 + 1
-    field = PrimeField(modulus)
+    field = IntegersModP(modulus)
     # This is a place filler
     constants = [[]] * steps
     def fibonacci_step(f, prev, constants):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
-      f_n_plus_1 = f.add(f_n, f_n_minus_1)
+      f_n_plus_1 = f_n + f_n_minus_1
       return [f_n, f_n_plus_1]
     trace, output = get_computational_trace(field, inp, steps,
         constants, fibonacci_step)
@@ -409,21 +417,21 @@ class TestStark(unittest.TestCase):
     Tests construction of multidim computation polynomial
     """
     dims = 2
-    inp = [0, 1]
     steps = 512
     constants = [[]] * steps
     extension_factor = 8
     modulus = 2**256 - 2**32 * 351 + 1
-    field = PrimeField(modulus)
+    field = IntegersModP(modulus)
+    inp = [field(0), field(1)]
     constraint_degree = 4
     def step_fn(f, prev, constants):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
-      f_n_plus_1 = f.add(f_n, f_n_minus_1)
+      f_n_plus_1 = f_n + f_n_minus_1
       return [f_n, f_n_plus_1]
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)
-    params = StarkParams(field, comp, modulus, extension_factor)
+    params = StarkParams(field, steps, modulus, extension_factor)
     comp_poly_evals = construct_computation_polynomial(
         comp, params)
     assert len(comp_poly_evals) == steps * extension_factor
@@ -436,21 +444,21 @@ class TestStark(unittest.TestCase):
     Tests construction of multidim constants polynomial
     """
     dims = 2
-    inp = [0, 1]
     steps = 512
     constants = [[1]] * steps
     extension_factor = 8
     modulus = 2**256 - 2**32 * 351 + 1
-    field = PrimeField(modulus)
+    field = IntegersModP(modulus)
+    inp = [field(0), field(1)]
     constraint_degree = 4
     def step_fn(f, prev, constants):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
-      f_n_plus_1 = f.add(f_n, f_n_minus_1)
+      f_n_plus_1 = f_n + f_n_minus_1
       return [f_n, f_n_plus_1]
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)
-    params = StarkParams(field, comp, modulus, extension_factor)
+    params = StarkParams(field, steps, modulus, extension_factor)
     extensions, polys = construct_constants_polynomials(
         comp, params)
     assert len(extensions) == 1
@@ -464,22 +472,22 @@ class TestStark(unittest.TestCase):
     Tests construction of constraint polynomial.
     """
     dims = 2
-    inp = [0, 1]
     steps = 512
     # This is a place filler
     constants = [[]] * steps
     extension_factor = 8
     modulus = 2**256 - 2**32 * 351 + 1
-    field = PrimeField(modulus)
+    field = IntegersModP(modulus)
+    inp = [field(0), field(1)]
     constraint_degree = 4
     def step_fn(f, prev, constants):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
-      f_n_plus_1 = f.add(f_n, f_n_minus_1)
+      f_n_plus_1 = f_n + f_n_minus_1
       return [f_n, f_n_plus_1]
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)
-    params = StarkParams(field, comp, modulus, extension_factor)
+    params = StarkParams(field, steps, modulus, extension_factor)
     comp_poly_evals = construct_computation_polynomial(
         comp, params)
     constraint_evals = construct_constraint_polynomial(
@@ -494,22 +502,22 @@ class TestStark(unittest.TestCase):
     Basic tests of FRI generation for fibonacci stark
     """
     dims = 2
-    inp = [0, 1]
     steps = 512
     constants = [[]] * steps
     modulus = 2**256 - 2**32 * 351 + 1
     extension_factor = 8
-    field = PrimeField(modulus)
+    field = IntegersModP(modulus)
     constraint_degree = 4
     def step_fn(f, prev, constants):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
-      f_n_plus_1 = f.add(f_n, f_n_minus_1)
+      f_n_plus_1 = f_n + f_n_minus_1
       return [f_n, f_n_plus_1]
+    inp = [field(0), field(1)]
     ## Factoring out computation
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)
-    params = StarkParams(field, comp, modulus, extension_factor)
+    params = StarkParams(field, steps, modulus, extension_factor)
 
     p_evaluations = construct_computation_polynomial(
         comp, params)
@@ -522,29 +530,29 @@ class TestStark(unittest.TestCase):
       assert isinstance(dval, list)
       assert len(dval) == dims
       for dim in range(dims):
-        assert isinstance(dval[dim], int)
+        assert isinstance(dval[dim], field)
 
   def test_higher_dim_boundary_polynomial(self):
     """
     Basic tests of FRI generation for fibonacci stark
     """
     dims = 2
-    inp = [0, 1]
     steps = 512
     constants = [[]] * steps
     modulus = 2**256 - 2**32 * 351 + 1
     extension_factor = 8
-    field = PrimeField(modulus)
+    field = IntegersModP(modulus)
+    inp = [field(0), field(1)]
     constraint_degree = 4
     def step_fn(f, prev, constants):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
-      f_n_plus_1 = f.add(f_n, f_n_minus_1)
+      f_n_plus_1 = f_n + f_n_minus_1
       return [f_n, f_n_plus_1]
     ## Factoring out computation
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)
-    params = StarkParams(field, comp, modulus, extension_factor)
+    params = StarkParams(field, steps, modulus, extension_factor)
 
     p_evaluations = construct_computation_polynomial(
         comp, params)
@@ -559,30 +567,30 @@ class TestStark(unittest.TestCase):
       assert isinstance(bval, list)
       assert len(bval) == dims
       for dim in range(dims):
-        assert isinstance(bval[dim], int)
+        assert isinstance(bval[dim], field)
 
   def test_higher_dim_fri(self):
     """
     Basic tests of FRI generation for fibonacci stark
     """
     dims = 2
-    inp = [0, 1]
     steps = 512
     constants = [[]] * steps
     modulus = 2**256 - 2**32 * 351 + 1
     extension_factor = 8
-    field = PrimeField(modulus)
+    field = IntegersModP(modulus)
+    inp = [field(0), field(1)]
     extension_factor = 8
     constraint_degree = 4
     def step_fn(f, prev, constants):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
-      f_n_plus_1 = f.add(f_n, f_n_minus_1)
+      f_n_plus_1 = f_n + f_n_minus_1
       return [f_n, f_n_plus_1]
     ## Factoring out computation
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)
-    params = StarkParams(field, comp, modulus, extension_factor)
+    params = StarkParams(field, steps, modulus, extension_factor)
 
     p_evaluations = construct_computation_polynomial(
         comp, params)
@@ -600,23 +608,23 @@ class TestStark(unittest.TestCase):
     Tests proof generation and verification for multidimensional state.
     """
     dims = 2
-    inp = [0, 1]
     steps = 8
     constraint_degree = 4
     modulus = 2**256 - 2**32 * 351 + 1
-    field = PrimeField(modulus)
+    field = IntegersModP(modulus)
+    inp = [field(0), field(1)]
     # This is a place filler
     constants = [[]] * steps
     extension_factor = 8
-    constraint_degree = 4
+    constraint_degree = 8
     def step_fn(f, prev, constants):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
-      f_n_plus_1 = f.add(f_n, f_n_minus_1)
+      f_n_plus_1 = f_n + f_n_minus_1
       return [f_n, f_n_plus_1]
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)
-    params = StarkParams(field, comp, modulus, extension_factor)
+    params = StarkParams(field, steps, modulus, extension_factor)
     proof = mk_proof(comp, params)
     assert verify_proof(comp, params, proof)
 

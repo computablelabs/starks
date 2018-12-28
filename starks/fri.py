@@ -1,5 +1,7 @@
 from starks.merkle_tree import merkelize, mk_branch, verify_branch
 from starks.utils import get_power_cycle, get_pseudorandom_indices
+from starks.poly_utils import lagrange_interp
+from starks.poly_utils import multi_interp_4
 #from starks.poly_utils import PrimeField
 
 # The number of spot checks performed at each recursion of the
@@ -57,12 +59,13 @@ def prove_low_degree(values,
   # row, and not directly from the polynomial, as this is more
   # efficient
   quarter_len = len(xs) // 4
-  x_polys = f.multi_interp_4(
+  x_polys = multi_interp_4(modulus,
       [[xs[i + quarter_len * j] for j in range(4)] for i in range(quarter_len)],
       [[values[i + quarter_len * j]
         for j in range(4)]
        for i in range(quarter_len)])
-  column = [f.eval_quartic(p, special_x) for p in x_polys]
+  #column = [f.eval_quartic(p, special_x) for p in x_polys]
+  column = [p(special_x) for p in x_polys]
   m2 = merkelize(column)
 
   # Pseudo-randomly select y indices to sample
@@ -82,7 +85,8 @@ def prove_low_degree(values,
   # Recurse...
   return [o] + prove_low_degree(
       column,
-      f.exp(root_of_unity, 4),
+      #f.exp(root_of_unity, 4),
+      root_of_unity**4,
       maxdeg_plus_1 // 4,
       modulus,
       exclude_multiples_of=exclude_multiples_of)
@@ -104,14 +108,18 @@ def verify_low_degree_proof(merkle_root,
   roudeg = 1
   while testval != 1:
     roudeg *= 2
-    testval = (testval * testval) % modulus
+    #testval = (testval * testval) % modulus
+    testval = (testval * testval)
 
   # Powers of the given root of unity 1, p, p**2, p**3 such that p**4 = 1
   quartic_roots_of_unity = [
       1,
-      f.exp(root_of_unity, roudeg // 4),
-      f.exp(root_of_unity, roudeg // 2),
-      f.exp(root_of_unity, roudeg * 3 // 4)
+      #f.exp(root_of_unity, roudeg // 4),
+      root_of_unity**(roudeg // 4),
+      #f.exp(root_of_unity, roudeg // 2),
+      root_of_unity**(roudeg // 2),
+      #f.exp(root_of_unity, roudeg * 3 // 4)
+      root_of_unity**(roudeg * 3 // 4)
   ]
 
   # Verify the recursive components of the proof
@@ -134,9 +142,11 @@ def verify_low_degree_proof(merkle_root,
     columnvals = []
     for i, y in enumerate(ys):
       # The x coordinates from the polynomial
-      x1 = f.exp(root_of_unity, y)
+      #x1 = f.exp(root_of_unity, y)
+      x1 = root_of_unity**y
       xcoords.append(
-          [(quartic_roots_of_unity[j] * x1) % modulus for j in range(4)])
+          #[(quartic_roots_of_unity[j] * x1) % modulus for j in range(4)])
+          [(quartic_roots_of_unity[j] * x1) for j in range(4)])
 
       # The values from the original polynomial
       row = [
@@ -153,14 +163,17 @@ def verify_low_degree_proof(merkle_root,
     # points from the polynomial and the one point from the
     # column that are on that y coordinate are on the same deg
     # < 4 polynomial
-    polys = f.multi_interp_4(xcoords, rows)
+    #polys = f.multi_interp_4(xcoords, rows)
+    polys = multi_interp_4(modulus, xcoords, rows)
 
     for p, c in zip(polys, columnvals):
-      assert f.eval_quartic(p, special_x) == c
+      #assert f.eval_quartic(p, special_x) == c
+      assert p(special_x) == c
 
     # Update constants to check the next proof
     merkle_root = root2
-    root_of_unity = f.exp(root_of_unity, 4)
+    #root_of_unity = f.exp(root_of_unity, 4)
+    root_of_unity = root_of_unity**4
     maxdeg_plus_1 //= 4
     roudeg //= 4
 
@@ -180,10 +193,13 @@ def verify_low_degree_proof(merkle_root,
   else:
     pts = range(len(data))
 
-  poly = f.lagrange_interp([powers[x] for x in pts[:maxdeg_plus_1]],
-                           [data[x] for x in pts[:maxdeg_plus_1]])
+  #poly = f.lagrange_interp([powers[x] for x in pts[:maxdeg_plus_1]],
+  poly = lagrange_interp(modulus,
+          [powers[x] for x in pts[:maxdeg_plus_1]],
+          [data[x] for x in pts[:maxdeg_plus_1]])
   for x in pts[maxdeg_plus_1:]:
-    assert f.eval_poly_at(poly, powers[x]) == data[x]
+    #assert f.eval_poly_at(poly, powers[x]) == data[x]
+    assert poly(powers[x]) == data[x]
 
   print('FRI proof verified')
   return True
