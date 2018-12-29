@@ -1,4 +1,8 @@
-def _simple_ft(vals, roots_of_unity):
+from typing import List
+from starks.numbertype import Vector
+
+# TODO(rbharath): The type signatures here don't account for multidimensional inputs! Should this be List[Vector] instead?
+def _simple_ft(vals: List[FieldElement], roots_of_unity: FieldElement) -> List[FieldElement]:
   """Efficient base case implementation.
   
   The FFT recurses down halves of the list. This method is
@@ -14,7 +18,7 @@ def _simple_ft(vals, roots_of_unity):
   return o
 
 
-def _fft(vals, roots_of_unity):
+def _fft(vals: List[FieldElement], roots_of_unity: FieldElement) -> List[FieldElement]:
   if len(vals) <= 4:
     #return vals
     return _simple_ft(vals, roots_of_unity)
@@ -27,7 +31,8 @@ def _fft(vals, roots_of_unity):
     o[i + len(L)] = (x - y_times_root)
   return o
 
-def fft(vals, modulus, root_of_unity, inv=False, dims=1):
+def fft(vals: List[Vector], modulus: int, root_of_unity: FieldElement,
+    inv: bool =False, dims:int =1) -> List[Vector]:
   """Computes FFT for potentially multidimensional sequences"""
   fft_vals = []
   for dim in range(dims):
@@ -39,7 +44,7 @@ def fft(vals, modulus, root_of_unity, inv=False, dims=1):
   return fft_joint
 
 
-def fft_1d(vals, modulus, root_of_unity, inv=False):
+def fft_1d(vals: List[FieldElement], modulus: int, root_of_unity: FieldElement, inv: bool = False) -> List[FieldElement]:
   """Computes FFT for one dimensional inputs"""
   # Build up roots of unity
   rootz = [1, root_of_unity]
@@ -57,7 +62,7 @@ def fft_1d(vals, modulus, root_of_unity, inv=False):
     return _fft(vals, rootz[:-1])
 
 
-def mul_polys(a, b, root_of_unity):
+def mul_polys(a: List[FieldElement], b: List[FieldElement], root_of_unity: FieldElement) -> List[FieldElement]:
   """Multiply polynomials by converting to fourier space"""
   rootz = [1, root_of_unity]
   while rootz[-1] != 1:

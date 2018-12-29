@@ -37,25 +37,6 @@ class TestStark(unittest.TestCase):
   Basic tests for Stark construction implementation. 
   """
 
-  def test_unpack_merkle_leaf(self):
-    """
-    Tests that merkle leaf unpacking works correctly.
-    """
-    leaf_parts = []
-    dims = 2
-    num_polys = 3
-    count = 0
-    for poly_ind in range(num_polys):
-      for dim in range(dims):
-        count_bytes = count.to_bytes(32, 'big')
-        leaf_parts.append(count_bytes)
-        count += 1
-    leaf = b''.join(leaf_parts)
-    vals = unpack_merkle_leaf(leaf, dims, num_polys)
-    assert len(vals) == len(leaf_parts)
-    for ind, val in enumerate(vals):
-      assert val == leaf_parts[ind]
-
   def test_stark_params(self):
     """Test generation of stark parameters."""
     steps = 512
@@ -70,22 +51,22 @@ class TestStark(unittest.TestCase):
     Tests that pseudorandom indices are computed correctly.
     """
     dims = 1
-    inp = [5]
     steps = 512
     constraint_degree = 4
     spot_check_security_factor = 80
     constants = [[i, i] for i in range(steps)]
     modulus = 2**256 - 2**32 * 351 + 1
     field = IntegersModP(modulus)
+    inp = [field(5)]
     extension_factor = 8
     ## Factoring out computation
-    def step_fn(f, state, constants):
+    def step_fn(state, constants):
       # c_1*value**2 + c_0
       #return [f.add(f.mul(constants[1], f.exp(value, 2)), constants[0])]
       return [constants[1]*state[0]**2 + constants[0]]
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)
-    params = StarkParams(field, comp, modulus, extension_factor)
+    params = StarkParams(field, steps, modulus, extension_factor)
 
     p_evaluations = construct_computation_polynomial(
         comp, params)
@@ -116,21 +97,21 @@ class TestStark(unittest.TestCase):
     Tests that merkle spot checks are constructed correctly.
     """
     dims = 1
-    inp = [5]
     steps = 512
     constraint_degree = 4
     spot_check_security_factor = 80
     constants = [[i, i] for i in range(steps)]
     modulus = 2**256 - 2**32 * 351 + 1
     extension_factor = 8
-    field = PrimeField(modulus)
+    field = IntegersModP(modulus)
+    inp = [field(5)]
     ## Factoring out computation
-    def step_fn(f, value, constants):
+    def step_fn(value, constants):
       # c_1*value**2 + c_0
       return [f.add(f.mul(constants[1], f.exp(value[0], 2)), constants[0])]
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)
-    params = StarkParams(field, comp, modulus, extension_factor)
+    params = StarkParams(field, steps, modulus, extension_factor)
 
     p_evaluations = construct_computation_polynomial(
         comp, params)
@@ -158,21 +139,21 @@ class TestStark(unittest.TestCase):
     """
     Tests compute pseudorandom linear combination for 1-dimension
     """
-    inp = [5]
     dims = 1
     steps = 512
     constants = [[i, i] for i in range(512)]
     modulus = 2**256 - 2**32 * 351 + 1
     extension_factor = 8
     constraint_degree = 4
-    field = PrimeField(modulus)
+    field = IntegersModP(modulus)
+    inp = [field(5)]
     ## Factoring out computation
-    def step_fn(f, state, constants):
+    def step_fn(state, constants):
       # c_1*value**2 + c_0
-      return [f.add(f.mul(constants[1], f.exp(state[0], 2)), constants[0])]
+      return [constants[1]*state[0]**2 + constants[0]]
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)
-    params = StarkParams(field, comp, modulus, extension_factor)
+    params = StarkParams(field, steps, modulus, extension_factor)
 
     constants_extensions, constants_polynomials = \
         construct_constants_polynomials(comp, params)
@@ -212,21 +193,21 @@ class TestStark(unittest.TestCase):
     """
     Tests compute pseudorandom linear combination 
     """
-    inp = [5]
     dims = 1
     steps = 512
     constants = [[i, i] for i in range(512)]
     modulus = 2**256 - 2**32 * 351 + 1
     extension_factor = 8
     constraint_degree = 4
-    field = PrimeField(modulus)
+    field = IntegersModP(modulus)
+    inp = [field(5)]
     ## Factoring out computation
-    def step_fn(f, value, constants):
+    def step_fn(value, constants):
       # c_1*value**2 + c_0
-      return [f.add(f.mul(constants[1], f.exp(value[0], 2)), constants[0])]
+      return [constants[1]*value[0]**2) + constants[0]]
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)
-    params = StarkParams(field, comp, modulus, extension_factor)
+    params = StarkParams(field, step, modulus, extension_factor)
 
     constants_extensions, constants_polynomials = \
         construct_constants_polynomials(comp, params)
@@ -254,8 +235,8 @@ class TestStark(unittest.TestCase):
       d_of_x = d_evaluations[pos]
       b_of_x = b_evaluations[pos]
 
-      x = field.exp(params.G2, pos)
-      x_to_the_steps = field.exp(x, comp.steps)
+      x = params.G2**pos
+      x_to_the_steps = x**comp.steps
 
       # Leaf node from l[pos]
       k1, k2, k3, k4 = get_pseudorandom_ks(mtree[1], 4)
@@ -270,21 +251,21 @@ class TestStark(unittest.TestCase):
     Tests stark end-to-end for 1d example 
     """
     dims = 1
-    inp = [5]
     steps = 512
     constraint_degree = 4
     constants = [[i, i] for i in range(steps)]
     spot_check_security_factor = 80
     modulus = 2**256 - 2**32 * 351 + 1
     extension_factor = 8
-    field = PrimeField(modulus)
+    field = IntegersModP(modulus)
+    inp = [field(5)]
     ## Factoring out computation
-    def step_fn(f, value, constants):
+    def step_fn(value, constants):
       # c_1*value**2 + c_0
-      return [f.add(f.mul(constants[1], f.exp(value[0], 2)), constants[0])]
+      return [constants[1]*value[0]**2 + constants[0]]
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)
-    params = StarkParams(field, comp, modulus, extension_factor)
+    params = StarkParams(field, steps, modulus, extension_factor)
 
     constants_extensions, constants_polynomials = \
         construct_constants_polynomials(comp, params)
@@ -369,17 +350,17 @@ class TestStark(unittest.TestCase):
       for dim in range(comp.dims):
         assert b_of_x[dim] == b_of_x_recovered[dim]
 
-      x = field.exp(params.G2, pos)
-      x_to_the_steps = field.exp(x, comp.steps)
-      zvalue = field.div(field.exp(x, comp.steps) - 1, x - params.last_step_position)
+      x = params.G2**pos
+      x_to_the_steps = x**comp.steps
+      zvalue = (x**comp.steps - 1)/(x - params.last_step_position)
       k_of_xs = []
       for constants_mini_polynomial in constants_polynomials:
         # This is unwrapping the polynomial
         constants_mini_polynomial = [val[0] for val in constants_mini_polynomial]
-        k_of_x = field.eval_poly_at(constants_mini_polynomial, x)
+        k_of_x = constants_mini_polynomial(x)
         k_of_xs.append(k_of_x)
-      f_of_p_of_x = comp.step_fn(field, p_of_x, k_of_xs)
-      f_of_p_of_x_recovered = comp.step_fn(field, p_of_x, k_of_xs)
+      f_of_p_of_x = comp.step_fn(p_of_x, k_of_xs)
+      f_of_p_of_x_recovered = comp.step_fn(p_of_x, k_of_xs)
       assert f_of_p_of_x == f_of_p_of_x_recovered
       assert (p_of_g1x[0] - f_of_p_of_x[0] - zvalue * d_of_x[0]) % modulus == 0
       assert (p_of_g1x_recovered[0] - f_of_p_of_x_recovered[0] - zvalue * d_of_x_recovered[0]) % modulus == 0
@@ -387,16 +368,16 @@ class TestStark(unittest.TestCase):
       zeropoly2 = field.mul_polys([-1, 1], [-params.last_step_position, 1])
       for dim in range(comp.dims):
         interpolant_dim = field.lagrange_interp_2([1, params.last_step_position], [comp.inp[dim], comp.output[dim]])
-        assert (p_of_x[dim] - b_of_x[dim] * field.eval_poly_at(zeropoly2, x) - field.eval_poly_at(interpolant_dim, x)) % modulus == 0
+        assert (p_of_x[dim] - b_of_x[dim] * zeropoly2(x) - interpolant_dim(x)) % modulus == 0
 
   def test_higher_dim_trace(self):
     """
     Checks trace generation for multidimensional state.
     """
-    inp = [0, 1]
     steps = 5
     modulus = 2**256 - 2**32 * 351 + 1
     field = IntegersModP(modulus)
+    inp = [field(0), field(1)]
     # This is a place filler
     constants = [[]] * steps
     def fibonacci_step(f, prev, constants):
@@ -424,7 +405,7 @@ class TestStark(unittest.TestCase):
     field = IntegersModP(modulus)
     inp = [field(0), field(1)]
     constraint_degree = 4
-    def step_fn(f, prev, constants):
+    def step_fn(prev, constants):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
       f_n_plus_1 = f_n + f_n_minus_1
@@ -451,7 +432,7 @@ class TestStark(unittest.TestCase):
     field = IntegersModP(modulus)
     inp = [field(0), field(1)]
     constraint_degree = 4
-    def step_fn(f, prev, constants):
+    def step_fn(prev, constants):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
       f_n_plus_1 = f_n + f_n_minus_1
@@ -480,7 +461,7 @@ class TestStark(unittest.TestCase):
     field = IntegersModP(modulus)
     inp = [field(0), field(1)]
     constraint_degree = 4
-    def step_fn(f, prev, constants):
+    def step_fn(prev, constants):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
       f_n_plus_1 = f_n + f_n_minus_1
@@ -508,7 +489,7 @@ class TestStark(unittest.TestCase):
     extension_factor = 8
     field = IntegersModP(modulus)
     constraint_degree = 4
-    def step_fn(f, prev, constants):
+    def step_fn(prev, constants):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
       f_n_plus_1 = f_n + f_n_minus_1
@@ -544,7 +525,7 @@ class TestStark(unittest.TestCase):
     field = IntegersModP(modulus)
     inp = [field(0), field(1)]
     constraint_degree = 4
-    def step_fn(f, prev, constants):
+    def step_fn(prev, constants):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
       f_n_plus_1 = f_n + f_n_minus_1
@@ -582,7 +563,7 @@ class TestStark(unittest.TestCase):
     inp = [field(0), field(1)]
     extension_factor = 8
     constraint_degree = 4
-    def step_fn(f, prev, constants):
+    def step_fn(prev, constants):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
       f_n_plus_1 = f_n + f_n_minus_1
@@ -617,7 +598,7 @@ class TestStark(unittest.TestCase):
     constants = [[]] * steps
     extension_factor = 8
     constraint_degree = 8
-    def step_fn(f, prev, constants):
+    def step_fn(prev, constants):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
       f_n_plus_1 = f_n + f_n_minus_1
@@ -633,20 +614,20 @@ class TestStark(unittest.TestCase):
     Tests construction of computation polynomial
     """
     dims = 1
-    inp = [5]
     steps = 512
     extension_factor = 8
     constants = [[(i**7) ^ 42] for i in range(steps)]
     modulus = 2**256 - 2**32 * 351 + 1
-    field = PrimeField(modulus)
+    field = IntegersModP(modulus)
+    inp = [field(5)]
     extension_factor = 8
     constraint_degree = 4
-    def step_fn(f, state, constants):
+    def step_fn(state, constants):
       # 2value**2 + constant
-      return [f.add(f.mul(f.exp(state[0], 2), 2), constants[0])]
+      return [2*state[0]**2 + constants[0]]
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)
-    params = StarkParams(field, comp, modulus, extension_factor)
+    params = StarkParams(field, steps, modulus, extension_factor)
     comp_poly_evals = construct_computation_polynomial(
         comp, params)
     assert len(comp_poly_evals) == steps * extension_factor
@@ -656,20 +637,20 @@ class TestStark(unittest.TestCase):
     Tests construction of constraint polynomial.
     """
     dims = 1
-    inp = [5]
     steps = 512
     extension_factor = 8
     constants = [[(i**7) ^ 42] for i in range(steps)]
     modulus = 2**256 - 2**32 * 351 + 1
-    field = PrimeField(modulus)
+    field = IntegersModP(modulus)
+    inp = [field(5)]
     extension_factor = 8
     constraint_degree = 4
-    def step_fn(f, state, constants):
+    def step_fn(state, constants):
       # 2value**2 + constant
-      return [f.add(f.mul(f.exp(state[0], 2), 2), constants[0])]
+      return [2*state[0]**2 + constants[0]]
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)
-    params = StarkParams(field, comp, modulus, extension_factor)
+    params = StarkParams(field, steps, modulus, extension_factor)
     comp_poly_evals = construct_computation_polynomial(
         comp, params)
     constraint_evals = construct_constraint_polynomial(
@@ -679,21 +660,21 @@ class TestStark(unittest.TestCase):
   def test_compressed_stark(self):
     """Basic compressed stark test"""
     dims = 1
-    inp = [3]
     steps = 512
     modulus = 2**256 - 2**32 * 351 + 1
-    field = PrimeField(modulus)
+    field = IntegersModP(modulus)
+    inp = [field(3)]
     extension_factor = 8
     constraint_degree = 4
     # Full STARK test
     constants = [[(i**7) ^ 42] for i in range(64)]
     constants = constants * (steps // 64)
     # Factoring out computation
-    def step_fn(f, state, constants):
-      return [f.add(f.exp(state[0], 3), constants[0])]
+    def step_fn(state, constants):
+      return [state[0]**3 + constants[0]]
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)
-    params = StarkParams(field, comp, modulus, extension_factor)
+    params = StarkParams(field, steps, modulus, extension_factor)
     proof = mk_proof(comp, params)
     m_root, l_root, branches, fri_proof = proof
     L1 = bin_length(compress_branches(branches))
@@ -707,24 +688,24 @@ class TestStark(unittest.TestCase):
     Basic tests of quadratic stark generation
     """
     dims = 1
-    inp = [5]
     steps = 512
     constraint_degree = 4
     # TODO(rbharath): Why do these constants make sense? Read
     # MiMC paper to see if justification.
     constants = [[(i**7) ^ 42] for i in range(steps)]
     modulus = 2**256 - 2**32 * 351 + 1
-    field = PrimeField(modulus)
+    field = IntegersModP(modulus)
+    inp = [field(5)]
     extension_factor = 8
 
     # Factoring out computation
-    def step_fn(f, state, constants):
+    def step_fn(state, constants):
       # 2value**2 + constant
-      return [f.add(f.mul(f.exp(state[0], 2), 2), constants[0])]
+      return [2*state[0]**2 + constants[0]]
 
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)
-    params = StarkParams(field, comp, modulus, extension_factor)
+    params = StarkParams(field, steps, modulus, extension_factor)
     proof = mk_proof(comp, params)
     assert isinstance(proof, list)
     assert len(proof) == 4
@@ -737,21 +718,21 @@ class TestStark(unittest.TestCase):
     Basic tests of MiMC stark verification.
     """
     dims = 1
-    inp = [5]
     steps = 512
     constraint_degree = 4
     constants = [[(i**7) ^ 42] for i in range(64)]
     constants = constants * (steps // 64) 
     modulus = 2**256 - 2**32 * 351 + 1
-    field = PrimeField(modulus)
+    field = IntegersModP(modulus)
+    inp = [field(5)]
     extension_factor = 8
 
-    def step_fn(f, state, constants):
-      return [f.add(f.exp(state[0], 3), constants[0])]
+    def step_fn(state, constants):
+      return [state[0]**3 + constants[0]]
 
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)
-    params = StarkParams(field, comp, modulus, extension_factor)
+    params = StarkParams(field, steps, modulus, extension_factor)
     proof = mk_proof(comp, params)
     result = verify_proof(comp, params, proof)
     assert result
@@ -761,23 +742,23 @@ class TestStark(unittest.TestCase):
     Basic tests of affine stark generation
     """
     dims = 1
-    inp = [5]
     steps = 512
     constraint_degree = 4
     # TODO(rbharath): Why do these constants make sense? Read
     # MiMC paper to see if justification.
     constants = [[0]] * 512
     modulus = 2**256 - 2**32 * 351 + 1
-    field = PrimeField(modulus)
+    field = IntegersModP(modulus)
+    inp = [field(5)]
     extension_factor = 8
 
     # Factoring out computation
-    def step_fn(f, state, constants):
-      return [f.add(f.add(f.mul(3, state[0]), 4), constants[0])]
+    def step_fn(state, constants):
+      return [3*state[0] + 4 + constants[0]]
 
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)
-    params = StarkParams(field, comp, modulus, extension_factor)
+    params = StarkParams(field, steps, modulus, extension_factor)
     proof = mk_proof(comp, params)
     assert isinstance(proof, list)
     assert len(proof) == 4
@@ -789,21 +770,21 @@ class TestStark(unittest.TestCase):
     Basic tests of FRI generation for quadratic stark with varying coefficients
     """
     dims = 1
-    inp = [5]
     steps = 512
     constraint_degree = 4
     constants = [[i, i] for i in range(steps)]
     modulus = 2**256 - 2**32 * 351 + 1
     extension_factor = 8
-    field = PrimeField(modulus)
+    field = IntegersModP(modulus)
+    inp = [field(5)]
     ## Factoring out computation
-    def step_fn(f, state, constants):
+    def step_fn(state, constants):
       # c_1*value**2 + c_0
       value = state[0]
-      return [f.add(f.mul(constants[1], f.exp(value, 2)), constants[0])]
+      return [constants[1]*value**2 + constants[0]]
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)
-    params = StarkParams(field, comp, modulus, extension_factor)
+    params = StarkParams(field, steps, modulus, extension_factor)
 
 
     p_evaluations = construct_computation_polynomial(
@@ -840,23 +821,23 @@ class TestStark(unittest.TestCase):
     """
     Basic tests of varying quadratic stark generation
     """
-    inp = [5]
     dims = 1
     steps = 512
     constraint_degree = 4
     constants = [[i, i] for i in range(steps)]
     modulus = 2**256 - 2**32 * 351 + 1
-    field = PrimeField(modulus)
+    field = IntegersModP(modulus)
+    inp = [field(5)]
     extension_factor = 8
 
     ## Factoring out computation
-    def step_fn(f, value, constants):
+    def step_fn(value, constants):
       # c_1*value**2 + c_0
-      return [f.add(f.mul(constants[1], f.exp(value[0], 2)), constants[0])]
+      return [constants[1]*value[0]**2 + constants[0]]
 
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)
-    params = StarkParams(field, comp, modulus, extension_factor)
+    params = StarkParams(field, steps, modulus, extension_factor)
     proof = mk_proof(comp, params)
     assert isinstance(proof, list)
     assert len(proof) == 4
@@ -867,28 +848,24 @@ class TestStark(unittest.TestCase):
     """
     Basic tests of quintic stark generation
     """
-    inp = [5]
     steps = 512
     dims = 1
     constraint_degree = 8
     constants = [[i]*6 for i in range(steps)]
     modulus = 2**256 - 2**32 * 351 + 1
-    field = PrimeField(modulus)
+    field = IntegersModP(modulus)
+    inp = [field(5)]
     extension_factor = 8
 
     ## Factoring out computation
     def step_fn(f, state, constants):
       # c_5*value**5 + c_4*value**4 + c_3*value**3 + c_2*value**2 + c_1*value**1 + c_0
       value = state[0]
-      return [f.add(f.mul(constants[5], f.exp(value, 5)),
-          f.add(f.mul(constants[4], f.exp(value, 4)),
-            f.add(f.mul(constants[3], f.exp(value, 3)),
-              f.add(f.mul(constants[2], f.exp(value, 2)),
-                f.add(f.mul(constants[1], f.exp(value, 1)), constants[0])))))]
+      return [constants[5]*value**5 + constants[4]*value**4 + constants[3]*value**3 + constants[2]*value**2 + constants[1]*value + constants[0])))))]
 
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)
-    params = StarkParams(field, comp, modulus, extension_factor)
+    params = StarkParams(field, steps, modulus, extension_factor)
     proof = mk_proof(comp, params)
     assert isinstance(proof, list)
     assert len(proof) == 4

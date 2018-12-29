@@ -8,14 +8,14 @@ from starks.merkle_tree import unpack_merkle_leaf
 from starks.polynomial import polynomials_over
 from starks.poly_utils import lagrange_interp_2 
 from starks.numbertype import FieldElement
+from starks.numbertype import Vector
 from starks.fft import fft
 from starks.fri import prove_low_degree, verify_low_degree_proof
 from starks.utils import get_power_cycle, get_pseudorandom_indices, is_a_power_of_2
 from starks.air import Computation
 from starks.poly_utils import multi_inv
-
-# Number of branches used for Merkle-tree check
-
+from typing import List
+from typing import Tuple
 
 class StarkParams(object):
   """Holds the cryptographic parameters needed for STARK"""
@@ -43,18 +43,16 @@ class StarkParams(object):
     self.spot_check_security_factor = spot_check_security_factor
 
     # Root of unity such that x^precision=1
-    #self.G2 = self.field.exp(7, (modulus - 1) // self.precision)
     self.G2 = field(7)**((modulus - 1) // self.precision)
 
     # Root of unity such that x^steps=1
-    #self.G1 = self.field.exp(self.G2, extension_factor)
     self.G1 = self.G2**extension_factor
 
     ## Powers of the higher-order root of unity
     self.xs = get_power_cycle(self.G2, modulus)
     self.last_step_position = self.xs[(steps - 1) * extension_factor]
 
-def construct_constants_polynomials(comp: Computation, params: StarkParams):
+def construct_constants_polynomials(comp: Computation, params: StarkParams) -> Tuple[List[Vector], List[Vector]]:
   """Transforms constants into polynomials
   
   TODO(rbharath): Refactoring the constants list to be a list of step-wise
@@ -91,7 +89,7 @@ def construct_constants_polynomials(comp: Computation, params: StarkParams):
       'Converted round constants into a polynomial and low-degree extended it')
   return constants_extensions, constants_polynomials
 
-def construct_computation_polynomial(comp: Computation, params: StarkParams):
+def construct_computation_polynomial(comp: Computation, params: StarkParams) -> List[Vector]:
   """Constructs polynomial for the given computation."""
   # Interpolate the computational trace into a polynomial P,
   # with each step along a successive power of G1
@@ -108,14 +106,13 @@ def construct_computation_polynomial(comp: Computation, params: StarkParams):
   return p_evaluations
 
 def construct_constraint_polynomial(comp: Computation, params: StarkParams,
-    p_evaluations):
+    p_evaluations: List[Vector]) -> List[Vector]:
   """Construct the constraint polynomial for the given tape.
 
   This function constructs a constraint polynomial for the
   given computational tape. For now, this function only works
   with MiMC.
   """
-  #f = comp.field
   deg = len(comp.constants[0])
   extensions, _ = construct_constants_polynomials(comp, params)
 
@@ -127,13 +124,12 @@ def construct_constraint_polynomial(comp: Computation, params: StarkParams,
   # extensions[d][i] selects the degree d term for i-th step
   # extensions[d][i][0] unpacks the output of fft() which adds an extra list
   step_p_evals = [comp.step_fn(
-    comp.field, p_evaluations[i], [extensions[d][i][0] for d in range(deg)]) for i in range(params.precision)]
-  #c_of_p_evals = [[p_next[dim] - step_p[dim] % params.modulus for dim in range(comp.dims)] for (p_next, step_p) in zip(p_next_step_evals, step_p_evals)]
+    p_evaluations[i], [extensions[d][i][0] for d in range(deg)]) for i in range(params.precision)]
   c_of_p_evals = [[p_next[dim] - step_p[dim] for dim in range(comp.dims)] for (p_next, step_p) in zip(p_next_step_evals, step_p_evals)]
   print('Computed C(P, K) polynomial')
   return c_of_p_evals
 
-def construct_remainder_polynomial(comp, params, c_of_p_evaluations):
+def construct_remainder_polynomial(comp: Computation, params: StarkParams, c_of_p_evaluations: List[Vector]) -> List[Vector]:
   """Computes the remainder polynomial for the STARK.
   
   Compute D(x) = C(P(x), P(g1*x), K(x)) / Z(x)
@@ -141,40 +137,32 @@ def construct_remainder_polynomial(comp, params, c_of_p_evaluations):
   TODO(rbharath): I think this is supposed to equal 
   Z(x) = (x - 1)(x-2)...(x-(steps_1)). How are these equal?
   """
-  f = comp.field
   z_num_evaluations = [
       params.xs[(i * comp.steps) % params.precision] - 1 for i in range(params.precision)
   ]
-  #z_num_inv = f.multi_inv(z_num_evaluations)
   z_num_inv = multi_inv(z_num_evaluations)
   # (x_i - x_{step-1}) list
   z_den_evaluations = [params.xs[i] - params.last_step_position for i in range(params.precision)]
   d_evaluations = [
-      #[int(cp[dim] * zd * zni % params.modulus) for dim in range(comp.dims)]
       [cp[dim] * zd * zni for dim in range(comp.dims)]
       for cp, zd, zni in zip(c_of_p_evaluations, z_den_evaluations, z_num_inv)
   ]
   print('Computed D polynomial')
   return d_evaluations
 
-def construct_boundary_polynomial(comp, params, p_evaluations):
+def construct_boundary_polynomial(comp: Computation, params: StarkParams, p_evaluations: List[Vector]) -> List[Vector]:
   """Polynomial encoding boundary constraints on tape.
   
   Compute interpolant of ((1, input), (x_atlast_step, output))
   """
-  field = comp.field
-  polysOver = polynomials_over(field).factory
+  polysOver = polynomials_over(comp.field).factory
   i_evaluations = []
   inv_z2_evaluations = []
-  #zeropoly2 = f.mul_polys([-1, 1], [-params.last_step_position, 1])
   zeropoly2 = polysOver([-1, 1])*polysOver([-params.last_step_position, 1])
   for dim in range(comp.dims):
-    #interpolant = f.lagrange_interp_2([1, params.last_step_position], [comp.inp[dim], comp.output[dim]])
     interpolant = lagrange_interp_2(params.modulus, polysOver([1, params.last_step_position]),
         polysOver([comp.inp[dim], comp.output[dim]]))
-    #i_evaluations_dim = [f.eval_poly_at(interpolant, x) for x in params.xs]
     i_evaluations_dim = [interpolant(x) for x in params.xs]
-    #inv_z2_evaluations_dim = f.multi_inv([f.eval_poly_at(zeropoly2, x) for x in params.xs])
     inv_z2_evaluations_dim = multi_inv([zeropoly2(x) for x in params.xs])
     # Append to list
     i_evaluations.append(i_evaluations_dim)
@@ -185,13 +173,12 @@ def construct_boundary_polynomial(comp, params, p_evaluations):
   b_evaluations = []
   for p, i, invq in zip(p_evaluations, i_evaluations, inv_z2_evaluations):
     b_evaluations_dim = [
-      #((p[dim] - i[dim]) * invq[dim]) % params.modulus for dim in range(comp.dims) ]
       (p[dim] - i[dim]) * invq[dim] for dim in range(comp.dims) ]
     b_evaluations.append(b_evaluations_dim)
   print('Computed B polynomial')
   return b_evaluations
 
-def get_pseudorandom_ks(m_root, num):
+def get_pseudorandom_ks(m_root: bytes, num: int) -> List[int]:
   """Computes pseudorandom values from mtree root for linear combo.
   
   Parameters
@@ -213,7 +200,7 @@ def get_pseudorandom_ks(m_root, num):
     ks = [int.from_bytes(blake(m_root + byte_list[ind]), 'big') for ind in range(comp.dims)]
     return ks
 
-def compute_pseudorandom_linear_combination_1d(comp, params, mtree, polys):
+def compute_pseudorandom_linear_combination_1d(comp: Computation, params: StarkParams, mtree: List[bytes], polys: List[List[Vector]]) -> List[Vector]:
   """Computes the pseudorandom linear combination for 1-d slice of poly.
 
   A FRI proofs of low degree for a polynomial takes space.
@@ -223,7 +210,6 @@ def compute_pseudorandom_linear_combination_1d(comp, params, mtree, polys):
   generated for all of them. The chances of a collision are
   low.
   """
-  f = comp.field
   # Based on the hashes of P, D and B, we select a random
   # linear combination of P * x^steps, P, B * x^steps, B and
   # D, and prove the low-degreeness of that, instead of
@@ -234,36 +220,30 @@ def compute_pseudorandom_linear_combination_1d(comp, params, mtree, polys):
   # Compute the linear combination. We don't even both
   # calculating it in coefficient form; we just compute the
   # evaluations
-  #G2_to_the_steps = f.exp(params.G2, comp.steps)
   G2_to_the_steps = params.G2**comp.steps
   powers = [1]
   for i in range(1, params.precision):
-    #powers.append(powers[-1] * G2_to_the_steps % params.modulus)
     powers.append(powers[-1] * G2_to_the_steps)
 
   l_evaluations_per_dim = []
   for dim in range(comp.dims):
-    #l_evaluations_dim = [(d_evaluations[i][dim] + p_evaluations[i][dim] * k1 + p_evaluations[i][dim] * k2 * powers[i] + b_evaluations[i][dim] * k3 + b_evaluations[i][dim] * k4 * powers[i]) % params.modulus for i in range(params.precision)]
     l_evaluations_dim = [(d_evaluations[i][dim] + p_evaluations[i][dim] * k1 + p_evaluations[i][dim] * k2 * powers[i] + b_evaluations[i][dim] * k3 + b_evaluations[i][dim] * k4 * powers[i]) for i in range(params.precision)]
     l_evaluations_per_dim.append(l_evaluations_dim)
   return l_evaluations_per_dim
 
-def compute_pseudorandom_linear_combination(comp, params, mtree, polys):
+def compute_pseudorandom_linear_combination(comp: Computation, params: StarkParams, mtree: List[bytes], polys: List[List[Vector]]):
   """Computes a pseudorandom linear combination of polys
 
   A deterministic procedure for pseudorandomly combining dimensions
   """
   f = comp.field
-  #G2_to_the_steps = f.exp(params.G2, comp.steps)
   G2_to_the_steps = params.G2**comp.steps
   powers = [1]
   for i in range(1, params.precision):
-    #powers.append(powers[-1] * G2_to_the_steps % params.modulus)
     powers.append(powers[-1] * G2_to_the_steps)
   l_evaluations_per_dim = compute_pseudorandom_linear_combination_1d(comp,
       params, mtree, polys)
   l_ks = get_pseudorandom_ks(mtree[1], comp.dims)
-  #l_evaluations = [sum([l_evals_dim[i] + l_evals_dim[i] * l_k * powers[i] for (l_evals_dim, l_k) in zip(l_evaluations_per_dim, l_ks)]) % params.modulus for i in range(params.precision)]
   l_evaluations = [sum([l_evals_dim[i] + l_evals_dim[i] * l_k * powers[i] for (l_evals_dim, l_k) in zip(l_evaluations_per_dim, l_ks)]) for i in range(params.precision)]
   print('Computed random linear combination')
   return l_evaluations
@@ -377,11 +357,12 @@ def verify_proof(comp, params, proof):
 
 def verify_proof_at_position(comp, params, ks, proof, i, pos, constants_polynomials):
   """Verifies merkle proof at given position in extended trace"""
+  field = comp.field
+  modulus = params.modulus
+  polysOver = polynomials_over(field).factory
   k1, k2, k3, k4 = ks
   m_root, l_root, branches, fri_proof = proof
-  #x = comp.field.exp(params.G2, pos)
   x = params.G2**pos
-  #x_to_the_steps = comp.field.exp(x, comp.steps)
   x_to_the_steps = x**comp.steps
   # Recall m is the merkle tree of the raw polynomials, and l
   # is the merkle tree of the pseudorandom combination
@@ -399,37 +380,32 @@ def verify_proof_at_position(comp, params, ks, proof, i, pos, constants_polynomi
       output_as_int=True)
 
   # This undoes the packing that's done in merkelize_polynomials
-  # polys = [p_evaluations, d_evaluations, b_evaluations]
-  p_of_x = [int.from_bytes(p_of_x_dim, 'big') for p_of_x_dim in unpacked_leaf1[:comp.dims]]
-  p_of_g1x = [int.from_bytes(p_of_g1x_dim, 'big') for p_of_g1x_dim in unpacked_leaf2[:comp.dims]]
-  d_of_x = [int.from_bytes(d_of_x_dim, 'big') for d_of_x_dim in unpacked_leaf1[comp.dims:2*comp.dims]]
-  b_of_x = [int.from_bytes(b_of_x_dim, 'big') for b_of_x_dim in unpacked_leaf1[2*comp.dims:]]
+  p_of_x = [field(p_of_x_dim) for p_of_x_dim in unpacked_leaf1[:comp.dims]]
+  p_of_g1x = [field(p_of_g1x_dim) for p_of_g1x_dim in unpacked_leaf2[:comp.dims]]
+  d_of_x = [field(d_of_x_dim) for d_of_x_dim in unpacked_leaf1[comp.dims:2*comp.dims]]
+  b_of_x = [field(b_of_x_dim) for b_of_x_dim in unpacked_leaf1[2*comp.dims:]]
 
-  #zvalue = comp.field.div(comp.field.exp(x, comp.steps) - 1, x - params.last_step_position)
   zvalue = (x**comp.steps - 1)/(x - params.last_step_position)
   k_of_xs = []
   for constants_mini_polynomial in constants_polynomials:
     # This is unwrapping the polynomial
     constants_mini_polynomial = [val[0] for val in constants_mini_polynomial]
-    k_of_x = comp.field.eval_poly_at(constants_mini_polynomial, x)
-    k_of_xs.append(k_of_x)
+    k_of_xs.append(constants_mini_polynomial(x))
 
   # Check transition constraints C(P(x)) = Z(x) * D(x)
-  f_of_p_of_x = comp.step_fn(comp.field, p_of_x, k_of_xs)
+  f_of_p_of_x = comp.step_fn(p_of_x, k_of_xs)
   for dim in range(comp.dims):
     p_of_g1x_dim = p_of_g1x[dim]
     p_of_x_dim = p_of_x[dim]
     d_of_x_dim = d_of_x[dim]
     f_of_p_of_x_dim = f_of_p_of_x[dim]
-    #assert (p_of_g1x_dim - f_of_p_of_x_dim - zvalue * d_of_x_dim) % params.modulus == 0
     assert (p_of_g1x_dim - f_of_p_of_x_dim - zvalue * d_of_x_dim) == 0
 
   # Check boundary constraints B(x) * Q(x) + I(x) = P(x)
-  zeropoly2 = comp.field.mul_polys([-1, 1], [-params.last_step_position, 1])
+  zeropoly2 = polysOver([-1, 1])*polysOver([-params.last_step_position, 1])
   for dim in range(comp.dims):
-    interpolant_dim = comp.field.lagrange_interp_2([1, params.last_step_position], [comp.inp[dim], comp.output[dim]])
-    #assert (p_of_x[dim] - b_of_x[dim] * comp.field.eval_poly_at(zeropoly2, x) - comp.field.eval_poly_at(interpolant_dim, x)) % params.modulus == 0
-    assert (p_of_x[dim] - b_of_x[dim] * comp.field.eval_poly_at(zeropoly2, x) - comp.field.eval_poly_at(interpolant_dim, x)) == 0
+    interpolant_dim = lagrange_interp_2(modulus, [1, params.last_step_position], [comp.inp[dim], comp.output[dim]])
+    assert (p_of_x[dim] - b_of_x[dim] * zeropoly2(x) - interpolant_dim(x)) == 0
 
   # TODO(rbharath): I'm commenting this out for now, but I think commenting
   # out this check breaks security guarantees!! To fix this, we need a way
