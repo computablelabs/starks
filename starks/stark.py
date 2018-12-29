@@ -54,7 +54,7 @@ class StarkParams(object):
     self.xs = get_power_cycle(self.G2, modulus)
     self.last_step_position = self.xs[(steps - 1) * extension_factor]
 
-def construct_constants_polynomials(comp, params):
+def construct_constants_polynomials(comp: Computation, params: StarkParams):
   """Transforms constants into polynomials
   
   TODO(rbharath): Refactoring the constants list to be a list of step-wise
@@ -91,15 +91,10 @@ def construct_constants_polynomials(comp, params):
       'Converted round constants into a polynomial and low-degree extended it')
   return constants_extensions, constants_polynomials
 
-def construct_computation_polynomial(comp, params):
+def construct_computation_polynomial(comp: Computation, params: StarkParams):
   """Constructs polynomial for the given computation."""
   # Interpolate the computational trace into a polynomial P,
   # with each step along a successive power of G1
-  #########################################################
-  print("type(comp.computational_trace[0][0])")
-  print(type(comp.computational_trace[0][0]))
-  #assert 0 == 1
-  #########################################################
   computational_trace_polynomial = fft(
       comp.computational_trace, params.modulus, params.G1,
       inv=True, dims=comp.dims)
@@ -112,7 +107,7 @@ def construct_computation_polynomial(comp, params):
   )
   return p_evaluations
 
-def construct_constraint_polynomial(comp, params,
+def construct_constraint_polynomial(comp: Computation, params: StarkParams,
     p_evaluations):
   """Construct the constraint polynomial for the given tape.
 

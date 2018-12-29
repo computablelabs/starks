@@ -102,6 +102,9 @@ class DomainElement(object):
 
     return R
 
+  def to_bytes(self):
+    raise NotImplementedError 
+
 
 # additionally require inverse() on subclasses
 class FieldElement(DomainElement):

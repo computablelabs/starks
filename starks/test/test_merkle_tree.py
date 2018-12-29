@@ -1,4 +1,5 @@
 import unittest
+from starks.modp import IntegersModP
 from starks.merkle_tree import merkelize
 from starks.merkle_tree import mk_branch 
 from starks.merkle_tree import verify_branch
@@ -17,6 +18,14 @@ class TestMerkleTree(unittest.TestCase):
     # Is t[1] the merkle root? Shouldn't it be t[0]?
     assert verify_branch(t[1], 59, b, output_as_int=True) == 59
     print('Merkle tree works')
+
+  def test_merkletree_zmodp(self):
+    """Constructs merkle tree of field elements."""
+    modulus = 7
+    mod7 = IntegersModP(modulus)
+    l = [mod7(i) for i in range(128)]
+    m_tree = merkelize(l)
+    assert len(m_tree) == 256
 
   def test_mk_branch(self):
     """Tests construction of a merkle tree branch."""

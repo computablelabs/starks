@@ -7,12 +7,12 @@ from starks.poly_utils import multi_interp_4
 # The number of spot checks performed at each recursion of the
 # FRI proof.
 
-def prove_low_degree(values,
-                     root_of_unity,
-                     maxdeg_plus_1,
-                     modulus,
-                     exclude_multiples_of=0,
-                     fri_spot_check_security_factor=40):
+def prove_low_degree(values: List[FieldElement],
+                     root_of_unity: FieldElement,
+                     maxdeg_plus_1: int,
+                     modulus: int,
+                     exclude_multiples_of:int = 0,
+                     fri_spot_check_security_factor:int = 40):
   """
   Generate an FRI proof that the polynomial that has the
   specified values at successive powers of the specified root
@@ -37,10 +37,6 @@ def prove_low_degree(values,
 
   # Calculate the set of x coordinates
   xs = get_power_cycle(root_of_unity, modulus)
-  ###############################################
-  print("type(xs[0])")
-  print(type(xs[0]))
-  ###############################################
   
   assert len(values) == len(xs)
 

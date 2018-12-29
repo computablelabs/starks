@@ -3,9 +3,11 @@ try:
 except:
   from pyblake2 import blake2s
 blake = lambda x: blake2s(x).digest()
+from typing import List
+from starks.numbertype import FieldElement
 
 
-def permute4(values):
+def permute4(values: List) -> List:
   """Permutes the list by selecting elements a quarter down 
   
   TODO(rbharath): The structure of this permutation seems
@@ -30,7 +32,7 @@ def get_index_in_permuted(x, L):
   return x // ld4 + 4 * (x % ld4)
 
 
-def merkelize(L):
+def merkelize(L: List[FieldElement]) -> List[bytes]:
   """Creates a merkle-tree representation of the given list.
   
   The merkle-tree is stored as a list of length 2*len(L).
@@ -40,11 +42,6 @@ def merkelize(L):
   of the merkle tree.
   """
   L = permute4(L)
-  #nodes = [b''] * len(L) + [
-  #    # TODO(rbharath): Is this safe
-  #    #x.to_bytes(32, 'big') if isinstance(x, int) else x for x in L
-  #    x.to_bytes(32, 'big') if isinstance(x, int) else x for x in L
-  #]
   nodes = [b''] * len(L)
   for x in L:
     if isinstance(x, int):
@@ -53,17 +50,12 @@ def merkelize(L):
       nodes.append(x)
     else:
       nodes.append(x.to_bytes())
-  #[
-  #    # TODO(rbharath): Is this safe
-  #    #x.to_bytes(32, 'big') if isinstance(x, int) else x for x in L
-  #    x.to_bytes(32, 'big') if isinstance(x, int) else x for x in L
-  #]
   for i in range(len(L) - 1, 0, -1):
     nodes[i] = blake(nodes[i * 2] + nodes[i * 2 + 1])
   return nodes
 
 
-def mk_branch(tree, index):
+def mk_branch(tree: List[FieldElement], index: int) -> List[FieldElement]:
   """A branch of the merkle tree is a list"""
   index = get_index_in_permuted(index, len(tree) // 2)
   index += len(tree) // 2
@@ -121,7 +113,7 @@ def merkelize_polynomials(dims, polynomials):
       for evals in zip(*polynomials)])
   return mtree
 
-def unpack_merkle_leaf(leaf, dims, num_polys):
+def unpack_merkle_leaf(leaf: bytes, dims: int, num_polys: int) -> List[bytes]:
   """Unpacks a merkle leaf created by merkelize_polynomials.
 
   Note that the packing in each Merkle leaf is
@@ -148,4 +140,3 @@ def unpack_merkle_leaf(leaf, dims, num_polys):
       byte_val = leaf[start_index:end_index]
       vals.append(byte_val)
   return vals
-
