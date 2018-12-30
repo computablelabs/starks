@@ -1,7 +1,6 @@
 import unittest
 from starks.modp import IntegersModP
 from starks.rationals_modp import RationalsModP
-from starks.poly_utils import PrimeField
 
 class TestModP(unittest.TestCase):
   """Basic tests for Mod-p numbers."""
@@ -57,8 +56,7 @@ class TestModP(unittest.TestCase):
     steps = 512
     modulus = 2**256 - 2**32 * 351 + 1
     mod = IntegersModP(modulus)
-    f = PrimeField(modulus)
-    Gorig = f.exp(7, (modulus - 1) // steps)
+    Gorig = pow(7, (modulus - 1) // steps, modulus)
     G = mod(7)**((modulus - 1) // steps)
     assert int(G) == Gorig
 

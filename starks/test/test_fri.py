@@ -3,7 +3,6 @@ from starks.fri import prove_low_degree
 from starks.fri import verify_low_degree_proof
 from starks.fft import fft
 from starks.merkle_tree import merkelize
-from starks.poly_utils import PrimeField
 from starks.compression import bin_length
 from starks.compression import compress_fri
 from starks.modp import IntegersModP
@@ -46,7 +45,6 @@ class TestFRI(unittest.TestCase):
     # Some round constants borrowed from MiMC
     poly = [[mod((i**7) ^ 42)] for i in range(steps)]
     # Root of unity such that x^steps=1
-    #G = f.exp(7, (modulus - 1) // steps)
     G = mod(7)**((modulus-1)//steps)
     evaluations = fft(poly, modulus, G)
     evaluations = [val[0] for val in evaluations]
@@ -76,16 +74,15 @@ class TestFRI(unittest.TestCase):
     modulus = 31
     steps = 512
     degree = steps
-    poly = [[(i**7) ^ 42] for i in range(steps)]
     modulus = 2**256 - 2**32 * 351 + 1
-    f = PrimeField(modulus)
+    mod = IntegersModP(modulus)
+    poly = [[mod((i**7) ^ 42)] for i in range(steps)]
     # Root of unity such that x^steps=1
-    G = f.exp(7, (modulus - 1) // steps)
+    G = mod(7)**((modulus - 1) // steps)
     evaluations = fft(poly, modulus, G, dims=dims)
     # Unwrap the fft wrapping
     evaluations = [val[0] for val in evaluations]
     e_mtree = merkelize(evaluations)
-
     # This is a low degree polynomial so we hit the special
     # case of the handler.
     proof = prove_low_degree(evaluations, G, degree, modulus)
@@ -95,9 +92,10 @@ class TestFRI(unittest.TestCase):
 
   def test_fri(self):
     """Pure FRI tests"""
-    poly = [[val] for val in list(range(4096))]
     modulus = 2**256 - 2**32 * 351 + 1
-    root_of_unity = pow(7, (modulus - 1) // 16384, modulus)
+    mod = IntegersModP(modulus)
+    poly = [[mod(val)] for val in list(range(4096))]
+    root_of_unity = mod(7)**((modulus - 1) // 16384)
     evaluations = fft(poly, modulus, root_of_unity)
     evaluations = [val[0] for val in evaluations]
     proof = prove_low_degree(evaluations, root_of_unity, 4096, modulus)

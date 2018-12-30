@@ -390,7 +390,7 @@ def verify_proof_at_position(comp, params, ks, proof, i, pos, constants_polynomi
   k_of_xs = []
   for constants_mini_polynomial in constants_polynomials:
     # This is unwrapping the polynomial
-    constants_mini_polynomial = [val[0] for val in constants_mini_polynomial]
+    constants_mini_polynomial = polysOver([val[0] for val in constants_mini_polynomial])
     k_of_xs.append(constants_mini_polynomial(x))
 
   # Check transition constraints C(P(x)) = Z(x) * D(x)

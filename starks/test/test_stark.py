@@ -379,12 +379,12 @@ class TestStark(unittest.TestCase):
     inp = [field(0), field(1)]
     # This is a place filler
     constants = [[]] * steps
-    def fibonacci_step(f, prev, constants):
+    def fibonacci_step(prev, constants):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
       f_n_plus_1 = f_n + f_n_minus_1
       return [f_n, f_n_plus_1]
-    trace, output = get_computational_trace(field, inp, steps,
+    trace, output = get_computational_trace(inp, steps,
         constants, fibonacci_step)
     assert list(trace[0]) == [0, 1]
     assert list(trace[1]) == [1, 1]
@@ -505,17 +505,6 @@ class TestStark(unittest.TestCase):
         comp, params, p_evaluations)
     d_evaluations = construct_remainder_polynomial(
         comp, params, c_of_p_evaluations)
-    ##############################################
-    print("params.G2")
-    print(params.G2)
-    print("params.xs[:5]")
-    print(params.xs[:5])
-    print("type(params.xs[0])")
-    print(type(params.xs[0]))
-    print("d_evaluations[0]")
-    print(d_evaluations[0])
-    #assert 0 == 1
-    ##############################################
     assert len(d_evaluations) == params.precision
     for ind, dval in enumerate(d_evaluations):
       assert isinstance(dval, list)
@@ -868,7 +857,7 @@ class TestStark(unittest.TestCase):
     extension_factor = 8
 
     ## Factoring out computation
-    def step_fn(f, state, constants):
+    def step_fn(state, constants):
       # c_5*value**5 + c_4*value**4 + c_3*value**3 + c_2*value**2 + c_1*value**1 + c_0
       value = state[0]
       return [constants[5]*value**5 + constants[4]*value**4 + constants[3]*value**3 + constants[2]*value**2 + constants[1]*value + constants[0]]
@@ -881,6 +870,6 @@ class TestStark(unittest.TestCase):
     assert len(proof) == 4
     (m_root, l_root, branches, fri_proof) = proof
     trace, output = get_computational_trace(
-        field, inp, steps, constants, step_fn)
+        inp, steps, constants, step_fn)
     result = verify_proof(comp, params, proof)
     assert result

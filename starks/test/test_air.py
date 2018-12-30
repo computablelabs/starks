@@ -22,7 +22,7 @@ class TestAIR(unittest.TestCase):
     field = IntegersModP(modulus)
     inp = [field(0), field(1)]
     constraint_degree = 4
-    def step_fn(f, prev, constants):
+    def step_fn(prev, constants):
       f_n_minus_1 = prev[0]
       f_n = prev[1]
       f_n_plus_1 = f_n + f_n_minus_1
@@ -31,8 +31,6 @@ class TestAIR(unittest.TestCase):
         constraint_degree, extension_factor)
     assert len(comp.computational_trace) == 512
     for state in comp.computational_trace:
-        assert len(state) == dims
-        for dim in range(dims):
-          print("state[dim]")
-          print(state[dim])
-          assert isinstance(state[dim], field)
+      assert len(state) == dims
+      for dim in range(dims):
+        assert isinstance(state[dim], field)
