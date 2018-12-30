@@ -1,21 +1,22 @@
-from starks.merkle_tree import merkelize, mk_branch, verify_branch
-from starks.utils import get_power_cycle, get_pseudorandom_indices
-from starks.poly_utils import PrimeField
+from typing import List
+from starks.merkle_tree import merkelize
+from starks.merkle_tree import mk_branch
+from starks.merkle_tree import verify_branch
+from starks.utils import get_power_cycle
+from starks.utils import get_pseudorandom_indices
+from starks.poly_utils import lagrange_interp
+from starks.poly_utils import multi_interp_4
+from starks.numbertype import FieldElement
 
 # The number of spot checks performed at each recursion of the
 # FRI proof.
-fri_spot_check_security_factor = 40
 
-# TODO(rbharath): Why are quartics used everywhere in this
-# file? Any specific reason or could cubics or whatever work
-# too?
-# I think we could use a cubic; main trick here is that we
-# need a low degree polynomial.
-def prove_low_degree(values,
-                     root_of_unity,
-                     maxdeg_plus_1,
-                     modulus,
-                     exclude_multiples_of=0):
+def prove_low_degree(values: List[FieldElement],
+                     root_of_unity: FieldElement,
+                     maxdeg_plus_1: int,
+                     modulus: int,
+                     exclude_multiples_of:int = 0,
+                     fri_spot_check_security_factor:int = 40):
   """
   Generate an FRI proof that the polynomial that has the
   specified values at successive powers of the specified root
@@ -27,7 +28,7 @@ def prove_low_degree(values,
   Note that if values is a n-degree polynomial, root_of_unity
   should be a n-th root of unity.
   """
-  f = PrimeField(modulus)
+  #f = PrimeField(modulus)
   print('Proving %d values are degree <= %d' % (len(values), maxdeg_plus_1))
 
   # If the degree we are checking for is less than or equal to
@@ -35,10 +36,12 @@ def prove_low_degree(values,
   # TODO(rbharath): Why does this make sense?
   if maxdeg_plus_1 <= 16:
     print('Produced FRI proof')
-    return [[x.to_bytes(32, 'big') for x in values]]
+    #return [[x.to_bytes(32, 'big') for x in values]]
+    return [[x.to_bytes() for x in values]]
 
   # Calculate the set of x coordinates
   xs = get_power_cycle(root_of_unity, modulus)
+  
   assert len(values) == len(xs)
 
   # Put the values into a Merkle tree. This is the root that
@@ -56,12 +59,13 @@ def prove_low_degree(values,
   # row, and not directly from the polynomial, as this is more
   # efficient
   quarter_len = len(xs) // 4
-  x_polys = f.multi_interp_4(
+  x_polys = multi_interp_4(modulus,
       [[xs[i + quarter_len * j] for j in range(4)] for i in range(quarter_len)],
       [[values[i + quarter_len * j]
         for j in range(4)]
        for i in range(quarter_len)])
-  column = [f.eval_quartic(p, special_x) for p in x_polys]
+  #column = [f.eval_quartic(p, special_x) for p in x_polys]
+  column = [p(special_x) for p in x_polys]
   m2 = merkelize(column)
 
   # Pseudo-randomly select y indices to sample
@@ -81,7 +85,8 @@ def prove_low_degree(values,
   # Recurse...
   return [o] + prove_low_degree(
       column,
-      f.exp(root_of_unity, 4),
+      #f.exp(root_of_unity, 4),
+      root_of_unity**4,
       maxdeg_plus_1 // 4,
       modulus,
       exclude_multiples_of=exclude_multiples_of)
@@ -92,24 +97,24 @@ def verify_low_degree_proof(merkle_root,
                             proof,
                             maxdeg_plus_1,
                             modulus,
-                            exclude_multiples_of=0):
+                            exclude_multiples_of=0,
+                            fri_spot_check_security_factor=40):
   """Verify an FRI proof"""
-  f = PrimeField(modulus)
-
   # Calculate which root of unity we're working with
   testval = root_of_unity
   # roudeg is the power of the root of unity 
   roudeg = 1
   while testval != 1:
     roudeg *= 2
-    testval = (testval * testval) % modulus
+    #testval = (testval * testval) % modulus
+    testval = (testval * testval)
 
   # Powers of the given root of unity 1, p, p**2, p**3 such that p**4 = 1
   quartic_roots_of_unity = [
       1,
-      f.exp(root_of_unity, roudeg // 4),
-      f.exp(root_of_unity, roudeg // 2),
-      f.exp(root_of_unity, roudeg * 3 // 4)
+      root_of_unity**(roudeg // 4),
+      root_of_unity**(roudeg // 2),
+      root_of_unity**(roudeg * 3 // 4)
   ]
 
   # Verify the recursive components of the proof
@@ -132,9 +137,9 @@ def verify_low_degree_proof(merkle_root,
     columnvals = []
     for i, y in enumerate(ys):
       # The x coordinates from the polynomial
-      x1 = f.exp(root_of_unity, y)
+      x1 = root_of_unity**y
       xcoords.append(
-          [(quartic_roots_of_unity[j] * x1) % modulus for j in range(4)])
+          [(quartic_roots_of_unity[j] * x1) for j in range(4)])
 
       # The values from the original polynomial
       row = [
@@ -151,14 +156,14 @@ def verify_low_degree_proof(merkle_root,
     # points from the polynomial and the one point from the
     # column that are on that y coordinate are on the same deg
     # < 4 polynomial
-    polys = f.multi_interp_4(xcoords, rows)
+    polys = multi_interp_4(modulus, xcoords, rows)
 
     for p, c in zip(polys, columnvals):
-      assert f.eval_quartic(p, special_x) == c
+      assert p(special_x) == c
 
     # Update constants to check the next proof
     merkle_root = root2
-    root_of_unity = f.exp(root_of_unity, 4)
+    root_of_unity = root_of_unity**4
     maxdeg_plus_1 //= 4
     roudeg //= 4
 
@@ -178,10 +183,12 @@ def verify_low_degree_proof(merkle_root,
   else:
     pts = range(len(data))
 
-  poly = f.lagrange_interp([powers[x] for x in pts[:maxdeg_plus_1]],
-                           [data[x] for x in pts[:maxdeg_plus_1]])
+  #poly = f.lagrange_interp([powers[x] for x in pts[:maxdeg_plus_1]],
+  poly = lagrange_interp(modulus,
+          [powers[x] for x in pts[:maxdeg_plus_1]],
+          [data[x] for x in pts[:maxdeg_plus_1]])
   for x in pts[maxdeg_plus_1:]:
-    assert f.eval_poly_at(poly, powers[x]) == data[x]
+    assert poly(powers[x]) == data[x]
 
   print('FRI proof verified')
   return True

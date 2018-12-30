@@ -25,7 +25,10 @@ def IntegersModP(p):
 
     def __init__(self, n):
       try:
-        self.n = int(n) % IntegerModP.p
+        if isinstance(n, bytes):
+          self.n = int.from_bytes(n, 'big')
+        else:
+          self.n = int(n) % IntegerModP.p
       except:
         raise TypeError("Can't cast type %s to %s in __init__" %
                         (type(n).__name__, type(self).__name__))
@@ -82,11 +85,12 @@ def IntegersModP(p):
     def __int__(self):
       return self.n
 
+    # TODO(rbharath): Can this method be done better?
+    def to_bytes(self):
+      return self.n.to_bytes(32, 'big')
+
+
   IntegerModP.p = p
   IntegerModP.__name__ = 'Z/%d' % (p)
   IntegerModP.englishName = 'IntegersMod%d' % (p)
   return IntegerModP
-
-
-if __name__ == "__main__":
-  mod7 = IntegersModP(7)

@@ -1,4 +1,9 @@
-def _simple_ft(vals, modulus, roots_of_unity):
+from typing import List
+from starks.numbertype import FieldElement
+from starks.numbertype import Vector
+
+# TODO(rbharath): The type signatures here don't account for multidimensional inputs! Should this be List[Vector] instead?
+def _simple_ft(vals: List[FieldElement], roots_of_unity: FieldElement) -> List[FieldElement]:
   """Efficient base case implementation.
   
   The FFT recurses down halves of the list. This method is
@@ -10,24 +15,25 @@ def _simple_ft(vals, modulus, roots_of_unity):
     last = 0
     for j in range(L):
       last += vals[j] * roots_of_unity[(i * j) % L]
-    o.append(last % modulus)
+    o.append(last)
   return o
 
 
-def _fft(vals, modulus, roots_of_unity):
+def _fft(vals: List[FieldElement], roots_of_unity: FieldElement) -> List[FieldElement]:
   if len(vals) <= 4:
     #return vals
-    return _simple_ft(vals, modulus, roots_of_unity)
-  L = _fft(vals[::2], modulus, roots_of_unity[::2])
-  R = _fft(vals[1::2], modulus, roots_of_unity[::2])
+    return _simple_ft(vals, roots_of_unity)
+  L = _fft(vals[::2], roots_of_unity[::2])
+  R = _fft(vals[1::2], roots_of_unity[::2])
   o = [0 for i in vals]
   for i, (x, y) in enumerate(zip(L, R)):
     y_times_root = y * roots_of_unity[i]
-    o[i] = (x + y_times_root) % modulus
-    o[i + len(L)] = (x - y_times_root) % modulus
+    o[i] = (x + y_times_root)
+    o[i + len(L)] = (x - y_times_root)
   return o
 
-def fft(vals, modulus, root_of_unity, inv=False, dims=1):
+def fft(vals: List[Vector], modulus: int, root_of_unity: FieldElement,
+    inv: bool =False, dims:int =1) -> List[Vector]:
   """Computes FFT for potentially multidimensional sequences"""
   fft_vals = []
   for dim in range(dims):
@@ -39,34 +45,33 @@ def fft(vals, modulus, root_of_unity, inv=False, dims=1):
   return fft_joint
 
 
-def fft_1d(vals, modulus, root_of_unity, inv=False):
+def fft_1d(vals: List[FieldElement], modulus: int, root_of_unity: FieldElement, inv: bool = False) -> List[FieldElement]:
   """Computes FFT for one dimensional inputs"""
   # Build up roots of unity
   rootz = [1, root_of_unity]
   while rootz[-1] != 1:
-    rootz.append((rootz[-1] * root_of_unity) % modulus)
+    rootz.append((rootz[-1] * root_of_unity))
   # Fill in vals with zeroes if needed
   if len(rootz) > len(vals) + 1:
     vals = vals + [0] * (len(rootz) - len(vals) - 1)
   if inv:
     # Inverse FFT
     invlen = pow(len(vals), modulus - 2, modulus)
-    return [(x * invlen) % modulus for x in _fft(vals, modulus, rootz[:0:-1])]
+    return [(x * invlen) for x in _fft(vals, rootz[:0:-1])]
   else:
     # Regular FFT
-    return _fft(vals, modulus, rootz[:-1])
+    return _fft(vals, rootz[:-1])
 
 
-def mul_polys(a, b, modulus, root_of_unity):
+def mul_polys(a: List[FieldElement], b: List[FieldElement], root_of_unity: FieldElement) -> List[FieldElement]:
   """Multiply polynomials by converting to fourier space"""
   rootz = [1, root_of_unity]
   while rootz[-1] != 1:
-    rootz.append((rootz[-1] * root_of_unity) % modulus)
+    rootz.append((rootz[-1] * root_of_unity))
   if len(rootz) > len(a) + 1:
     a = a + [0] * (len(rootz) - len(a) - 1)
   if len(rootz) > len(b) + 1:
     b = b + [0] * (len(rootz) - len(b) - 1)
-  x1 = _fft(a, modulus, rootz[:-1])
-  x2 = _fft(b, modulus, rootz[:-1])
-  return _fft([(v1 * v2) % modulus for v1, v2 in zip(x1, x2)], modulus,
-              rootz[:0:-1])
+  x1 = _fft(a, rootz[:-1])
+  x2 = _fft(b, rootz[:-1])
+  return _fft([(v1 * v2) for v1, v2 in zip(x1, x2)], rootz[:0:-1])

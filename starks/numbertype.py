@@ -1,7 +1,7 @@
 """
-
-TODO(rbharath): What do these classes actually do?
+These classes help speed up field computations by caching and introduce some useful types.
 """
+from typing import List
 
 
 def memoize(f):
@@ -102,6 +102,9 @@ class DomainElement(object):
 
     return R
 
+  def to_bytes(self):
+    raise NotImplementedError 
+
 
 # additionally require inverse() on subclasses
 class FieldElement(DomainElement):
@@ -117,3 +120,6 @@ class FieldElement(DomainElement):
 
   def __rdiv__(self, other):
     return self.__rtruediv__(other)
+
+# Define a type alias
+Vector = List[FieldElement]

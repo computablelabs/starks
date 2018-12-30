@@ -28,11 +28,20 @@ def RationalsModP(p):
       If denominator is not specified, set it to 1.
       """
       try:
-        num = int(m) % RationalModP.p
-        den = int(n) % RationalModP.p
+        # This is awkward constructor overloading
+        if isinstance(m, bytes):
+          num = int.from_bytes(m[:32], 'big')
+          den = int.from_bytes(m[32:], 'big')
+        else:
+          num = int(m) % RationalModP.p
+          den = int(n) % RationalModP.p
         common = gcd(num, den)
-        self.m = num // common
-        self.n = den // common
+        # Handle case with 0
+        if common == 0:
+          self.m, self.n = num, den
+        else:
+          self.m = num // common
+          self.n = den // common
       except:
         raise TypeError("Can't cast type %s to %s in __init__" %
                         (type(n).__name__, type(self).__name__))
@@ -100,6 +109,10 @@ def RationalsModP(p):
 
     def __repr__(self):
       return '%d/%d (mod %d)' % (self.m, self.n, self.p)
+
+    # TODO(rbharath): Can this method be done better?
+    def to_bytes(self):
+      return self.m.to_bytes(32, 'big') + self.n.to_bytes(32, 'big')
 
     #def __int__(self):
     #  return self.n

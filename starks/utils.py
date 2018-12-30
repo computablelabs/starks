@@ -1,5 +1,13 @@
-from starks.merkle_tree import blake
 import time
+from starks.merkle_tree import blake
+from starks.numbertype import FieldElement
+from starks.modp import IntegersModP
+from typing import Dict
+from typing import List
+
+
+def plus_one(num: int) -> int:
+    return num + 1
 
 # TODO(rbharath): Wait, does Vitalik's blog post claim that
 # the verifier complexity is linear; Nah looks like t*log(t)
@@ -7,7 +15,7 @@ import time
 # be pretty small even for very large computations.
 # NOTE(rbharath): These starks here are not zero-knowledge I
 # think. Will need to be added onto library later.
-def mimc(inp, steps, round_constants):
+def mimc(inp: int, steps: int, round_constants: List[int]):
   """Compute a MIMC permutation for some number of steps"""
   modulus = 2**256 - 2**32 * 351 + 1
   start_time = time.time()
@@ -17,14 +25,18 @@ def mimc(inp, steps, round_constants):
   return inp
 
 
-def get_power_cycle(r, modulus):
+# TODO(rbharath): The type-constructor style of IntegersModP makes type
+# signatures difficult...
+def get_power_cycle(r: FieldElement, modulus: int):
   """
   Get the set of powers of R, until but not including when the
   powers loop back to 1
   """
-  o = [1, r]
+  mod = IntegersModP(modulus)
+  o = [mod(1), r]
   while o[-1] != 1:
-    o.append((o[-1] * r) % modulus)
+    #o.append((o[-1] * r) % modulus)
+    o.append(o[-1] * r)
   return o[:-1]
 
 
