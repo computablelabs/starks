@@ -20,7 +20,7 @@ could possibly be very large.
 
 from starks.utils import is_a_power_of_2
 
-def get_computational_trace(f, inp, steps, constants, step_fn):
+def get_computational_trace(inp, steps, constants, step_fn):
   """Get the computational trace for the algebraic intermediate representation.
 
   Parameters
@@ -40,7 +40,7 @@ def get_computational_trace(f, inp, steps, constants, step_fn):
   for i in range(steps - 1):
     poly_constants = constants[i]
     # TODO(rbharath): Is there off-by-one error on round_contants?
-    next_state = step_fn(f, computational_trace[-1], poly_constants)
+    next_state = step_fn(computational_trace[-1], poly_constants)
     computational_trace.append(next_state)
   output = computational_trace[-1]
   print('Done generating computational trace')
@@ -98,7 +98,7 @@ class Computation(object):
     self.step_fn = step_fn
     self.constraint_degree = constraint_degree
     self.computational_trace, self.output = get_computational_trace(
-        field, inp, steps, constants, step_fn)
+        inp, steps, constants, step_fn)
     self.extension_factor = extension_factor
   
   def get_witness(self):

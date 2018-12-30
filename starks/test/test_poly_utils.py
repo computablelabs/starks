@@ -7,7 +7,7 @@ from starks.poly_utils import lagrange_interp_2
 from starks.poly_utils import lagrange_interp_4
 from starks.poly_utils import multi_interp_4 
 from starks.polynomial import polynomials_over
-#from starks.poly_utils import PrimeField 
+from starks.utils import get_power_cycle
 
 class TestPolyUtils(unittest.TestCase):
   """
@@ -48,16 +48,36 @@ class TestPolyUtils(unittest.TestCase):
 
   def test_multi_inv(self):
     """Test of faster multiple inverse method."""
-    #field7 = PrimeField(7)
     # 6^-1 = 6
     modulus = 7
     mod7 = IntegersModP(modulus)
-    outs = multi_inv([mod7(6), mod7(6), mod7(6)])
+    outs = multi_inv(mod7, [mod7(6), mod7(6), mod7(6)])
     assert outs == [6, 6, 6]
 
     # 1^-1 = 1
-    outs = multi_inv([mod7(6), mod7(1), mod7(6)])
+    outs = multi_inv(mod7, [mod7(6), mod7(1), mod7(6)])
     assert outs == [6, 1, 6]
+
+    outs = multi_inv(mod7, [mod7(0), mod7(1), mod7(1)])
+
+    modulus = 2**256 - 2**32 * 351 + 1
+    mod = IntegersModP(modulus)
+    ## Root of unity such that x^precision=1
+    G2 = mod(7)**((modulus - 1) // 4096)
+    ### Powers of the higher-order root of unity
+    xs = get_power_cycle(G2, modulus)
+    xs_minus_1 = [x - 1 for x in xs]
+    xs_minus_1_inv = multi_inv(mod, xs_minus_1)
+    # Skip 0 since xs_minus_1[0] == 0
+    for i in range(1, 5):
+      assert xs_minus_1[i] * xs_minus_1_inv[i] == 1
+
+    steps = 512
+    precision = 4096
+    z_evals = [xs[(i * steps) % precision] - 1 for i in range(precision)]
+    z_inv = multi_inv(mod, z_evals)
+    for i in range(1, 5):
+      assert z_evals[i] * z_inv[i] == 1
 
   def test_lagrange_interp(self):
     """Test lagrangian interpolation."""

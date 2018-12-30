@@ -138,9 +138,10 @@ def construct_remainder_polynomial(comp: Computation, params: StarkParams, c_of_
   Z(x) = (x - 1)(x-2)...(x-(steps_1)). How are these equal?
   """
   z_num_evaluations = [
+      # TODO(rbharath): Is this right??
       params.xs[(i * comp.steps) % params.precision] - 1 for i in range(params.precision)
   ]
-  z_num_inv = multi_inv(z_num_evaluations)
+  z_num_inv = multi_inv(comp.field, z_num_evaluations)
   # (x_i - x_{step-1}) list
   z_den_evaluations = [params.xs[i] - params.last_step_position for i in range(params.precision)]
   d_evaluations = [
@@ -163,7 +164,7 @@ def construct_boundary_polynomial(comp: Computation, params: StarkParams, p_eval
     interpolant = lagrange_interp_2(params.modulus, polysOver([1, params.last_step_position]),
         polysOver([comp.inp[dim], comp.output[dim]]))
     i_evaluations_dim = [interpolant(x) for x in params.xs]
-    inv_z2_evaluations_dim = multi_inv([zeropoly2(x) for x in params.xs])
+    inv_z2_evaluations_dim = multi_inv(comp.field, [zeropoly2(x) for x in params.xs])
     # Append to list
     i_evaluations.append(i_evaluations_dim)
     inv_z2_evaluations.append(inv_z2_evaluations_dim)

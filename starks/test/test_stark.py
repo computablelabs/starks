@@ -30,6 +30,8 @@ from starks.modp import IntegersModP
 from starks.compression import bin_length
 from starks.compression import compress_branches
 from starks.compression import compress_fri
+from starks.polynomial import polynomials_over
+from starks.poly_utils import lagrange_interp_2
 
 
 class TestStark(unittest.TestCase):
@@ -62,7 +64,6 @@ class TestStark(unittest.TestCase):
     ## Factoring out computation
     def step_fn(state, constants):
       # c_1*value**2 + c_0
-      #return [f.add(f.mul(constants[1], f.exp(value, 2)), constants[0])]
       return [constants[1]*state[0]**2 + constants[0]]
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)
@@ -105,10 +106,9 @@ class TestStark(unittest.TestCase):
     extension_factor = 8
     field = IntegersModP(modulus)
     inp = [field(5)]
-    ## Factoring out computation
     def step_fn(value, constants):
       # c_1*value**2 + c_0
-      return [f.add(f.mul(constants[1], f.exp(value[0], 2)), constants[0])]
+      return [constants[1]*value[0]**2 + constants[0]]
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)
     params = StarkParams(field, steps, modulus, extension_factor)
@@ -179,15 +179,15 @@ class TestStark(unittest.TestCase):
       d_of_x = d_evaluations[pos]
       b_of_x = b_evaluations[pos]
 
-      x = field.exp(params.G2, pos)
-      x_to_the_steps = field.exp(x, comp.steps)
+      x = params.G2**pos
+      x_to_the_steps = x**comp.steps
 
       # Leaf node from l[pos]
       k1, k2, k3, k4 = get_pseudorandom_ks(mtree[1], 4)
       for dim in range(comp.dims):
         l_evaluations_dim = l_evaluations_per_dim[dim]
         l_of_x_dim = l_evaluations_dim[pos]
-        assert (l_of_x_dim - d_of_x[dim] - k1 * p_of_x[dim] - k2 * p_of_x[dim] * x_to_the_steps - k3 * b_of_x[dim] - k4 * b_of_x[dim] * x_to_the_steps) % modulus == 0
+        assert (l_of_x_dim - d_of_x[dim] - k1 * p_of_x[dim] - k2 * p_of_x[dim] * x_to_the_steps - k3 * b_of_x[dim] - k4 * b_of_x[dim] * x_to_the_steps) == 0
 
   def test_compute_pseudorandom_combination(self):
     """
@@ -204,10 +204,10 @@ class TestStark(unittest.TestCase):
     ## Factoring out computation
     def step_fn(value, constants):
       # c_1*value**2 + c_0
-      return [constants[1]*value[0]**2) + constants[0]]
+      return [constants[1]*value[0]**2 + constants[0]]
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)
-    params = StarkParams(field, step, modulus, extension_factor)
+    params = StarkParams(field, steps, modulus, extension_factor)
 
     constants_extensions, constants_polynomials = \
         construct_constants_polynomials(comp, params)
@@ -243,7 +243,7 @@ class TestStark(unittest.TestCase):
       for dim in range(comp.dims):
         l_evaluations_dim = l_evaluations_per_dim[dim]
         l_of_x_dim = l_evaluations_dim[pos]
-        assert (l_of_x_dim - d_of_x[dim] - k1 * p_of_x[dim] - k2 * p_of_x[dim] * x_to_the_steps - k3 * b_of_x[dim] - k4 * b_of_x[dim] * x_to_the_steps) % modulus == 0
+        assert (l_of_x_dim - d_of_x[dim] - k1 * p_of_x[dim] - k2 * p_of_x[dim] * x_to_the_steps - k3 * b_of_x[dim] - k4 * b_of_x[dim] * x_to_the_steps) == 0
 
 
   def test_1d_end_to_end(self):
@@ -252,12 +252,13 @@ class TestStark(unittest.TestCase):
     """
     dims = 1
     steps = 512
-    constraint_degree = 4
+    constraint_degree = 8
     constants = [[i, i] for i in range(steps)]
     spot_check_security_factor = 80
     modulus = 2**256 - 2**32 * 351 + 1
     extension_factor = 8
     field = IntegersModP(modulus)
+    polysOver = polynomials_over(field).factory
     inp = [field(5)]
     ## Factoring out computation
     def step_fn(value, constants):
@@ -306,7 +307,6 @@ class TestStark(unittest.TestCase):
     k1, k2, k3, k4 = ks
 
     branches = compute_merkle_spot_checks(mtree, l_mtree, comp, params)
-    #branches = []
     positions = get_pseudorandom_indices(l_mtree[1],
         params.precision, count=spot_check_security_factor,
         exclude_multiples_of=params.extension_factor)
@@ -325,27 +325,26 @@ class TestStark(unittest.TestCase):
 
       # Check that p_of_x was recovered correctly
       p_of_x = p_evaluations[pos]
-      p_of_x_recovered = [int.from_bytes(p_of_x_dim, 'big') for p_of_x_dim in unpacked_leaf1[:comp.dims]]
+      p_of_x_recovered = [field(p_of_x_dim) for p_of_x_dim in unpacked_leaf1[:comp.dims]]
       assert len(p_of_x) == len(p_of_x_recovered)
       for dim in range(comp.dims):
         assert p_of_x[dim] == p_of_x_recovered[dim]
 
       # Check that p_of_g1x was recovered correctly
-      # TODO(rbharath): This is breaking down!!
       p_of_g1x = p_evaluations[next_pos]
-      p_of_g1x_recovered = [int.from_bytes(p_of_g1x_dim, 'big') for p_of_g1x_dim in unpacked_leaf2[:comp.dims]]
+      p_of_g1x_recovered = [field(p_of_g1x_dim) for p_of_g1x_dim in unpacked_leaf2[:comp.dims]]
       assert len(p_of_g1x) == len(p_of_g1x_recovered)
       for dim in range(comp.dims):
         assert p_of_g1x[dim] == p_of_g1x_recovered[dim]
 
       d_of_x = d_evaluations[pos]
-      d_of_x_recovered = [int.from_bytes(d_of_x_dim, 'big') for d_of_x_dim in unpacked_leaf1[comp.dims:2*comp.dims]]
+      d_of_x_recovered = [field(d_of_x_dim) for d_of_x_dim in unpacked_leaf1[comp.dims:2*comp.dims]]
       assert len(d_of_x) == len(d_of_x_recovered)
       for dim in range(comp.dims):
         assert d_of_x[dim] == d_of_x_recovered[dim]
 
       b_of_x = b_evaluations[pos]
-      b_of_x_recovered = [int.from_bytes(b_of_x_dim, 'big') for b_of_x_dim in unpacked_leaf1[2*comp.dims:]]
+      b_of_x_recovered = [field(b_of_x_dim) for b_of_x_dim in unpacked_leaf1[2*comp.dims:]]
       assert len(b_of_x) == len(b_of_x_recovered)
       for dim in range(comp.dims):
         assert b_of_x[dim] == b_of_x_recovered[dim]
@@ -356,19 +355,19 @@ class TestStark(unittest.TestCase):
       k_of_xs = []
       for constants_mini_polynomial in constants_polynomials:
         # This is unwrapping the polynomial
-        constants_mini_polynomial = [val[0] for val in constants_mini_polynomial]
+        constants_mini_polynomial = polysOver([val[0] for val in constants_mini_polynomial])
         k_of_x = constants_mini_polynomial(x)
         k_of_xs.append(k_of_x)
       f_of_p_of_x = comp.step_fn(p_of_x, k_of_xs)
       f_of_p_of_x_recovered = comp.step_fn(p_of_x, k_of_xs)
       assert f_of_p_of_x == f_of_p_of_x_recovered
-      assert (p_of_g1x[0] - f_of_p_of_x[0] - zvalue * d_of_x[0]) % modulus == 0
-      assert (p_of_g1x_recovered[0] - f_of_p_of_x_recovered[0] - zvalue * d_of_x_recovered[0]) % modulus == 0
+      assert (p_of_g1x[0] - f_of_p_of_x[0] - zvalue * d_of_x[0]) == 0
+      assert (p_of_g1x_recovered[0] - f_of_p_of_x_recovered[0] - zvalue * d_of_x_recovered[0]) == 0
 
-      zeropoly2 = field.mul_polys([-1, 1], [-params.last_step_position, 1])
+      zeropoly2 = polysOver([-1, 1])* polysOver([-params.last_step_position, 1])
       for dim in range(comp.dims):
-        interpolant_dim = field.lagrange_interp_2([1, params.last_step_position], [comp.inp[dim], comp.output[dim]])
-        assert (p_of_x[dim] - b_of_x[dim] * zeropoly2(x) - interpolant_dim(x)) % modulus == 0
+        interpolant_dim = lagrange_interp_2(modulus, [1, params.last_step_position], [comp.inp[dim], comp.output[dim]])
+        assert (p_of_x[dim] - b_of_x[dim] * zeropoly2(x) - interpolant_dim(x)) == 0
 
   def test_higher_dim_trace(self):
     """
@@ -506,6 +505,17 @@ class TestStark(unittest.TestCase):
         comp, params, p_evaluations)
     d_evaluations = construct_remainder_polynomial(
         comp, params, c_of_p_evaluations)
+    ##############################################
+    print("params.G2")
+    print(params.G2)
+    print("params.xs[:5]")
+    print(params.xs[:5])
+    print("type(params.xs[0])")
+    print(type(params.xs[0]))
+    print("d_evaluations[0]")
+    print(d_evaluations[0])
+    #assert 0 == 1
+    ##############################################
     assert len(d_evaluations) == params.precision
     for ind, dval in enumerate(d_evaluations):
       assert isinstance(dval, list)
@@ -861,7 +871,7 @@ class TestStark(unittest.TestCase):
     def step_fn(f, state, constants):
       # c_5*value**5 + c_4*value**4 + c_3*value**3 + c_2*value**2 + c_1*value**1 + c_0
       value = state[0]
-      return [constants[5]*value**5 + constants[4]*value**4 + constants[3]*value**3 + constants[2]*value**2 + constants[1]*value + constants[0])))))]
+      return [constants[5]*value**5 + constants[4]*value**4 + constants[3]*value**3 + constants[2]*value**2 + constants[1]*value + constants[0]]
 
     comp = Computation(field, dims, inp, steps, constants, step_fn,
         constraint_degree, extension_factor)

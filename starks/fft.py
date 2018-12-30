@@ -1,4 +1,5 @@
 from typing import List
+from starks.numbertype import FieldElement
 from starks.numbertype import Vector
 
 # TODO(rbharath): The type signatures here don't account for multidimensional inputs! Should this be List[Vector] instead?
