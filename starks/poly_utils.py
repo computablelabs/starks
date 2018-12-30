@@ -57,7 +57,6 @@ def lagrange_interp(modulus, xs, ys):
   # Generate per-value numerator polynomials, eg. for x=x2,
   # (x - x1) * (x - x3) * ... * (x - xn), by dividing the master
   # polynomial back by each x coordinate
-  #nums = [self.div_polys(root, [-x, 1]) for x in xs]
   nums = [root / polysOverMod([-x, 1]) for x in xs]
   # Generate denominators by evaluating numerator polys at each x
   denoms = [nums[i](xs[i]) for i in range(len(xs))]
@@ -66,13 +65,11 @@ def lagrange_interp(modulus, xs, ys):
   # polynomials rescaled to have the right y values
   b = [0 for y in ys]
   for i in range(len(xs)):
-    #yslice = self.mul(ys[i], invdenoms[i])
     yslice = ys[i] * invdenoms[i]
     num_coefficients = nums[i].coefficients
     for j in range(len(ys)):
       if num_coefficients[j] and ys[i]:
         b[j] += num_coefficients[j] * yslice
-  #return [x % self.modulus for x in b]
   return polysOverMod(b)
 
 # Optimized version of the above restricted to deg-4 polynomials
@@ -121,26 +118,17 @@ def lagrange_interp_2(modulus, xs, ys):
     xs = xs.coefficients
   if not isinstance(ys, list):
     ys = ys.coefficients
-
   ###############################################
   m = modulus
-  #eq0 = [-xs[1] % m, 1]
   eq0 = polysOverMod([-xs[1], 1])
-  #eq1 = [-xs[0] % m, 1]
   eq1 = polysOverMod([-xs[0], 1])
-  #e0 = self.eval_poly_at(eq0, xs[0])
   e0 = eq0(xs[0])
-  #e1 = self.eval_poly_at(eq1, xs[1])
   e1 = eq1(xs[1])
-  #invall = self.inv(e0 * e1)
   invall = 1/(e0 * e1)
   inv_y0 = ys[0] * invall * e1
   inv_y1 = ys[1] * invall * e0
-  #return [(eq0[i] * inv_y0 + eq1[i] * inv_y1) % m for i in range(2)]
-  #return [(eq0.coefficients[i] * inv_y0 + eq1.coefficients[i] * inv_y1) for i in range(2)]
   return polysOverMod([(eq0.coefficients[i] * inv_y0 + eq1.coefficients[i] * inv_y1) for i in range(2)])
 
-#def multi_interp_4(self, xsets, ysets):
 def multi_interp_4(modulus, xsets, ysets):
   """Optimized version of the above restricted to deg-4 polynomials"""
   mod = IntegersModP(modulus)
@@ -150,41 +138,25 @@ def multi_interp_4(modulus, xsets, ysets):
   for xs, ys in zip(xsets, ysets):
     x01, x02, x03, x12, x13, x23 = \
         xs[0] * xs[1], xs[0] * xs[2], xs[0] * xs[3], xs[1] * xs[2], xs[1] * xs[3], xs[2] * xs[3]
-    #m = self.modulus
     m = modulus
-    #eq0 = [-x12 * xs[3] % m, (x12 + x13 + x23), -xs[1] - xs[2] - xs[3], 1]
     eq0 = polysOverMod([-x12 * xs[3], (x12 + x13 + x23), -xs[1] - xs[2] - xs[3], 1])
-    #eq1 = [-x02 * xs[3] % m, (x02 + x03 + x23), -xs[0] - xs[2] - xs[3], 1]
     eq1 = polysOverMod([-x02 * xs[3], (x02 + x03 + x23), -xs[0] - xs[2] - xs[3], 1])
-    #eq2 = [-x01 * xs[3] % m, (x01 + x03 + x13), -xs[0] - xs[1] - xs[3], 1]
     eq2 = polysOverMod([-x01 * xs[3], (x01 + x03 + x13), -xs[0] - xs[1] - xs[3], 1])
-    #eq3 = [-x01 * xs[2] % m, (x01 + x02 + x12), -xs[0] - xs[1] - xs[2], 1]
     eq3 = polysOverMod([-x01 * xs[2], (x01 + x02 + x12), -xs[0] - xs[1] - xs[2], 1])
-    #e0 = self.eval_quartic(eq0, xs[0])
     e0 = eq0(xs[0])
-    #e1 = self.eval_quartic(eq1, xs[1])
     e1 = eq1(xs[1])
-    #e2 = self.eval_quartic(eq2, xs[2])
     e2 = eq2(xs[2])
-    #e3 = self.eval_quartic(eq3, xs[3])
     e3 = eq3(xs[3])
     data.append([ys, eq0, eq1, eq2, eq3])
     invtargets.extend([e0, e1, e2, e3])
-  #invalls = self.multi_inv(invtargets)
   invalls = multi_inv(mod, invtargets)
   o = []
   for (i, (ys, eq0, eq1, eq2, eq3)) in enumerate(data):
     invallz = invalls[i * 4:i * 4 + 4]
-    #inv_y0 = ys[0] * invallz[0] % m
     inv_y0 = ys[0] * invallz[0]
-    #inv_y1 = ys[1] * invallz[1] % m
     inv_y1 = ys[1] * invallz[1]
-    #inv_y2 = ys[2] * invallz[2] % m
     inv_y2 = ys[2] * invallz[2]
-    #inv_y3 = ys[3] * invallz[3] % m
     inv_y3 = ys[3] * invallz[3]
     o.append(polysOverMod([(eq0.coefficients[i] * inv_y0 + eq1.coefficients[i] * inv_y1 + eq2.coefficients[i] * inv_y2 +
-               #eq3[i] * inv_y3) % m for i in range(4)])
                eq3.coefficients[i] * inv_y3) for i in range(4)]))
-  # assert o == [self.lagrange_interp_4(xs, ys) for xs, ys in zip(xsets, ysets)]
   return o

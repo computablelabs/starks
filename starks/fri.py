@@ -100,8 +100,6 @@ def verify_low_degree_proof(merkle_root,
                             exclude_multiples_of=0,
                             fri_spot_check_security_factor=40):
   """Verify an FRI proof"""
-  #f = PrimeField(modulus)
-
   # Calculate which root of unity we're working with
   testval = root_of_unity
   # roudeg is the power of the root of unity 
@@ -114,11 +112,8 @@ def verify_low_degree_proof(merkle_root,
   # Powers of the given root of unity 1, p, p**2, p**3 such that p**4 = 1
   quartic_roots_of_unity = [
       1,
-      #f.exp(root_of_unity, roudeg // 4),
       root_of_unity**(roudeg // 4),
-      #f.exp(root_of_unity, roudeg // 2),
       root_of_unity**(roudeg // 2),
-      #f.exp(root_of_unity, roudeg * 3 // 4)
       root_of_unity**(roudeg * 3 // 4)
   ]
 
@@ -142,10 +137,8 @@ def verify_low_degree_proof(merkle_root,
     columnvals = []
     for i, y in enumerate(ys):
       # The x coordinates from the polynomial
-      #x1 = f.exp(root_of_unity, y)
       x1 = root_of_unity**y
       xcoords.append(
-          #[(quartic_roots_of_unity[j] * x1) % modulus for j in range(4)])
           [(quartic_roots_of_unity[j] * x1) for j in range(4)])
 
       # The values from the original polynomial
@@ -163,16 +156,13 @@ def verify_low_degree_proof(merkle_root,
     # points from the polynomial and the one point from the
     # column that are on that y coordinate are on the same deg
     # < 4 polynomial
-    #polys = f.multi_interp_4(xcoords, rows)
     polys = multi_interp_4(modulus, xcoords, rows)
 
     for p, c in zip(polys, columnvals):
-      #assert f.eval_quartic(p, special_x) == c
       assert p(special_x) == c
 
     # Update constants to check the next proof
     merkle_root = root2
-    #root_of_unity = f.exp(root_of_unity, 4)
     root_of_unity = root_of_unity**4
     maxdeg_plus_1 //= 4
     roudeg //= 4
@@ -198,7 +188,6 @@ def verify_low_degree_proof(merkle_root,
           [powers[x] for x in pts[:maxdeg_plus_1]],
           [data[x] for x in pts[:maxdeg_plus_1]])
   for x in pts[maxdeg_plus_1:]:
-    #assert f.eval_poly_at(poly, powers[x]) == data[x]
     assert poly(powers[x]) == data[x]
 
   print('FRI proof verified')
