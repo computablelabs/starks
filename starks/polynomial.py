@@ -19,6 +19,8 @@ def strip(L, elt):
 
   return L[:i + 1]
 
+class Poly(DomainElement):
+  pass
 
 @memoize
 def polynomials_over(field=fractions.Fraction):
@@ -28,7 +30,7 @@ def polynomials_over(field=fractions.Fraction):
   [1,2,3] corresponds to 1 + 2x + 3x^2.
   """
 
-  class Polynomial(DomainElement):
+  class Polynomial(Poly):
     operatorPrecedence = 2
 
     @classmethod
