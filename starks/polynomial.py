@@ -9,8 +9,8 @@ from starks.numbertype import memoize
 from starks.numbertype import typecheck
 
 
-# strip all copies of elt from the end of the list
 def strip(L, elt):
+  """strip all copies of elt from the end of the list"""
   if len(L) == 0: return L
 
   i = len(L) - 1
@@ -49,11 +49,11 @@ def polynomials_over(field=fractions.Fraction):
 
       self.coefficients = strip(self.coefficients, field(0))
 
-    def isZero(self):
+    def is_zero(self):
       return self.coefficients == []
 
     def __repr__(self):
-      if self.isZero():
+      if self.is_zero():
         return '0'
 
       return ' + '.join([
@@ -81,7 +81,7 @@ def polynomials_over(field=fractions.Fraction):
     def iter(self):
       return self.__iter__()
 
-    def leadingCoefficient(self):
+    def leading_coefficient(self):
       return self.coefficients[-1]
 
     def degree(self):
@@ -106,7 +106,7 @@ def polynomials_over(field=fractions.Fraction):
 
     @typecheck
     def __mul__(self, other):
-      if self.isZero() or other.isZero():
+      if self.is_zero() or other.is_zero():
         return Zero()
 
       newCoeffs = [self.field(0) for _ in range(len(self) + len(other) - 1)]
@@ -121,13 +121,13 @@ def polynomials_over(field=fractions.Fraction):
     def __divmod__(self, divisor):
       quotient, remainder = Zero(), self
       divisorDeg = divisor.degree()
-      divisorLC = divisor.leadingCoefficient()
+      divisorLC = divisor.leading_coefficient()
 
       while remainder.degree() >= divisorDeg:
         monomialExponent = remainder.degree() - divisorDeg
         monomialZeros = [self.field(0) for _ in range(monomialExponent)]
         monomialDivisor = Polynomial(
-            monomialZeros + [remainder.leadingCoefficient() / divisorLC])
+            monomialZeros + [remainder.leading_coefficient() / divisorLC])
 
         quotient += monomialDivisor
         remainder -= monomialDivisor * divisor
@@ -136,13 +136,13 @@ def polynomials_over(field=fractions.Fraction):
 
     @typecheck
     def __truediv__(self, divisor):
-      if divisor.isZero():
+      if divisor.is_zero():
         raise ZeroDivisionError
       return divmod(self, divisor)[0]
 
     @typecheck
     def __mod__(self, divisor):
-      if divisor.isZero():
+      if divisor.is_zero():
         raise ZeroDivisionError
       return divmod(self, divisor)[1]
 

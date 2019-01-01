@@ -5,6 +5,8 @@ reduction to achieve a perturbed version of the original AIR representation.
 """
 
 from starks.air import Computation
+from starks.polynomial import polynomials_over
+from starks.poly_utils import generate_primitive_polynomial
 
 class APR(object):
   """A class holding an instance of the APR problem.
@@ -30,9 +32,38 @@ class APR(object):
 
     Implements the AIR->APR transform from the STARKs paper.
     """
+    modulus = comp.modulus
     width = comp.dims
-    self.Tau = list(range(width))
-    pass
+    # field = (Z/2[g]/h(g))
+    field = comp.field
+    # base_field = Z/2
+    base_field = field.field
+    basePolys = polynomials_over(base_field)
+    # h(g)
+    h = field.ideal_generator
+    # g
+    g = basePolys([0, 1])
+
+    polysOver = polynomials_over(field).factory
+    Tau = list(range(width))
+    # Element of (Z/2[g]/h(g))
+    zeta = generate_primitive_polynomial(modulus, width)
+    # Neighbors
+    N = self.construct_neighbors(Tau, zeta, g, polysOver)
+
+  def construct_neighbors(self, Tau, zeta, g, polysOver):
+    """Helper method to construct neighbor set."""
+    neighbors = []
+    for tau in Tau:
+      # n_id(x) = x
+      n_id = polysOver([0, 1])
+      # n_cyc_1 = gx + zeta
+      n_cyc_1 = polysOver([zeta, g])
+      # n_cyc_0 = gx
+      n_cyc_0 = polysOver([0, g])
+      neighbors.extend([(tau, n_id), (tau, n_cyc_1), (tau, n_cyc_0)])
+    return neighbors
+
 
   def get_witness(self):
     """A witness w^hat is in (L^F)^T. That is, it's a set of functions indexed

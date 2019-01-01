@@ -123,3 +123,11 @@ class FieldElement(DomainElement):
 
 # Define a type alias
 Vector = List[FieldElement]
+
+# Another type alias  for readability
+Field = FieldElement
+
+# Another type alias. This isn't very clean though...
+class MultiVarPoly(DomainElement):
+  pass
+

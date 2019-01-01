@@ -105,3 +105,13 @@ class Computation(object):
     """Returns the witness (computational trace) for this computation."""
     return self.computational_trace
 
+  def generate_constraint_polynomials(self):
+    """Constructs the constraint polynomials for this AIR instance.
+
+    A constraint polynomial is in F[X_1,..,X_w, Y_1,.., Y_w]. An AIR instance
+    can hold a set of constraint polynomials each of which enforces a
+    transition constraint. Intuitively, X_1,...,X_1 is the vector of current
+    states and Y_1,...,Y_w is the vector of the next state. It can be useful at
+    times to have more than one constraint for enforcing various transition
+    properties.
+    """

@@ -1,10 +1,17 @@
 """This file contains a number of polynomial utility functions."""
 import random
+from typing import List
+from typing import Dict
+from typing import Tuple
+from typing import Callable
 from primefac import factorint
 from starks.polynomial import Poly
 from starks.modp import IntegersModP
 from starks.polynomial import polynomials_over
 from starks.euclidean import gcd
+from starks.numbertype import Field
+from starks.numbertype import FieldElement
+from starks.numbertype import MultiVarPoly 
 
 def is_irreducible(polynomial: Poly, p: int) -> bool:
   """is_irreducible: Polynomial, int -> bool
@@ -90,6 +97,42 @@ def is_primitive(irred_poly: Poly, modulus: int, degree: int) -> bool:
     if l_x == one:
       return False
   return True
+
+def construct_multivariate_dirac_delta(field: Field, values: List[FieldElement]) -> MultiVarPoly:
+  """Constructs the multivariate dirac delta polynomial at 0.
+
+  1_0(x) = \prod_{i=1}^n (1 - x_i^{q-1})
+
+  This can be generalized into the the dirac polynomial at y as follows.
+
+  1_y(x)\prod_{i=1}^n (1 - (x_i - y_i)^{q-1})
+  """
+  n = len(values)
+  multi = multivariates_over(field, n).factory
+  for i, val in enumerate(values):
+    # ith_term = (0,...1,...0) with the 1 in the ith-term
+    ith_term = [0] * n
+    ith_term[i] = 1 
+    term = multi({tuple(ith_term): 1})
+
+
+def construct_multivariate_coefficients(step_fn: Callable) -> Dict[Tuple[int, ...], FieldElement]:
+  """Transforms a function over vector of finite fields into a polynomial.
+
+  Every function f: F_q^n -> F_q is a polynomial if F is a finite field of size
+  q. (See Lemma 7 of http://math.uga.edu/~pete/4400ChevalleyWarning.pdf). The
+  key trick used in this transformation is the creation of a "dirac-delta"
+  multivariate polynomial which is 1 iff all n of its inputs are 0.
+
+  1_0(x) = \prod_{i=1}^n (1 - x_i^{q-1})
+
+  Why does this make sense? For any non-zero element x in F_q, x^{q-1} = 1. How
+  can we convert an aribtrary function using these dirac-delta polynomials?
+
+  P_f(x) = \sum_{y \in F_q^n} f(y) \prod_{i=1}^n (1 - (x_i - y_i)^{q-1})
+
+  The idea is that we construct the polynomial term-wise.
+  """
 
 
 def multi_inv(field, values):

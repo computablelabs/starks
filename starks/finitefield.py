@@ -75,6 +75,7 @@ def FiniteField(p, m, polynomialModulus=None):
       return abs(self.poly)
 
     def __repr__(self):
+      # The code \u2208 prints \in in pretty symbols
       return repr(self.poly) + ' \u2208 ' + self.__class__.__name__
 
     @typecheck
