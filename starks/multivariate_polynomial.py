@@ -13,6 +13,7 @@ from starks.numbertype import memoize
 from starks.numbertype import Field
 from starks.numbertype import FieldElement
 from starks.numbertype import MultiVarPoly
+from starks.numbertype import typecheck
 
 # TODO(rbharath): How does the memoization code actually work?
 @memoize
@@ -62,17 +63,31 @@ def multivariates_over(field: Field, num_vars: int) -> MultiVarPoly:
 
     def degree(self):
       """TODO(rbharath): Computing the degree is a little tricky."""
-
-      raise NotImplementedError
+      max_deg = 0
+      for power_tup in self.coefficients.keys():
+        if sum(power_tup) > max_deg:
+          max_deg = sum(power_tup)
+      return max_deg
 
     def __sub__(self, other):
       return self + (-other)
 
     def __iter__(self):
-      return iter(self.coefficients)
+      # Tuples are sorted in dictionary orderr
+      keys = sorted(self.coefficients.keys())
+      for key in keys:
+        yield (key, self.coefficients[key])
 
     def __neg__(self):
       return Polynomial({(power_tup, -coeff) for (power_tup, coeff) in self})
+
+    @typecheck
+    def __eq__(self, other):
+      return (self.degree() == other.degree() and 
+          # Checks monomials are the same
+          self.coefficients.keys() == other.coefficients.keys() and
+          all(
+          [self.coefficients[key] == other.coefficients[key] for key in self.coefficients.keys()]))
 
 
   MultivariatePolynomial.field = field
