@@ -9,8 +9,8 @@ from starks.numbertype import memoize
 from starks.numbertype import typecheck
 
 
-# strip all copies of elt from the end of the list
 def strip(L, elt):
+  """strip all copies of elt from the end of the list"""
   if len(L) == 0: return L
 
   i = len(L) - 1
@@ -19,6 +19,8 @@ def strip(L, elt):
 
   return L[:i + 1]
 
+class Poly(DomainElement):
+  pass
 
 @memoize
 def polynomials_over(field=fractions.Fraction):
@@ -28,7 +30,7 @@ def polynomials_over(field=fractions.Fraction):
   [1,2,3] corresponds to 1 + 2x + 3x^2.
   """
 
-  class Polynomial(DomainElement):
+  class Polynomial(Poly):
     operatorPrecedence = 2
 
     @classmethod
@@ -47,11 +49,11 @@ def polynomials_over(field=fractions.Fraction):
 
       self.coefficients = strip(self.coefficients, field(0))
 
-    def isZero(self):
+    def is_zero(self):
       return self.coefficients == []
 
     def __repr__(self):
-      if self.isZero():
+      if self.is_zero():
         return '0'
 
       return ' + '.join([
@@ -79,7 +81,7 @@ def polynomials_over(field=fractions.Fraction):
     def iter(self):
       return self.__iter__()
 
-    def leadingCoefficient(self):
+    def leading_coefficient(self):
       return self.coefficients[-1]
 
     def degree(self):
@@ -97,14 +99,14 @@ def polynomials_over(field=fractions.Fraction):
 
     @typecheck
     def __add__(self, other):
-      newCoefficients = [
+      new_coefficients = [
           sum(x) for x in zip_longest(self, other, fillvalue=self.field(0))
       ]
-      return Polynomial(newCoefficients)
+      return Polynomial(new_coefficients)
 
     @typecheck
     def __mul__(self, other):
-      if self.isZero() or other.isZero():
+      if self.is_zero() or other.is_zero():
         return Zero()
 
       newCoeffs = [self.field(0) for _ in range(len(self) + len(other) - 1)]
@@ -119,13 +121,13 @@ def polynomials_over(field=fractions.Fraction):
     def __divmod__(self, divisor):
       quotient, remainder = Zero(), self
       divisorDeg = divisor.degree()
-      divisorLC = divisor.leadingCoefficient()
+      divisorLC = divisor.leading_coefficient()
 
       while remainder.degree() >= divisorDeg:
         monomialExponent = remainder.degree() - divisorDeg
         monomialZeros = [self.field(0) for _ in range(monomialExponent)]
         monomialDivisor = Polynomial(
-            monomialZeros + [remainder.leadingCoefficient() / divisorLC])
+            monomialZeros + [remainder.leading_coefficient() / divisorLC])
 
         quotient += monomialDivisor
         remainder -= monomialDivisor * divisor
@@ -134,19 +136,19 @@ def polynomials_over(field=fractions.Fraction):
 
     @typecheck
     def __truediv__(self, divisor):
-      if divisor.isZero():
+      if divisor.is_zero():
         raise ZeroDivisionError
       return divmod(self, divisor)[0]
 
     @typecheck
     def __mod__(self, divisor):
-      if divisor.isZero():
+      if divisor.is_zero():
         raise ZeroDivisionError
       return divmod(self, divisor)[1]
 
     # TODO(rbharath): Possibly type-check this.
     def __call__(self, x):
-      y = 0
+      y = self.field(0)
       power_of_x = 1
       for i, a in enumerate(self):
         y += power_of_x * a 

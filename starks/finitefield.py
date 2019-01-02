@@ -2,59 +2,12 @@ import random
 from starks.euclidean import gcd
 from starks.euclidean import extended_euclidean_algorithm
 from starks.polynomial import polynomials_over
+from starks.poly_utils import generate_irreducible_polynomial
 from starks.modp import IntegersModP
 from starks.numbertype import FieldElement
 from starks.numbertype import DomainElement
 from starks.numbertype import memoize
 from starks.numbertype import typecheck
-
-
-def is_irreducible(polynomial, p):
-  """is_irreducible: Polynomial, int -> bool
-
-  Determine if the given monic polynomial with coefficients in Z/p is
-  irreducible over Z/p where p is the given integer
-  Algorithm 4.69 in the Handbook of Applied Cryptography
-  """
-  ZmodP = IntegersModP(p)
-  if polynomial.field is not ZmodP:
-    raise TypeError("Given a polynomial that's not over %s, but instead %r" %
-                    (ZmodP.__name__, polynomial.field.__name__))
-
-  poly = polynomials_over(ZmodP).factory
-  x = poly([0, 1])
-  power_term = x
-  is_unit = lambda p: p.degree() == 0
-
-  for _ in range(int(polynomial.degree() / 2)):
-    power_term = power_term.powmod(p, polynomial)
-    gcd_over_Zmodp = gcd(polynomial, power_term - x)
-    if not is_unit(gcd_over_Zmodp):
-      return False
-
-  return True
-
-
-def generate_irreducible_polynomial(modulus, degree):
-  """generate_irreducible_polynomial: int, int -> Polynomial
-
-  Generate a random irreducible polynomial of a given degree over Z/p, where p
-  is given by the integer 'modulus'. This algorithm is expected to terminate
-  after 'degree' many irreducibility tests. By Chernoff bounds the probability
-  it deviates from this by very much is exponentially small.
-  """
-  Zp = IntegersModP(modulus)
-  Polynomial = polynomials_over(Zp)
-
-  while True:
-    coefficients = [Zp(random.randint(0, modulus - 1)) for _ in range(degree)]
-    random_monic_polynomial = Polynomial(coefficients + [Zp(1)])
-    ################################################
-    print(random_monic_polynomial)
-    ################################################
-
-    if is_irreducible(random_monic_polynomial, modulus):
-      return random_monic_polynomial
 
 
 @memoize
@@ -69,7 +22,7 @@ def FiniteField(p, m, polynomialModulus=None):
     polynomialModulus = generate_irreducible_polynomial(modulus=p, degree=m)
 
   class Fq(FieldElement):
-    fieldSize = int(p**m)
+    field_size = int(p**m)
     primeSubfield = Zp
     ideal_generator = polynomialModulus
     operatorPrecedence = 3
@@ -122,6 +75,7 @@ def FiniteField(p, m, polynomialModulus=None):
       return abs(self.poly)
 
     def __repr__(self):
+      # The code \u2208 prints \in in pretty symbols
       return repr(self.poly) + ' \u2208 ' + self.__class__.__name__
 
     @typecheck
@@ -142,4 +96,6 @@ def FiniteField(p, m, polynomialModulus=None):
       return Fq(x) * Fq(d.coefficients[0].inverse())
 
   Fq.__name__ = 'F_{%d^%d}' % (p, m)
+  Fq.p = p
+  Fq.m = m
   return Fq

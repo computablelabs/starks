@@ -1,6 +1,163 @@
 """This file contains a number of polynomial utility functions."""
+import random
+import itertools
+from typing import List
+from typing import Dict
+from typing import Tuple
+from typing import Callable
+from primefac import factorint
+from starks.polynomial import Poly
 from starks.modp import IntegersModP
 from starks.polynomial import polynomials_over
+from starks.euclidean import gcd
+from starks.numbertype import Field
+from starks.numbertype import FieldElement
+from starks.numbertype import MultiVarPoly 
+from starks.multivariate_polynomial import multivariates_over
+
+def is_irreducible(polynomial: Poly, p: int) -> bool:
+  """is_irreducible: Polynomial, int -> bool
+
+  Determine if the given monic polynomial with coefficients in Z/p is
+  irreducible over Z/p where p is the given integer
+  Algorithm 4.69 in the Handbook of Applied Cryptography
+  """
+  ZmodP = IntegersModP(p)
+  if polynomial.field is not ZmodP:
+    raise TypeError("Given a polynomial that's not over %s, but instead %r" %
+                    (ZmodP.__name__, polynomial.field.__name__))
+
+  poly = polynomials_over(ZmodP).factory
+  x = poly([0, 1])
+  power_term = x
+  is_unit = lambda p: p.degree() == 0
+
+  for _ in range(int(polynomial.degree() / 2)):
+    power_term = power_term.powmod(p, polynomial)
+    gcd_over_Zmodp = gcd(polynomial, power_term - x)
+    if not is_unit(gcd_over_Zmodp):
+      return False
+
+  return True
+
+def generate_irreducible_polynomial(modulus: int, degree: int) -> Poly:
+  """ 
+  Generate a random irreducible polynomial of a given degree over Z/p, where p
+  is given by the integer 'modulus'. This algorithm is expected to terminate
+  after 'degree' many irreducibility tests. By Chernoff bounds the probability
+  it deviates from this by very much is exponentially small.
+  """
+  Zp = IntegersModP(modulus)
+  Polynomial = polynomials_over(Zp)
+
+  while True:
+    coefficients = [Zp(random.randint(0, modulus - 1)) for _ in range(degree)]
+    random_monic_polynomial = Polynomial(coefficients + [Zp(1)])
+
+    if is_irreducible(random_monic_polynomial, modulus):
+      return random_monic_polynomial
+
+def generate_primitive_polynomial(modulus: int, degree: int) -> Poly:
+  """Generates a primitive polynomial over Z/modulus.
+  
+  Follows algorithm 4.78 in the Handbook of Applied Cryptography
+  (http://math.fau.edu/bkhadka/Syllabi/A%20handbook%20of%20applied%20cryptography.pdf).
+  Generates a random irreducible polynomial and then checks if it's prime.
+  
+  """
+  Zp = IntegersModP(modulus)
+  Polynomial = polynomials_over(Zp)
+  while True:
+    irred_poly = generate_irreducible_polynomial(modulus, degree)
+    if is_primitive(irred_poly, modulus, degree):
+      return irred_poly
+
+def is_primitive(irred_poly: Poly, modulus: int, degree: int) -> bool:
+  """Returns true if given polynomial is primitve.
+  
+  Follows algorithm 4.78 in the Handbook of Applied Cryptography
+  (http://math.fau.edu/bkhadka/Syllabi/A%20handbook%20of%20applied%20cryptography.pdf).
+  """
+  # All primitive polynomials are irreducible
+  if not is_irreducible(irred_poly, modulus):
+    return False
+  # factorize p^m - 1
+  prime_factors = factorint(modulus**degree - 1)
+  # This is returned as dictionary with multiplicities. Turn into list
+  prime_factors = [int(factor) for factor in prime_factors.keys()]
+  Zp = IntegersModP(modulus)
+  polysOver = polynomials_over(Zp)
+  # TODO(rbharath): This is x right?
+  x = polysOver([0, 1])
+  # This is 1 right?
+  one = polysOver([1])
+  for i, factor in enumerate(prime_factors):
+    power = (modulus**degree - 1) // factor
+    # TODO(rbharath): This might need a smarter power implementation. In
+    # particular, might need to take the modulus at intermediate powers.
+    l_x = (x**power) % irred_poly
+    if l_x == one:
+      return False
+  return True
+
+def construct_multivariate_dirac_delta(field: Field, values: List[FieldElement], n:int) -> MultiVarPoly:
+  """Constructs the multivariate dirac delta polynomial at 0.
+
+  1_0(x) = \prod_{i=1}^n (1 - x_i^{q-1})
+
+  This can be generalized into the the dirac polynomial at y as follows.
+
+  1_y(x)\prod_{i=1}^n (1 - (x_i - y_i)^{q-1})
+  """
+  multi = multivariates_over(field, n).factory
+  q = field.field_size
+  base = field(1)
+  for i, val in enumerate(values):
+    # x_i_term = (0,...1,...0) with the 1 in the ith-term
+    x_i_term = [0] * n
+    x_i_term[i] = 1 
+    term = multi({(0,)*n: -values[i], tuple(x_i_term): 1})
+    term = field(1) - term**(q-1)
+    base = base * term
+  return base
+
+
+def construct_multivariate_coefficients(field: Field, step_fn: Callable, n:int) -> Dict[Tuple[int, ...], FieldElement]:
+  """Transforms a function over vector of finite fields into a polynomial.
+
+  Every function f: F_q^n -> F_q is a polynomial if F is a finite field of size
+  q. (See Lemma 7 of http://math.uga.edu/~pete/4400ChevalleyWarning.pdf). The
+  key trick used in this transformation is the creation of a "dirac-delta"
+  multivariate polynomial which is 1 iff all n of its inputs are 0.
+
+  1_0(x) = \prod_{i=1}^n (1 - x_i^{q-1})
+
+  Why does this make sense? For any non-zero element x in F_q, x^{q-1} = 1. How
+  can we convert an aribtrary function using these dirac-delta polynomials?
+
+  P_f(x) = \sum_{y \in F_q^n} f(y) \prod_{i=1}^n (1 - (x_i - y_i)^{q-1})
+
+  The idea is that we construct the polynomial term-wise.
+  """
+  multi = multivariates_over(field, n).factory
+  poly = multi(0)
+  field_size = field.field_size
+  # Finite field case
+  if field.__name__[:2] == "F_":
+    p = field.p
+    m = field.m
+  elif field.__name__[:2] == "Z/":
+    p = field.p
+    m = 1
+  else:
+    raise ValueError
+  # Iterate over field indices
+  field_indices = itertools.product(*[range(p) for _ in range(m)])
+  for index in field_indices:
+    index = [field(ind) for ind in list(index)]
+    term = construct_multivariate_dirac_delta(field, index, n)
+    poly += step_fn(index) * term
+  return poly
 
 def multi_inv(field, values):
   """Use one field inversion to invert many values simultaneously.
@@ -35,7 +192,6 @@ def zpoly(modulus, roots):
     root.insert(0, mod(0))
     for j in range(len(root) - 1):
       root[j] -= root[j + 1] * x
-  #return [x % self.modulus for x in root]
   return polysOverMod(root)
 
 def lagrange_interp(modulus, xs, ys):

@@ -1,12 +1,18 @@
 import unittest
 from starks.modp import IntegersModP
+from starks.multivariate_polynomial import multivariates_over
 from starks.poly_utils import zpoly
 from starks.poly_utils import multi_inv
 from starks.poly_utils import lagrange_interp
 from starks.poly_utils import lagrange_interp_2
 from starks.poly_utils import lagrange_interp_4
 from starks.poly_utils import multi_interp_4 
+from starks.poly_utils import is_primitive
+from starks.poly_utils import is_irreducible
+from starks.poly_utils import generate_primitive_polynomial 
 from starks.polynomial import polynomials_over
+from starks.poly_utils import construct_multivariate_dirac_delta
+from starks.poly_utils import construct_multivariate_coefficients
 from starks.utils import get_power_cycle
 
 class TestPolyUtils(unittest.TestCase):
@@ -131,8 +137,88 @@ class TestPolyUtils(unittest.TestCase):
     assert interp[0] == polysOverMod([0, 1])
     assert interp[1] == polysOverMod([0, 1])
 
-  #def test_add_polys(self):
-  #  """Test that addition of polynomials works."""
-  #  field7 = PrimeField(7)
-  #  added = field7.add_polys([1, 2], [1, 2])
-  #  assert added == [2, 4]
+  def test_is_primitive(self):
+    """Tests whether the primitivity check is correctly implemented."""
+    modulus = 2
+    degree = 2
+    mod = IntegersModP(modulus)
+    polysOver = polynomials_over(mod).factory
+
+    # From table 4.6 in
+    # http://math.fau.edu/bkhadka/Syllabi/A%20handbook%20of%20applied%20cryptography.pdf
+    # x^2 + x + 1 is primitive over Z/2
+    prim_poly = polysOver([1, 1, 1])
+    assert is_primitive(prim_poly, modulus, degree)
+
+    # x^2 is not primitive over Z/2 
+    x_square = polysOver([0, 0, 1])
+    assert not is_primitive(x_square, modulus, degree)
+
+    # x^9 + x + 1 is primitive over Z/2
+    coeffs = [0] * 10
+    coeffs[0] = 1
+    coeffs[1] = 1
+    coeffs[-1] = 1
+    prim_poly = polysOver(coeffs)
+    assert is_primitive(prim_poly, modulus, degree)
+
+  def test_generate_primitive_poly(self):
+    """Tests the generation of primitive polynomials."""
+    modulus = 2
+    degree = 2
+    gen_poly = generate_primitive_polynomial(modulus, degree)
+    assert is_irreducible(gen_poly, modulus)
+    assert is_primitive(gen_poly, modulus, degree)
+
+    degree = 5
+    gen_poly = generate_primitive_polynomial(modulus, degree)
+    assert is_irreducible(gen_poly, modulus)
+    assert is_primitive(gen_poly, modulus, degree)
+
+  def test_construct_multivariate_dirac_delta(self):
+    """Tests the construct of the multivariate dirac delta."""
+    modulus = 3
+    mod7 = IntegersModP(modulus)
+    n = 3
+    # Let's make polynomials in (Z/7)[x, y, z]
+    multi = multivariates_over(mod7, n).factory
+    # Let's generate the dirac delta at x=0, y=0, z=0
+    values = [mod7(0), mod7(0), mod7(0)]
+    dirac = construct_multivariate_dirac_delta(mod7, values, n)
+
+    # The dirac delta should be 1 at x=0, y=0, z=0
+    assert dirac((0, 0, 0)) == 1
+    # It should be 0 elsewhere
+    assert dirac((1, 0, 0)) == 0
+    assert dirac((0, 1, 0)) == 0
+    assert dirac((0, 0, 1)) == 0
+
+    # Let's generate the dirac delta at x=1, y=1, z=1
+    values = [mod7(1), mod7(1), mod7(1)]
+    dirac = construct_multivariate_dirac_delta(mod7, values, n)
+
+    # The dirac delta should be 1 at x=1, y=1, z=1
+    assert dirac((1, 1, 1)) == 1
+    # It should be 0 elsewehre
+    assert dirac((1, 0, 0)) == 0
+    assert dirac((0, 1, 0)) == 0
+    assert dirac((0, 0, 1)) == 0
+
+  def test_construct_multivariate_coefficients(self):
+    """Tests the "compilation" of a function into a polynomial."""
+    modulus = 7
+    mod7 = IntegersModP(modulus)
+    n = 3
+    # Let's make polynomials in (Z/7)[x, y, z]
+    multi = multivariates_over(mod7, n).factory
+    # Our test function
+    def f(x):
+      if isinstance(x, tuple) or isinstance(x, list):
+        x = x[0]
+      return x + 1
+    poly = construct_multivariate_coefficients(mod7, f, n)
+
+    # This should equal x + 1 
+    x_plus_one_poly = multi({(0, 0, 0): mod7(1), (1, 0, 0): mod7(1)})
+    assert poly == x_plus_one_poly
+

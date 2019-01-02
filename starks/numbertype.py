@@ -38,7 +38,7 @@ def typecheck(f):
         raise TypeError(message % (other, type(other).__name__,
                                    type(self).__name__, f.__name__))
       except Exception as e:
-        message = 'Type error on arguments %r, %r for functon %s. Reason:%s'
+        message = 'Type error on arguments %r, %r for function %s. %s != %s. Reason: %s'
         raise TypeError(
             message % (self, other, f.__name__, type(other).__name__,
                        type(self).__name__, e))
@@ -123,3 +123,11 @@ class FieldElement(DomainElement):
 
 # Define a type alias
 Vector = List[FieldElement]
+
+# Another type alias  for readability
+Field = FieldElement
+
+# Another type alias. This isn't very clean though...
+class MultiVarPoly(DomainElement):
+  pass
+

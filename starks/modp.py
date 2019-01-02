@@ -93,4 +93,5 @@ def IntegersModP(p):
   IntegerModP.p = p
   IntegerModP.__name__ = 'Z/%d' % (p)
   IntegerModP.englishName = 'IntegersMod%d' % (p)
+  IntegerModP.field_size = p
   return IntegerModP
