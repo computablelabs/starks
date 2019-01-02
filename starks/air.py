@@ -119,8 +119,8 @@ class Computation(object):
     self.F = field
     self.T = steps
     self.w = dims
-    self.Polys = self.generate_constraint_polynomials(self, step_fn)
-    self.C = self.generate_monotone_circuit(self, self.Polys)
+    self.Polys = self.generate_constraint_polynomials(step_fn)
+    self.C = self.generate_monotone_circuit(self.Polys)
     self.B = self.generate_boundary_constraint(inp)
   
   def get_witness(self):
