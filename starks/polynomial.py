@@ -99,10 +99,10 @@ def polynomials_over(field=fractions.Fraction):
 
     @typecheck
     def __add__(self, other):
-      newCoefficients = [
+      new_coefficients = [
           sum(x) for x in zip_longest(self, other, fillvalue=self.field(0))
       ]
-      return Polynomial(newCoefficients)
+      return Polynomial(new_coefficients)
 
     @typecheck
     def __mul__(self, other):

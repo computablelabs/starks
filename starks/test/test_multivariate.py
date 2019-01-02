@@ -49,7 +49,7 @@ class TestMultiVariatePolynomial(unittest.TestCase):
     multi = multivariates_over(mod7, n).factory
 
     # This should equal 0
-    zero_poly = multi({(0, 0, 0): 0})
+    zero_poly = multi({})
     assert zero_poly == zero_poly
 
     # This should equal y
@@ -57,3 +57,20 @@ class TestMultiVariatePolynomial(unittest.TestCase):
     assert y_poly == y_poly
 
     assert zero_poly != y_poly
+
+  def test_add(self):
+    """Test multivariate polynomial addition."""
+    modulus = 7
+    mod7 = IntegersModP(modulus)
+    n = 3
+    # Let's make polynomials in (Z/7)[x, y, z]
+    multi = multivariates_over(mod7, n).factory
+
+    # This should equal 0
+    zero_poly = multi({})
+    assert zero_poly == zero_poly + zero_poly
+
+    # This should equal y
+    y_poly = multi({(0, 1, 0): 1})
+    assert y_poly == y_poly + zero_poly
+

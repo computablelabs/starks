@@ -5,6 +5,7 @@ computation states.
 """
 from __future__ import annotations
 from typing import List 
+from typing import Tuple
 from typing import Dict
 from typing import Callable
 from typing import Any
@@ -14,6 +15,20 @@ from starks.numbertype import Field
 from starks.numbertype import FieldElement
 from starks.numbertype import MultiVarPoly
 from starks.numbertype import typecheck
+
+def remove_zero_coefficients(coefficients: Dict) -> Dict:
+  reduced = {}
+  for monomial in coefficients:
+    if coefficients[monomial] == 0:
+      continue
+    else:
+      reduced[monomial] = coefficients[monomial]
+  return reduced
+
+def add_power_tuples(a: Tuple, b: Tuple) -> Tuple:
+  if len(a) != len(b):
+    raise ValueError("Can't add tuples of different lengths")
+  return tuple([a_i + b_i for a_i, b_i in zip(a, b)])
 
 # TODO(rbharath): How does the memoization code actually work?
 @memoize
@@ -33,6 +48,7 @@ def multivariates_over(field: Field, num_vars: int) -> MultiVarPoly:
                 step_fn: Callable = None) -> MultivariatePolynomial:
       """Constructs a multivariate polynomial with given coefficients."""
       if coefficients is not None:
+        coefficients = remove_zero_coefficients(coefficients)
         return MultivariatePolynomial(coefficients) 
       elif step_fn is not None:
         coefficients = construct_multivariate_coefficients(step_fn)
@@ -49,16 +65,19 @@ def multivariates_over(field: Field, num_vars: int) -> MultiVarPoly:
     def __len__(self):
       return len(self.coefficients)
 
+    def is_zero(self):
+      return self.coefficients == {}
+
     def __repr__(self):
       if self.is_zero():
         return '0'
 
       def power_tuple_to_string(power_tup):
-        return "".join(["X_%d^%d" % (i, power) in enumerate(power_tup)])
+        return "".join(["X_%d^%d" % (i, power) for (i, power) in enumerate(power_tup)])
 
       return ' + '.join([
-          '%s x^%d' % (coeff, power_tuple_to_string(power_tup)) if power_tup != (0,)*num_vars else '%s' % coeff 
-          for power_tup, coeff in enumerate(self.coefficients)
+          '%s %s' % (str(coeff), power_tuple_to_string(power_tup)) if power_tup != (0,)*num_vars else '%s' % coeff 
+          for power_tup, coeff in self.coefficients.items()
       ])
 
     def degree(self):
@@ -87,8 +106,42 @@ def multivariates_over(field: Field, num_vars: int) -> MultiVarPoly:
           # Checks monomials are the same
           self.coefficients.keys() == other.coefficients.keys() and
           all(
-          [self.coefficients[key] == other.coefficients[key] for key in self.coefficients.keys()]))
+          [self[key] == other[key] for key in self.coefficients.keys()]))
 
+    def __getitem__(self, power_tup: Tuple[int, ...]) -> FieldElement:
+      # Monomials not present in multivariate polynomial have coefficient 0
+      if power_tup in self.coefficients:
+        return self.coefficients[power_tup]
+      else:
+        return field(0)
+
+    @typecheck
+    def __add__(self, other):
+      self_monomials = set(self.coefficients.keys())
+      other_monomials = set(other.coefficients.keys())
+      joint_monomials = self_monomials.union(other_monomials)
+      new_coefficients = { 
+          monomial: self[monomial] + other[monomial] for monomial in joint_monomials}
+      return MultivariatePolynomial(new_coefficients)
+
+    @typecheck
+    def __mul__(self, other):
+      if self.is_zero() or other.is_zero():
+        return Zero()
+
+      new_coeffs = {}
+      for i, a in enumerate(self):
+        for j, b in enumerate(other):
+          prod = add_power_tuples(a, b)
+          coeff = self[a] * other[b]
+          if prod not in new_coeffs:
+            new_coeffs[prod] = field(0)
+          new_coeffs[prod] += coeff 
+
+      return MultivariatePolynomial(new_coeffs)
+
+  def Zero():
+    return MultivariatePolynomial({})
 
   MultivariatePolynomial.field = field
   MultivariatePolynomial.num_vars = num_vars
