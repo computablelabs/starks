@@ -18,7 +18,7 @@ class APR(object):
   Let's define each of these terms in sequence.
 
   - F is a finite field of characteristic 2 (TODO(rbharath): Can this be changed to characteristic p?)
-  - Tau is a set of indices (TODO(rbharath): what are the indices?)
+  - Tau is a set of indices, typically [w]
   - N is a subset of Tau x Aff_1(F). Recall Aff_1(F) is the set of linear polynomials over F.
   - Phi is  subset of (F x F^N)->F. That is, it's a set of functions over the
     variables {X_loc, X_n}_{n in N}.
@@ -50,6 +50,15 @@ class APR(object):
     zeta = generate_primitive_polynomial(modulus, width)
     # Neighbors
     N = self.construct_neighbors(Tau, zeta, g, polysOver)
+
+  def construct_z_B_j(self):
+    """Constructs Z_{B,j}(x) boundary constraint polynomial
+
+    The Z_{B,j} polynomial is defined in the STARKs paper by the following equation
+
+    Z_{B,j}(x) = \prod_{(i, j, alpha) \in B}
+    """
+    pass
 
   def construct_neighbors(self, Tau, zeta, g, polysOver):
     """Helper method to construct neighbor set."""

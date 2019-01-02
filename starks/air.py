@@ -49,8 +49,21 @@ def get_computational_trace(inp, steps, constants, step_fn):
 class Computation(object):
   """A simple class defining a computation.
   
-  Holds the state of the computation. Here are the various
-  fields that constitue a computation.
+  More formally, this class holds an instance of the AIR problem. Recall that
+  an instance of the AIR problem is a tuple.
+
+    x = (F, T, w, Ps, C, B)
+
+  Let's define each of these terms in sequence.
+
+  - F is a finite field.
+  - T is an integer representing a bound on running time.
+  - w is the width of the computation (the dimensionality of the state space)
+  - Polys is a list of polynomial constraints. Each polynomial is an element of
+    F[X_1,..,X_w,Y_1,...,Y_w] and represents a transition constraint. There are s constraints in Polys
+  - C is a monotone boolean circuit. (TODO(rbharath): What does this circuit mean and where is it used?). This encodes valid transition conditions among polynomials. For now, this is simply the AND function, requiring that all constraints in Polys must be met.
+  - B is a list of boundary constraints. Each boundary constraint is a tuple
+    (i, j, alpha), where i \in [T], j \in [w], alpha \in F.
 
   Fields
   ------
@@ -100,12 +113,27 @@ class Computation(object):
     self.computational_trace, self.output = get_computational_trace(
         inp, steps, constants, step_fn)
     self.extension_factor = extension_factor
+
+    # The AIR variables. TODO(rbharath): Swap the STARK library to use these
+    # fields for consistency.
+    self.F = field
+    self.T = steps
+    self.w = dims
+    self.Polys = self.generate_constraint_polynomials(self, step_fn)
+    self.C = self.generate_monotone_circuit(self, self.Polys)
+    self.B = self.generate_boundary_constraint(inp)
   
   def get_witness(self):
     """Returns the witness (computational trace) for this computation."""
     return self.computational_trace
 
-  def generate_constraint_polynomials(self):
+  def generate_boundary_constraint(self, inp):
+    pass
+
+  def generate_monotone_circuit(self, Polys):
+    pass
+
+  def generate_constraint_polynomials(self, step_fn):
     """Constructs the constraint polynomials for this AIR instance.
 
     A constraint polynomial is in F[X_1,..,X_w, Y_1,.., Y_w]. An AIR instance
@@ -115,3 +143,4 @@ class Computation(object):
     times to have more than one constraint for enforcing various transition
     properties.
     """
+    pass

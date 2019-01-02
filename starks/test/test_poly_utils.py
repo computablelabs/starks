@@ -1,5 +1,6 @@
 import unittest
 from starks.modp import IntegersModP
+from starks.multivariate_polynomial import multivariates_over
 from starks.poly_utils import zpoly
 from starks.poly_utils import multi_inv
 from starks.poly_utils import lagrange_interp
@@ -10,6 +11,7 @@ from starks.poly_utils import is_primitive
 from starks.poly_utils import is_irreducible
 from starks.poly_utils import generate_primitive_polynomial 
 from starks.polynomial import polynomials_over
+from starks.poly_utils import construct_multivariate_dirac_delta
 from starks.utils import get_power_cycle
 
 class TestPolyUtils(unittest.TestCase):
@@ -171,3 +173,15 @@ class TestPolyUtils(unittest.TestCase):
     gen_poly = generate_primitive_polynomial(modulus, degree)
     assert is_irreducible(gen_poly, modulus)
     assert is_primitive(gen_poly, modulus, degree)
+
+  def test_construct_multivariate_dirac_delta(self):
+    """Tests the construct of the multivariate dirac delta."""
+    modulus = 7
+    mod7 = IntegersModP(modulus)
+    n = 3
+    # Let's make polynomials in (Z/7)[x, y, z]
+    multi = multivariates_over(mod7, n).factory
+    # Let's generate the dirac delta at x=0, y=0, z=0
+    values = [mod7(0), mod7(0), mod7(0)]
+    dirac = construct_multivariate_dirac_delta(mod7, values)
+

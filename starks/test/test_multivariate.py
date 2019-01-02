@@ -58,6 +58,11 @@ class TestMultiVariatePolynomial(unittest.TestCase):
 
     assert zero_poly != y_poly
 
+  def test_neg(self):
+    """Tests negation of multivariate polynomials."""
+    assert 0 == 1
+    # TODO(rbharath): Fill this out.
+
   def test_add(self):
     """Test multivariate polynomial addition."""
     modulus = 7

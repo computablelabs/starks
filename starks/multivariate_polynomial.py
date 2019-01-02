@@ -9,7 +9,7 @@ from typing import Tuple
 from typing import Dict
 from typing import Callable
 from typing import Any
-from starks.poly_utils import construct_multivariate_coefficients
+#from starks.poly_utils import construct_multivariate_coefficients
 from starks.numbertype import memoize
 from starks.numbertype import Field
 from starks.numbertype import FieldElement
@@ -108,7 +108,7 @@ def multivariates_over(field: Field, num_vars: int) -> MultiVarPoly:
         yield (key, self.coefficients[key])
 
     def __neg__(self):
-      return Polynomial({(power_tup, -coeff) for (power_tup, coeff) in self})
+      return MultivariatePolynomial({(power_tup, -coeff) for (power_tup, coeff) in self})
 
     @typecheck
     def __eq__(self, other):

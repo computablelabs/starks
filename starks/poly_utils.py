@@ -12,6 +12,7 @@ from starks.euclidean import gcd
 from starks.numbertype import Field
 from starks.numbertype import FieldElement
 from starks.numbertype import MultiVarPoly 
+from starks.multivariate_polynomial import multivariates_over
 
 def is_irreducible(polynomial: Poly, p: int) -> bool:
   """is_irreducible: Polynomial, int -> bool
@@ -109,11 +110,16 @@ def construct_multivariate_dirac_delta(field: Field, values: List[FieldElement])
   """
   n = len(values)
   multi = multivariates_over(field, n).factory
+  q = field.field_size
+  base = field(1)
   for i, val in enumerate(values):
     # ith_term = (0,...1,...0) with the 1 in the ith-term
     ith_term = [0] * n
     ith_term[i] = 1 
     term = multi({tuple(ith_term): 1})
+    term = field(1) - term**(q-1)
+    base = base * term
+  return base
 
 
 def construct_multivariate_coefficients(step_fn: Callable) -> Dict[Tuple[int, ...], FieldElement]:

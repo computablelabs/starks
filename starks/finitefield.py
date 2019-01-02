@@ -22,7 +22,7 @@ def FiniteField(p, m, polynomialModulus=None):
     polynomialModulus = generate_irreducible_polynomial(modulus=p, degree=m)
 
   class Fq(FieldElement):
-    fieldSize = int(p**m)
+    field_size = int(p**m)
     primeSubfield = Zp
     ideal_generator = polynomialModulus
     operatorPrecedence = 3
