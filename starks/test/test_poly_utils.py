@@ -12,6 +12,7 @@ from starks.poly_utils import is_irreducible
 from starks.poly_utils import generate_primitive_polynomial 
 from starks.polynomial import polynomials_over
 from starks.poly_utils import construct_multivariate_dirac_delta
+from starks.poly_utils import construct_multivariate_coefficients
 from starks.utils import get_power_cycle
 
 class TestPolyUtils(unittest.TestCase):
@@ -176,12 +177,48 @@ class TestPolyUtils(unittest.TestCase):
 
   def test_construct_multivariate_dirac_delta(self):
     """Tests the construct of the multivariate dirac delta."""
-    modulus = 7
+    modulus = 3
     mod7 = IntegersModP(modulus)
     n = 3
     # Let's make polynomials in (Z/7)[x, y, z]
     multi = multivariates_over(mod7, n).factory
     # Let's generate the dirac delta at x=0, y=0, z=0
     values = [mod7(0), mod7(0), mod7(0)]
-    dirac = construct_multivariate_dirac_delta(mod7, values)
+    dirac = construct_multivariate_dirac_delta(mod7, values, n)
+
+    # The dirac delta should be 1 at x=0, y=0, z=0
+    assert dirac((0, 0, 0)) == 1
+    # It should be 0 elsewhere
+    assert dirac((1, 0, 0)) == 0
+    assert dirac((0, 1, 0)) == 0
+    assert dirac((0, 0, 1)) == 0
+
+    # Let's generate the dirac delta at x=1, y=1, z=1
+    values = [mod7(1), mod7(1), mod7(1)]
+    dirac = construct_multivariate_dirac_delta(mod7, values, n)
+
+    # The dirac delta should be 1 at x=1, y=1, z=1
+    assert dirac((1, 1, 1)) == 1
+    # It should be 0 elsewehre
+    assert dirac((1, 0, 0)) == 0
+    assert dirac((0, 1, 0)) == 0
+    assert dirac((0, 0, 1)) == 0
+
+  def test_construct_multivariate_coefficients(self):
+    """Tests the "compilation" of a function into a polynomial."""
+    modulus = 7
+    mod7 = IntegersModP(modulus)
+    n = 3
+    # Let's make polynomials in (Z/7)[x, y, z]
+    multi = multivariates_over(mod7, n).factory
+    # Our test function
+    def f(x):
+      if isinstance(x, tuple) or isinstance(x, list):
+        x = x[0]
+      return x + 1
+    poly = construct_multivariate_coefficients(mod7, f, n)
+
+    # This should equal x + 1 
+    x_plus_one_poly = multi({(0, 0, 0): mod7(1), (1, 0, 0): mod7(1)})
+    assert poly == x_plus_one_poly
 

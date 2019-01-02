@@ -96,4 +96,6 @@ def FiniteField(p, m, polynomialModulus=None):
       return Fq(x) * Fq(d.coefficients[0].inverse())
 
   Fq.__name__ = 'F_{%d^%d}' % (p, m)
+  Fq.p = p
+  Fq.m = m
   return Fq

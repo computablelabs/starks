@@ -1,5 +1,6 @@
 """This file contains a number of polynomial utility functions."""
 import random
+import itertools
 from typing import List
 from typing import Dict
 from typing import Tuple
@@ -99,7 +100,7 @@ def is_primitive(irred_poly: Poly, modulus: int, degree: int) -> bool:
       return False
   return True
 
-def construct_multivariate_dirac_delta(field: Field, values: List[FieldElement]) -> MultiVarPoly:
+def construct_multivariate_dirac_delta(field: Field, values: List[FieldElement], n:int) -> MultiVarPoly:
   """Constructs the multivariate dirac delta polynomial at 0.
 
   1_0(x) = \prod_{i=1}^n (1 - x_i^{q-1})
@@ -108,21 +109,20 @@ def construct_multivariate_dirac_delta(field: Field, values: List[FieldElement])
 
   1_y(x)\prod_{i=1}^n (1 - (x_i - y_i)^{q-1})
   """
-  n = len(values)
   multi = multivariates_over(field, n).factory
   q = field.field_size
   base = field(1)
   for i, val in enumerate(values):
-    # ith_term = (0,...1,...0) with the 1 in the ith-term
-    ith_term = [0] * n
-    ith_term[i] = 1 
-    term = multi({tuple(ith_term): 1})
+    # x_i_term = (0,...1,...0) with the 1 in the ith-term
+    x_i_term = [0] * n
+    x_i_term[i] = 1 
+    term = multi({(0,)*n: -values[i], tuple(x_i_term): 1})
     term = field(1) - term**(q-1)
     base = base * term
   return base
 
 
-def construct_multivariate_coefficients(step_fn: Callable) -> Dict[Tuple[int, ...], FieldElement]:
+def construct_multivariate_coefficients(field: Field, step_fn: Callable, n:int) -> Dict[Tuple[int, ...], FieldElement]:
   """Transforms a function over vector of finite fields into a polynomial.
 
   Every function f: F_q^n -> F_q is a polynomial if F is a finite field of size
@@ -139,7 +139,25 @@ def construct_multivariate_coefficients(step_fn: Callable) -> Dict[Tuple[int, ..
 
   The idea is that we construct the polynomial term-wise.
   """
-
+  multi = multivariates_over(field, n).factory
+  poly = multi(0)
+  field_size = field.field_size
+  # Finite field case
+  if field.__name__[:2] == "F_":
+    p = field.p
+    m = field.m
+  elif field.__name__[:2] == "Z/":
+    p = field.p
+    m = 1
+  else:
+    raise ValueError
+  # Iterate over field indices
+  field_indices = itertools.product(*[range(p) for _ in range(m)])
+  for index in field_indices:
+    index = [field(ind) for ind in list(index)]
+    term = construct_multivariate_dirac_delta(field, index, n)
+    poly += step_fn(index) * term
+  return poly
 
 def multi_inv(field, values):
   """Use one field inversion to invert many values simultaneously.

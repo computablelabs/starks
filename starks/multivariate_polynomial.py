@@ -54,7 +54,6 @@ def multivariates_over(field: Field, num_vars: int) -> MultiVarPoly:
                 step_fn: Callable = None) -> MultivariatePolynomial:
       """Constructs a multivariate polynomial with given coefficients."""
       if coefficients is not None:
-        coefficients = remove_zero_coefficients(coefficients)
         return MultivariatePolynomial(coefficients) 
       elif step_fn is not None:
         coefficients = construct_multivariate_coefficients(step_fn)
@@ -66,11 +65,13 @@ def multivariates_over(field: Field, num_vars: int) -> MultiVarPoly:
       elif isinstance(c, field):
         self.coefficients = {(0,)*num_vars: c}
       elif isinstance(c, dict):
+        coefficients = remove_zero_coefficients(c)
         self.coefficients = c
       elif isinstance(c, int):
         self.coefficients = {(0,)*num_vars: field(c)}
       else:
         raise ValueError
+      self.coefficients = remove_zero_coefficients(self.coefficients)
 
     def __len__(self):
       return len(self.coefficients)
@@ -108,7 +109,7 @@ def multivariates_over(field: Field, num_vars: int) -> MultiVarPoly:
         yield (key, self.coefficients[key])
 
     def __neg__(self):
-      return MultivariatePolynomial({(power_tup, -coeff) for (power_tup, coeff) in self})
+      return MultivariatePolynomial({power_tup: -coeff for (power_tup, coeff) in self})
 
     @typecheck
     def __eq__(self, other):
