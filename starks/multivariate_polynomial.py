@@ -30,6 +30,12 @@ def add_power_tuples(a: Tuple, b: Tuple) -> Tuple:
     raise ValueError("Can't add tuples of different lengths")
   return tuple([a_i + b_i for a_i, b_i in zip(a, b)])
 
+def sum_power_tuple(a: Tuple) -> Any:
+  out = 0
+  for a_i in a:
+    out += a_i
+  return out
+
 # TODO(rbharath): How does the memoization code actually work?
 @memoize
 def multivariates_over(field: Field, num_vars: int) -> MultiVarPoly:
@@ -59,8 +65,12 @@ def multivariates_over(field: Field, num_vars: int) -> MultiVarPoly:
         self.coefficients = c.coefficients
       elif isinstance(c, field):
         self.coefficients = {(0,)*num_vars: c}
-      else:
+      elif isinstance(c, dict):
         self.coefficients = c
+      elif isinstance(c, int):
+        self.coefficients = {(0,)*num_vars: field(c)}
+      else:
+        raise ValueError
 
     def __len__(self):
       return len(self.coefficients)
@@ -73,7 +83,7 @@ def multivariates_over(field: Field, num_vars: int) -> MultiVarPoly:
         return '0'
 
       def power_tuple_to_string(power_tup):
-        return "".join(["X_%d^%d" % (i, power) for (i, power) in enumerate(power_tup)])
+        return "".join(["X_%d^%d" % (i+1, power) for (i, power) in enumerate(power_tup)])
 
       return ' + '.join([
           '%s %s' % (str(coeff), power_tuple_to_string(power_tup)) if power_tup != (0,)*num_vars else '%s' % coeff 
@@ -84,8 +94,8 @@ def multivariates_over(field: Field, num_vars: int) -> MultiVarPoly:
       """TODO(rbharath): Computing the degree is a little tricky."""
       max_deg = 0
       for power_tup in self.coefficients.keys():
-        if sum(power_tup) > max_deg:
-          max_deg = sum(power_tup)
+        if sum_power_tuple(power_tup) > max_deg:
+          max_deg = sum_power_tuple(power_tup)
       return max_deg
 
     def __sub__(self, other):
@@ -130,20 +140,40 @@ def multivariates_over(field: Field, num_vars: int) -> MultiVarPoly:
         return Zero()
 
       new_coeffs = {}
-      for i, a in enumerate(self):
-        for j, b in enumerate(other):
+      for i, (a, a_coeff) in enumerate(self):
+        for j, (b, b_coeff) in enumerate(other):
           prod = add_power_tuples(a, b)
-          coeff = self[a] * other[b]
+          coeff = a_coeff * b_coeff 
           if prod not in new_coeffs:
             new_coeffs[prod] = field(0)
           new_coeffs[prod] += coeff 
 
       return MultivariatePolynomial(new_coeffs)
 
+    @typecheck
+    def __divmod__(self, divisor):
+      """"TODO(rbharath): Implementing polynomial division in multiple
+      variables gets pretty tricky. The standard euclidean algorithm doesn't
+      work for multivariate polynomials. Instead, we'd need to implement
+      Grobner bases. I'm punting on this for the time being."""
+      raise NotImplementedError
+
+    # TODO(rbharath): Possibly type-check this.
+    def __call__(self, vals):
+      assert len(vals) == num_vars
+      y = field(0)
+      power_of_x = 1
+      for i, (a, a_coeff) in enumerate(self):
+        prod = field(1)
+        for i, power in enumerate(a):
+          prod *= vals[i]**power
+        y += a_coeff * prod
+      return y
+
   def Zero():
     return MultivariatePolynomial({})
 
   MultivariatePolynomial.field = field
   MultivariatePolynomial.num_vars = num_vars
-  MultivariatePolynomial.__name__ = "".join(["(%s)" % field.__name__, "[", ",".join(["X_%d" % i for i in range(num_vars)]), "]"])
+  MultivariatePolynomial.__name__ = "".join(["(%s)" % field.__name__, "[", ",".join(["X_%d" % (i+1) for i in range(num_vars)]), "]"])
   return MultivariatePolynomial

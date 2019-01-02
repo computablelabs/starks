@@ -148,7 +148,7 @@ def polynomials_over(field=fractions.Fraction):
 
     # TODO(rbharath): Possibly type-check this.
     def __call__(self, x):
-      y = 0
+      y = self.field(0)
       power_of_x = 1
       for i, a in enumerate(self):
         y += power_of_x * a 
