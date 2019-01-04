@@ -4,6 +4,7 @@ zero-knowledge support since the prover applies randomness during the APR
 reduction to achieve a perturbed version of the original AIR representation.
 """
 
+import math
 from starks.air import Computation
 from starks.polynomial import polynomials_over
 from starks.poly_utils import generate_primitive_polynomial
@@ -32,7 +33,7 @@ class APR(object):
 
     Implements the AIR->APR transform from the STARKs paper.
     """
-    modulus = comp.modulus
+    modulus = comp.field.p
     width = comp.dims
     # field = (Z/2[g]/h(g))
     field = comp.field
@@ -44,12 +45,19 @@ class APR(object):
     # g
     g = basePolys([0, 1])
 
+    # Some constants
+    self.t = math.log(T, 2)
+    # chosen so deg(C) <= 2^d
+    # Setting to arbitrary value for now.
+    # TODO(rbharath): What is the right value of this?
+    self.d = 10
+
     polysOver = polynomials_over(field).factory
-    Tau = list(range(width))
+    self.Tau = list(range(width))
     # Element of (Z/2[g]/h(g))
     zeta = generate_primitive_polynomial(modulus, width)
     # Neighbors
-    N = self.construct_neighbors(Tau, zeta, g, polysOver)
+    N = self.construct_neighbors(self.Tau, zeta, g, polysOver)
 
   def construct_z_B_j(self):
     """Constructs Z_{B,j}(x) boundary constraint polynomial
@@ -74,7 +82,7 @@ class APR(object):
     return neighbors
 
 
-  def get_witness(self):
+  def generate_witness(self):
     """A witness w^hat is in (L^F)^T. That is, it's a set of functions indexed
     by set T. Each function maps from space L to field F."""
     return None
