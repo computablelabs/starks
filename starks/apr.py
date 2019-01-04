@@ -36,23 +36,24 @@ class APR(object):
     modulus = comp.field.p
     width = comp.dims
     # field = (Z/2[g]/h(g))
-    field = comp.field
+    self.field = comp.field
     # base_field = Z/2
-    base_field = field.field
+    base_field = self.field.base_field
     basePolys = polynomials_over(base_field)
     # h(g)
-    h = field.ideal_generator
+    h = self.field.ideal_generator
     # g
     g = basePolys([0, 1])
 
     # Some constants
-    self.t = math.log(T, 2)
+    T = comp.steps
+    self.t = int(math.log(T, 2))
     # chosen so deg(C) <= 2^d
     # Setting to arbitrary value for now.
     # TODO(rbharath): What is the right value of this?
     self.d = 10
 
-    polysOver = polynomials_over(field).factory
+    polysOver = polynomials_over(self.field).factory
     self.Tau = list(range(width))
     # Element of (Z/2[g]/h(g))
     zeta = generate_primitive_polynomial(modulus, width)

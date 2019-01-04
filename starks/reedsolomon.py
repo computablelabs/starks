@@ -1,5 +1,7 @@
 """This file holds classes necessary to implement Reed-Solomon codes"""
+from typing import List
 from starks.numbertype import Field
+from starks.numbertype import FieldElement
 
 class ReedSolomonCode(object):
   """Defines a Reed Solomon Code.

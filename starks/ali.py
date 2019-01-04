@@ -2,7 +2,6 @@
 
 """
 
-from starks.
 from starks.reedsolomon import ReedSolomonCode
 
 class ALIProver(object):

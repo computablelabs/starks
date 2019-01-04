@@ -1,6 +1,7 @@
 """Test the algebraic placement and routing (APR) transformation."""
 import unittest
 from starks.modp import IntegersModP
+from starks.finitefield import FiniteField 
 from starks.air import Computation
 from starks.apr import APR
 
@@ -10,11 +11,13 @@ class TestAPR(unittest.TestCase):
   def test_apr_constructor(self):
     """Test that the APR class can be initialized."""
     dims = 2
-    modulus = 2**256 - 2**32 * 351 + 1
+    # Set the field small in tests since primitive polynomial generation is slow.
+    p = 7 
+    m = 4
     steps = 512
     constants = [[]] * steps
     extension_factor = 8
-    field = IntegersModP(modulus)
+    field = FiniteField(p, m)
     inp = [field(0), field(1)]
     constraint_degree = 4
     def step_fn(prev, constants):
