@@ -3,6 +3,24 @@ from typing import List
 from starks.numbertype import Field
 from starks.numbertype import FieldElement
 
+class AffineSpace(object):
+  """Defines an affine space (of polynomials typically)."""
+  def __init__(self, field: Field, basis: List[FieldElement], shift=None):
+    self.field = field
+    self.basis = basis
+    if shift is None:
+      self.shift = self.field(0)
+    else:
+      self.shift = shift
+
+  def __len__(self):
+    """Returns the size of the affine space."""
+    # TODO(rbharath): Implement this in a reasonable fashion
+    field_size = int(self.field.p)**self.field.m
+    basis_len = int(len(self.basis))
+    length = field_size**basis_len
+    return length
+
 class ReedSolomonCode(object):
   """Defines a Reed Solomon Code.
   
@@ -27,7 +45,9 @@ class ReedSolomonCode(object):
   - S is an affine coset of a F_2 linear subspace of F. That is, S = {a_0 + \sum_{i=1}^k alpha_i a_i} where (a_1,...,a_k) is a set of k-linearly independent elements.
   - rho = 2^{-Rcurly} where Rcurly is a positive integer.
 
-  If these conditions are met, we saw that this defines the binary RPT relation R_{BRPT}.
+  If these conditions are met, we saw that this defines the binary RPT relation
+  R_{BRPT}. In this case, RS[F, S, rho] is also called a binary additive RS
+  code family.
 
   In this class, we assume that only binary RPT problems are defined.
   """

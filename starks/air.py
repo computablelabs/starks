@@ -125,10 +125,11 @@ class Computation(object):
   
   def get_witness(self):
     """Returns the witness (computational trace) for this computation."""
-    return self.computational_trace
+    return [[self.computational_trace[i][j] for i in range(self.steps)] for j in range(self.w)]
 
   def generate_boundary_constraint(self, inp):
-    pass
+    # TODO(rbharath): Fix this up
+    return []
 
   def generate_monotone_circuit(self, Polys):
     pass
@@ -143,4 +144,5 @@ class Computation(object):
     times to have more than one constraint for enforcing various transition
     properties.
     """
-    pass
+    # TODO(rbharath): Implement this correctly.
+    return []
