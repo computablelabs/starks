@@ -91,6 +91,8 @@ def IntegersModP(p):
 
 
   IntegerModP.p = p
+  # To match finite field parameters.
+  IntegerModP.m = 1
   IntegerModP.__name__ = 'Z/%d' % (p)
   IntegerModP.englishName = 'IntegersMod%d' % (p)
   IntegerModP.field_size = p

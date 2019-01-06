@@ -98,4 +98,5 @@ def FiniteField(p, m, polynomialModulus=None):
   Fq.__name__ = 'F_{%d^%d}' % (p, m)
   Fq.p = p
   Fq.m = m
+  Fq.base_field = Zp
   return Fq
