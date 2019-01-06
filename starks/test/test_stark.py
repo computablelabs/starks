@@ -21,7 +21,7 @@ from starks.stark import construct_computation_polynomial
 from starks.stark import construct_constraint_polynomial 
 from starks.stark import construct_remainder_polynomial 
 from starks.stark import construct_boundary_polynomial 
-from starks.stark import construct_constants_polynomials
+#from starks.stark import construct_constants_polynomials
 from starks.stark import get_pseudorandom_ks
 from starks.stark import compute_pseudorandom_linear_combination_1d
 from starks.stark import compute_pseudorandom_linear_combination
@@ -32,6 +32,7 @@ from starks.compression import compress_branches
 from starks.compression import compress_fri
 from starks.polynomial import polynomials_over
 from starks.poly_utils import lagrange_interp_2
+from starks.poly_utils import multivariates_over
 
 
 class TestStark(unittest.TestCase):
@@ -52,21 +53,21 @@ class TestStark(unittest.TestCase):
     """
     Tests that pseudorandom indices are computed correctly.
     """
-    dims = 1
-    steps = 512
-    constraint_degree = 4
-    spot_check_security_factor = 80
-    constants = [[i, i] for i in range(steps)]
     modulus = 2**256 - 2**32 * 351 + 1
     field = IntegersModP(modulus)
-    inp = [field(5)]
+    # state = [c_0, c_1, value]
+    inp = [field(2), field(2), field(5)]
+    width = 3
+    steps = 512
+    spot_check_security_factor = 80
+    polysOver = multivariates_over(field, width).factory
     extension_factor = 8
     ## Factoring out computation
-    def step_fn(state, constants):
-      # c_1*value**2 + c_0
-      return [constants[1]*state[0]**2 + constants[0]]
-    comp = Computation(field, dims, inp, steps, constants, step_fn,
-        constraint_degree, extension_factor)
+    # c_1*value**2 + c_0
+    # Polys are: [X_1, X_2, X_1 + X_2*X_3**2]
+    step_polys = [polysOver({(1,0,0): field(1)}), polysOver({(0,1,0): field(1)}),
+        polysOver({(1,0,0): field(1), (0,1,2): field(1)})] #[state[0], 0, state[1]])]
+    comp = Computation(field, width, inp, steps, step_polys, extension_factor)
     params = StarkParams(field, steps, modulus, extension_factor)
 
     p_evaluations = construct_computation_polynomial(
@@ -79,15 +80,11 @@ class TestStark(unittest.TestCase):
         comp, params, p_evaluations)
 
     polys = [p_evaluations, d_evaluations, b_evaluations]
-    mtree = merkelize_polynomials(dims, polys)
+    mtree = merkelize_polynomials(width, polys)
     l_evaluations = compute_pseudorandom_linear_combination(
         comp, params, mtree, polys)
     l_mtree = merkelize(l_evaluations)
 
-    # TODO(rbharath): I'm copy-pasting test setup here. There
-    # ought to be a simpler way to do this.
-    # TODO(rbharath): Can simplify this test with just a
-    # random seed.
     indices = get_pseudorandom_indices(l_mtree[1],
         params.precision, count=spot_check_security_factor,
         exclude_multiples_of=params.extension_factor)
@@ -97,20 +94,20 @@ class TestStark(unittest.TestCase):
     """
     Tests that merkle spot checks are constructed correctly.
     """
-    dims = 1
-    steps = 512
-    constraint_degree = 4
-    spot_check_security_factor = 80
-    constants = [[i, i] for i in range(steps)]
     modulus = 2**256 - 2**32 * 351 + 1
-    extension_factor = 8
     field = IntegersModP(modulus)
-    inp = [field(5)]
-    def step_fn(value, constants):
-      # c_1*value**2 + c_0
-      return [constants[1]*value[0]**2 + constants[0]]
-    comp = Computation(field, dims, inp, steps, constants, step_fn,
-        constraint_degree, extension_factor)
+    width = 3
+    # state = [c_0, c_1, value]
+    inp = [field(2), field(2), field(5)]
+    steps = 512
+    spot_check_security_factor = 80
+    extension_factor = 8
+    polysOver = multivariates_over(field, width).factory
+    # c_1*value**2 + c_0
+    # Polys are: [X_1, X_2, X_1 + X_2*X_3**2]
+    step_polys = [polysOver({(1,0,0): field(1)}), polysOver({(0,1,0): field(1)}),
+        polysOver({(1,0,0): field(1), (0,1,2): field(1)})]
+    comp = Computation(field, width, inp, steps, step_polys, extension_factor)
     params = StarkParams(field, steps, modulus, extension_factor)
 
     p_evaluations = construct_computation_polynomial(
@@ -123,7 +120,7 @@ class TestStark(unittest.TestCase):
         comp, params, p_evaluations)
 
     polys = [p_evaluations, d_evaluations, b_evaluations]
-    mtree = merkelize_polynomials(dims, polys)
+    mtree = merkelize_polynomials(width, polys)
     l_evaluations = compute_pseudorandom_linear_combination(
         comp, params, mtree, polys)
     l_mtree = merkelize(l_evaluations)
@@ -139,20 +136,19 @@ class TestStark(unittest.TestCase):
     """
     Tests compute pseudorandom linear combination for 1-dimension
     """
-    dims = 1
+    width = 3
     steps = 512
-    constants = [[i, i] for i in range(512)]
     modulus = 2**256 - 2**32 * 351 + 1
     extension_factor = 8
-    constraint_degree = 4
     field = IntegersModP(modulus)
-    inp = [field(5)]
+    # state = [c_0, c_1, value]
+    inp = [field(2), field(2), field(5)]
     ## Factoring out computation
-    def step_fn(state, constants):
-      # c_1*value**2 + c_0
-      return [constants[1]*state[0]**2 + constants[0]]
-    comp = Computation(field, dims, inp, steps, constants, step_fn,
-        constraint_degree, extension_factor)
+    # c_1*value**2 + c_0
+    # Polys are: [X_1, X_2, X_1 + X_2*X_3**2]
+    step_polys = [polysOver({(1,0,0): field(1)}), polysOver({(0,1,0): field(1)}),
+        polysOver({(1,0,0): field(1), (0,1,2): field(1)})]
+    comp = Computation(field, dims, inp, steps, constants, step_fn, extension_factor)
     params = StarkParams(field, steps, modulus, extension_factor)
 
     constants_extensions, constants_polynomials = \

@@ -20,7 +20,7 @@ could possibly be very large.
 
 from starks.utils import is_a_power_of_2
 
-def get_computational_trace(inp, steps, constants, step_fn):
+def get_computational_trace(inp, steps, width, step_polys):
   """Get the computational trace for the algebraic intermediate representation.
 
   Parameters
@@ -31,16 +31,16 @@ def get_computational_trace(inp, steps, constants, step_fn):
     The input state for the computation
   steps: Int
     The number of steps in the computation
-  constants: List
-    List of constants defining the computation in question
-  step_fn: Function
+  #constants: List
+  #  List of constants defining the computation in question
+  step_polys: Function
     A function which maps one state to the next state.
   """
   computational_trace = [inp]
   for i in range(steps - 1):
-    poly_constants = constants[i]
+    #poly_constants = constants[i]
     # TODO(rbharath): Is there off-by-one error on round_contants?
-    next_state = step_fn(computational_trace[-1], poly_constants)
+    next_state = [step_polys[i](computational_trace[-1]) for i in range(width)]
     computational_trace.append(next_state)
   output = computational_trace[-1]
   print('Done generating computational trace')
@@ -67,31 +67,28 @@ class Computation(object):
 
   Fields
   ------
-  dims: Int
+  width: Int
     The dimensionality of the state space for the computation.
   inp: Int or List
-    Either a single int or a list of integers of length dims
+    Either a single int or a list of integers of length width 
   steps: Int
     An int holding the number of steps of this computation.
   output: Int of List
-    Either a single int or a list of integers of length dims
-  constants: List
-    A list of constants. Each element of constants must be a
-    list of length steps
-  step_fn: Function
+    Either a single int or a list of integers of length width 
+  #constants: List
+  #  A list of constants. Each element of constants must be a
+  #  list of length steps
+  step_polys: Poly 
     A function that maps a computation state to the next
     state. A state here is either an int of a list of ints of
-    length dims.
-  constraint_degree: int
-    The degree of the constraint being considered
+    length width.
   extension_factor: Int
     TODO(rbharath): Can this be removed?
   """
-  def __init__(self, field, dims, inp, steps, constants, step_fn,
-      constraint_degree, extension_factor):
+  def __init__(self, field, width, inp, steps, step_polys, extension_factor):
     # TODO(rbharath): Is it necessary to store field explicitly
     self.field = field
-    self.dims = dims
+    self.width = width
     # Handle 1-d case
     if isinstance(inp, int):
       inp = [inp]
@@ -103,23 +100,18 @@ class Computation(object):
 
     self.inp = inp
     self.steps = steps
-    # Check that the constants have right length
-    for poly_constants in constants:
-      assert len(poly_constants) <= steps
-    self.constants = constants
 
-    self.step_fn = step_fn
-    self.constraint_degree = constraint_degree
+    self.step_polys = step_polys
     self.computational_trace, self.output = get_computational_trace(
-        inp, steps, constants, step_fn)
+        inp, steps, width, step_polys)
     self.extension_factor = extension_factor
 
     # The AIR variables. TODO(rbharath): Swap the STARK library to use these
     # fields for consistency.
     self.F = field
     self.T = steps
-    self.w = dims
-    self.Polys = self.generate_constraint_polynomials(step_fn)
+    self.w = width 
+    self.Polys = self.generate_constraint_polynomials(step_polys)
     self.C = self.generate_monotone_circuit(self.Polys)
     self.B = self.generate_boundary_constraint(inp)
   
