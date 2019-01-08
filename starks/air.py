@@ -126,6 +126,9 @@ class Computation(object):
   def generate_monotone_circuit(self, Polys):
     pass
 
+  def get_degree(self):
+    return max([poly.degree() for poly in self.step_polys])
+
   def generate_constraint_polynomials(self, step_fn):
     """Constructs the constraint polynomials for this AIR instance.
 

@@ -316,7 +316,7 @@ def mk_proof(comp, params):
       prove_low_degree(
           l_evaluations,
           params.G2,
-          comp.steps * comp.constraint_degree,
+          comp.steps * comp.get_degree(),
           params.modulus,
           exclude_multiples_of=comp.extension_factor)
   ]
@@ -338,7 +338,7 @@ def verify_proof(comp, params, proof):
   start_time = time.time()
   m_root, l_root, branches, fri_proof = proof
 
-  _, constants_polynomials = construct_constants_polynomials(comp, params)
+  #_, constants_polynomials = construct_constants_polynomials(comp, params)
 
   # Verifies the low-degree proofs
   assert verify_low_degree_proof(
@@ -356,13 +356,15 @@ def verify_proof(comp, params, proof):
       exclude_multiples_of=params.extension_factor)
   ks = get_pseudorandom_ks(m_root, 4)
   for i, pos in enumerate(positions):
-    verify_proof_at_position(comp, params, ks, proof, i, pos, constants_polynomials)
+    #verify_proof_at_position(comp, params, ks, proof, i, pos, constants_polynomials)
+    verify_proof_at_position(comp, params, ks, proof, i, pos)
 
   print('Verified %d consistency checks' % params.spot_check_security_factor)
   print('Verified STARK in %.4f sec' % (time.time() - start_time))
   return True
 
-def verify_proof_at_position(comp, params, ks, proof, i, pos, constants_polynomials):
+#def verify_proof_at_position(comp, params, ks, proof, i, pos, constants_polynomials):
+def verify_proof_at_position(comp, params, ks, proof, i, pos):
   """Verifies merkle proof at given position in extended trace"""
   field = comp.field
   modulus = params.modulus
@@ -394,13 +396,14 @@ def verify_proof_at_position(comp, params, ks, proof, i, pos, constants_polynomi
 
   zvalue = (x**comp.steps - 1)/(x - params.last_step_position)
   k_of_xs = []
-  for constants_mini_polynomial in constants_polynomials:
-    # This is unwrapping the polynomial
-    constants_mini_polynomial = polysOver([val[0] for val in constants_mini_polynomial])
-    k_of_xs.append(constants_mini_polynomial(x))
+  #for constants_mini_polynomial in constants_polynomials:
+  #  # This is unwrapping the polynomial
+  #  constants_mini_polynomial = polysOver([val[0] for val in constants_mini_polynomial])
+  #  k_of_xs.append(constants_mini_polynomial(x))
 
   # Check transition constraints C(P(x)) = Z(x) * D(x)
-  f_of_p_of_x = comp.step_fn(p_of_x, k_of_xs)
+  #f_of_p_of_x = comp.step_fn(p_of_x, k_of_xs)
+  f_of_p_of_x = [comp.step_polys[i](p_of_x) for i in range(comp.width)]
   for dim in range(comp.width):
     p_of_g1x_dim = p_of_g1x[dim]
     p_of_x_dim = p_of_x[dim]
@@ -409,6 +412,7 @@ def verify_proof_at_position(comp, params, ks, proof, i, pos, constants_polynomi
     assert (p_of_g1x_dim - f_of_p_of_x_dim - zvalue * d_of_x_dim) == 0
 
   # Check boundary constraints B(x) * Q(x) + I(x) = P(x)
+  # TODO(rbharath): How do I promote a single-dim poly into a multidimensional poly?
   zeropoly2 = polysOver([-1, 1])*polysOver([-params.last_step_position, 1])
   for dim in range(comp.width):
     interpolant_dim = lagrange_interp_2(modulus, [1, params.last_step_position], [comp.inp[dim], comp.output[dim]])

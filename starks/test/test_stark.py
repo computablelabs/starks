@@ -508,23 +508,20 @@ class TestStark(unittest.TestCase):
     """
     Basic tests of FRI generation for fibonacci stark
     """
-    dims = 2
+    width = 2
     steps = 512
-    constants = [[]] * steps
     modulus = 2**256 - 2**32 * 351 + 1
     extension_factor = 8
     field = IntegersModP(modulus)
     inp = [field(0), field(1)]
     extension_factor = 8
-    constraint_degree = 4
-    def step_fn(prev, constants):
-      f_n_minus_1 = prev[0]
-      f_n = prev[1]
-      f_n_plus_1 = f_n + f_n_minus_1
-      return [f_n, f_n_plus_1]
     ## Factoring out computation
-    comp = Computation(field, dims, inp, steps, constants, step_fn,
-        constraint_degree, extension_factor)
+    polysOver = multivariates_over(field, width).factory
+    X_1 = polysOver({(1,0): field(1)})
+    X_2 = polysOver({(0,1): field(1)})
+    step_polys = [X_2, X_1 + X_2] 
+    comp = Computation(field, width, inp, steps, step_polys,
+        extension_factor)
     params = StarkParams(field, steps, modulus, extension_factor)
 
     p_evaluations = construct_computation_polynomial(
@@ -536,29 +533,33 @@ class TestStark(unittest.TestCase):
     b_evaluations = construct_boundary_polynomial(
         comp, params, p_evaluations)
 
-    mtrees = merkelize_polynomials(dims, [p_evaluations, d_evaluations, b_evaluations])
+    mtrees = merkelize_polynomials(width, [p_evaluations, d_evaluations, b_evaluations])
 
   def test_higher_dim_proof_verification(self):
     """
     Tests proof generation and verification for multidimensional state.
     """
-    dims = 2
+    width = 2
     steps = 8
     constraint_degree = 4
     modulus = 2**256 - 2**32 * 351 + 1
     field = IntegersModP(modulus)
     inp = [field(0), field(1)]
     # This is a place filler
-    constants = [[]] * steps
+    #constants = [[]] * steps
     extension_factor = 8
-    constraint_degree = 8
-    def step_fn(prev, constants):
-      f_n_minus_1 = prev[0]
-      f_n = prev[1]
-      f_n_plus_1 = f_n + f_n_minus_1
-      return [f_n, f_n_plus_1]
-    comp = Computation(field, dims, inp, steps, constants, step_fn,
-        constraint_degree, extension_factor)
+    #constraint_degree = 8
+    #def step_fn(prev, constants):
+    #  f_n_minus_1 = prev[0]
+    #  f_n = prev[1]
+    #  f_n_plus_1 = f_n + f_n_minus_1
+    #  return [f_n, f_n_plus_1]
+    polysOver = multivariates_over(field, width).factory
+    X_1 = polysOver({(1,0): field(1)})
+    X_2 = polysOver({(0,1): field(1)})
+    step_polys = [X_2, X_1 + X_2] 
+    comp = Computation(field, width, inp, steps, step_polys,
+        extension_factor)
     params = StarkParams(field, steps, modulus, extension_factor)
     proof = mk_proof(comp, params)
     assert verify_proof(comp, params, proof)
