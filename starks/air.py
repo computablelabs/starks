@@ -31,14 +31,11 @@ def get_computational_trace(inp, steps, width, step_polys):
     The input state for the computation
   steps: Int
     The number of steps in the computation
-  #constants: List
-  #  List of constants defining the computation in question
   step_polys: Function
     A function which maps one state to the next state.
   """
   computational_trace = [inp]
   for i in range(steps - 1):
-    #poly_constants = constants[i]
     # TODO(rbharath): Is there off-by-one error on round_contants?
     next_state = [step_polys[i](computational_trace[-1]) for i in range(width)]
     computational_trace.append(next_state)
@@ -75,9 +72,6 @@ class Computation(object):
     An int holding the number of steps of this computation.
   output: Int of List
     Either a single int or a list of integers of length width 
-  #constants: List
-  #  A list of constants. Each element of constants must be a
-  #  list of length steps
   step_polys: Poly 
     A function that maps a computation state to the next
     state. A state here is either an int of a list of ints of

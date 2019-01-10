@@ -56,43 +56,6 @@ class StarkParams(object):
     self.xs = get_power_cycle(self.G2, modulus)
     self.last_step_position = self.xs[(steps - 1) * extension_factor]
 
-#def construct_constants_polynomials(comp: Computation, params: StarkParams) -> Tuple[List[Vector], List[Vector]]:
-#  """Transforms constants into polynomials
-#  
-#  TODO(rbharath): Refactoring the constants list to be a list of step-wise
-#  constants might be better.
-#
-#  The constants needed for a computation are encoded as a list of lists.
-#  Each of these lists is of length comp.steps. These encapsulate the
-#  external state for the computation at each step. This function
-#  interpolates these constants lists into polynomials. These are used by
-#  the prover and the verifier to respectively prove and verify facts about
-#  computation.
-#  """
-#  constants_polynomials = []
-#  constants_extensions = []
-#  # This is safe since steps > 0
-#  deg = len(comp.constants[0])
-#  for d in range(deg):
-#    # The extra wrapping is some plumbing since the fft expects a sequence
-#    # of states, where a state is a list.
-#    deg_constants = [[step_constants[d]] for step_constants in comp.constants]
-#    # Constants are a 1-d sequence
-#    constants_mini_polynomial = fft(
-#        deg_constants, params.modulus, params.G1,
-#        inv=True, dims=1)
-#    constants_mini_extension = fft(constants_mini_polynomial,
-#        params.modulus, params.G2, dims=1)
-#    assert len(constants_mini_extension) == params.precision
-#    constants_polynomials.append(constants_mini_polynomial)
-#    constants_extensions.append(constants_mini_extension)
-#  assert len(constants_extensions) == deg
-#  for extension in constants_extensions:
-#    assert len(extension) == params.precision 
-#  print(
-#      'Converted round constants into a polynomial and low-degree extended it')
-#  return constants_extensions, constants_polynomials
-
 def construct_computation_polynomial(comp: Computation, params: StarkParams) -> List[Vector]:
   """Constructs polynomial for the given computation."""
   # Interpolate the computational trace into a polynomial P,
@@ -117,9 +80,6 @@ def construct_constraint_polynomial(comp: Computation, params: StarkParams,
   given computational tape. For now, this function only works
   with MiMC.
   """
-  #deg = len(comp.constants[0])
-  #extensions, _ = construct_constants_polynomials(comp, params)
-
   # Create the composed polynomial such that
   # C(P(x), P(g1*x), K(x)) = P(g1*x) - step_fn(P(x), K(x))
   # here K(x) contains the constants.
@@ -127,8 +87,6 @@ def construct_constraint_polynomial(comp: Computation, params: StarkParams,
   # extensions[d] selects constants for the degree d term
   # extensions[d][i] selects the degree d term for i-th step
   # extensions[d][i][0] unpacks the output of fft() which adds an extra list
-  #step_p_evals = [comp.step_fn(
-  #  p_evaluations[i], [extensions[d][i][0] for d in range(deg)]) for i in range(params.precision)]
   step_p_evals = [[comp.step_polys[j](
     p_evaluations[i]) for j in range(comp.width)] for i in range(params.precision)]
   c_of_p_evals = [[p_next[dim] - step_p[dim] for dim in range(comp.width)] for (p_next, step_p) in zip(p_next_step_evals, step_p_evals)]
@@ -363,7 +321,6 @@ def verify_proof(comp, params, proof):
   print('Verified STARK in %.4f sec' % (time.time() - start_time))
   return True
 
-#def verify_proof_at_position(comp, params, ks, proof, i, pos, constants_polynomials):
 def verify_proof_at_position(comp, params, ks, proof, i, pos):
   """Verifies merkle proof at given position in extended trace"""
   field = comp.field
@@ -396,13 +353,8 @@ def verify_proof_at_position(comp, params, ks, proof, i, pos):
 
   zvalue = (x**comp.steps - 1)/(x - params.last_step_position)
   k_of_xs = []
-  #for constants_mini_polynomial in constants_polynomials:
-  #  # This is unwrapping the polynomial
-  #  constants_mini_polynomial = polysOver([val[0] for val in constants_mini_polynomial])
-  #  k_of_xs.append(constants_mini_polynomial(x))
 
   # Check transition constraints C(P(x)) = Z(x) * D(x)
-  #f_of_p_of_x = comp.step_fn(p_of_x, k_of_xs)
   f_of_p_of_x = [comp.step_polys[i](p_of_x) for i in range(comp.width)]
   for dim in range(comp.width):
     p_of_g1x_dim = p_of_g1x[dim]
