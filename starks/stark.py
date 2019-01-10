@@ -204,7 +204,7 @@ def get_pseudorandom_ks(m_root: bytes, num: int) -> List[int]:
   # Is the < 10 restriction needed
   elif num < 10:
     byte_list = [("0x0%s" % str(i)).encode("UTF-8") for i in range(num)]
-    ks = [int.from_bytes(blake(m_root + byte_list[ind]), 'big') for ind in range(comp.width)]
+    ks = [int.from_bytes(blake(m_root + byte_list[ind]), 'big') for ind in range(num)]
     return ks
 
 def compute_pseudorandom_linear_combination_1d(comp: Computation, params: StarkParams, mtree: List[bytes], polys: List[List[Vector]]) -> List[Vector]:
@@ -345,7 +345,7 @@ def verify_proof(comp, params, proof):
       l_root,
       params.G2,
       fri_proof,
-      comp.steps * comp.constraint_degree,
+      comp.steps * comp.get_degree(),
       params.modulus,
       exclude_multiples_of=comp.extension_factor)
 

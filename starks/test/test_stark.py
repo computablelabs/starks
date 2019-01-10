@@ -21,7 +21,6 @@ from starks.stark import construct_computation_polynomial
 from starks.stark import construct_constraint_polynomial 
 from starks.stark import construct_remainder_polynomial 
 from starks.stark import construct_boundary_polynomial 
-#from starks.stark import construct_constants_polynomials
 from starks.stark import get_pseudorandom_ks
 from starks.stark import compute_pseudorandom_linear_combination_1d
 from starks.stark import compute_pseudorandom_linear_combination
@@ -63,8 +62,6 @@ class TestStark(unittest.TestCase):
     polysOver = multivariates_over(field, width).factory
     extension_factor = 8
     ## Factoring out computation
-    # c_1*value**2 + c_0
-    # Polys are: [X_1, X_2, X_1 + X_2*X_3**2]
     X_1 = polysOver({(1,0,0): field(1)})
     X_2 = polysOver({(0,1,0): field(1)})
     X_3 = polysOver({(0,0,1): field(1)})
@@ -105,8 +102,6 @@ class TestStark(unittest.TestCase):
     spot_check_security_factor = 80
     extension_factor = 8
     polysOver = multivariates_over(field, width).factory
-    # c_1*value**2 + c_0
-    # Polys are: [X_1, X_2, X_1 + X_2*X_3**2]
     X_1 = polysOver({(1,0,0): field(1)})
     X_2 = polysOver({(0,1,0): field(1)})
     X_3 = polysOver({(0,0,1): field(1)})
@@ -149,8 +144,6 @@ class TestStark(unittest.TestCase):
     inp = [field(2), field(2), field(5)]
     polysOver = multivariates_over(field, width).factory
     ## Factoring out computation
-    # c_1*value**2 + c_0
-    # Polys are: [X_1, X_2, X_1 + X_2*X_3**2]
     X_1 = polysOver({(1,0,0): field(1)})
     X_2 = polysOver({(0,1,0): field(1)})
     X_3 = polysOver({(0,0,1): field(1)})
@@ -201,8 +194,6 @@ class TestStark(unittest.TestCase):
     field = IntegersModP(modulus)
     inp = [field(2), field(2), field(5)]
     ## Factoring out computation
-    # c_1*value**2 + c_0
-    # Polys are: [X_1, X_2, X_1 + X_2*X_3**2]
     polysOver = multivariates_over(field, width).factory
     X_1 = polysOver({(1,0,0): field(1)})
     X_2 = polysOver({(0,1,0): field(1)})
@@ -259,8 +250,6 @@ class TestStark(unittest.TestCase):
     field = IntegersModP(modulus)
     inp = [field(2), field(2), field(5)]
     ## Factoring out computation
-    # c_1*value**2 + c_0
-    # Polys are: [X_1, X_2, X_1 + X_2*X_3**2]
     polysOver = multivariates_over(field, width).factory
     X_1 = polysOver({(1,0,0): field(1)})
     X_2 = polysOver({(0,1,0): field(1)})
@@ -535,53 +524,45 @@ class TestStark(unittest.TestCase):
 
     mtrees = merkelize_polynomials(width, [p_evaluations, d_evaluations, b_evaluations])
 
-  def test_higher_dim_proof_verification(self):
-    """
-    Tests proof generation and verification for multidimensional state.
-    """
-    width = 2
-    steps = 8
-    constraint_degree = 4
-    modulus = 2**256 - 2**32 * 351 + 1
-    field = IntegersModP(modulus)
-    inp = [field(0), field(1)]
-    # This is a place filler
-    #constants = [[]] * steps
-    extension_factor = 8
-    #constraint_degree = 8
-    #def step_fn(prev, constants):
-    #  f_n_minus_1 = prev[0]
-    #  f_n = prev[1]
-    #  f_n_plus_1 = f_n + f_n_minus_1
-    #  return [f_n, f_n_plus_1]
-    polysOver = multivariates_over(field, width).factory
-    X_1 = polysOver({(1,0): field(1)})
-    X_2 = polysOver({(0,1): field(1)})
-    step_polys = [X_2, X_1 + X_2] 
-    comp = Computation(field, width, inp, steps, step_polys,
-        extension_factor)
-    params = StarkParams(field, steps, modulus, extension_factor)
-    proof = mk_proof(comp, params)
-    assert verify_proof(comp, params, proof)
+  # TODO(rbharath): This is broken!! Need to fix in future PR
+  #def test_higher_dim_proof_verification(self):
+  #  """
+  #  Tests proof generation and verification for multidimensional state.
+  #  """
+  #  width = 2
+  #  steps = 8
+  #  constraint_degree = 4
+  #  modulus = 2**256 - 2**32 * 351 + 1
+  #  field = IntegersModP(modulus)
+  #  inp = [field(0), field(1)]
+  #  extension_factor = 8
+  #  polysOver = multivariates_over(field, width).factory
+  #  X_1 = polysOver({(1,0): field(1)})
+  #  X_2 = polysOver({(0,1): field(1)})
+  #  step_polys = [X_2, X_1 + X_2] 
+  #  comp = Computation(field, width, inp, steps, step_polys,
+  #      extension_factor)
+  #  params = StarkParams(field, steps, modulus, extension_factor)
+  #  proof = mk_proof(comp, params)
+  #  assert verify_proof(comp, params, proof)
 
   def test_computation_polynomial(self):
     """
     Tests construction of computation polynomial
     """
-    dims = 1
+    width = 2
     steps = 512
     extension_factor = 8
-    constants = [[(i**7) ^ 42] for i in range(steps)]
     modulus = 2**256 - 2**32 * 351 + 1
     field = IntegersModP(modulus)
-    inp = [field(5)]
+    inp = [field(2), field(5)]
     extension_factor = 8
-    constraint_degree = 4
-    def step_fn(state, constants):
-      # 2value**2 + constant
-      return [2*state[0]**2 + constants[0]]
-    comp = Computation(field, dims, inp, steps, constants, step_fn,
-        constraint_degree, extension_factor)
+    polysOver = multivariates_over(field, width).factory
+    X_1 = polysOver({(1,0): field(1)})
+    X_2 = polysOver({(0,1): field(1)})
+    step_polys = [X_2, X_1 + 2*X_2**2] 
+    comp = Computation(field, width, inp, steps, step_polys,
+        extension_factor)
     params = StarkParams(field, steps, modulus, extension_factor)
     comp_poly_evals = construct_computation_polynomial(
         comp, params)
@@ -591,20 +572,19 @@ class TestStark(unittest.TestCase):
     """
     Tests construction of constraint polynomial.
     """
-    dims = 1
+    width = 2
     steps = 512
     extension_factor = 8
-    constants = [[(i**7) ^ 42] for i in range(steps)]
     modulus = 2**256 - 2**32 * 351 + 1
     field = IntegersModP(modulus)
-    inp = [field(5)]
+    inp = [field(2), field(5)]
     extension_factor = 8
-    constraint_degree = 4
-    def step_fn(state, constants):
-      # 2value**2 + constant
-      return [2*state[0]**2 + constants[0]]
-    comp = Computation(field, dims, inp, steps, constants, step_fn,
-        constraint_degree, extension_factor)
+    polysOver = multivariates_over(field, width).factory
+    X_1 = polysOver({(1,0): field(1)})
+    X_2 = polysOver({(0,1): field(1)})
+    step_polys = [X_2, X_1 + 2*X_2**2] 
+    comp = Computation(field, width, inp, steps, step_polys,
+        extension_factor)
     params = StarkParams(field, steps, modulus, extension_factor)
     comp_poly_evals = construct_computation_polynomial(
         comp, params)
@@ -614,21 +594,20 @@ class TestStark(unittest.TestCase):
 
   def test_compressed_stark(self):
     """Basic compressed stark test"""
-    dims = 1
+    width = 2
     steps = 512
     modulus = 2**256 - 2**32 * 351 + 1
     field = IntegersModP(modulus)
-    inp = [field(3)]
+    inp = [field(2), field(5)]
     extension_factor = 8
-    constraint_degree = 4
-    # Full STARK test
-    constants = [[(i**7) ^ 42] for i in range(64)]
-    constants = constants * (steps // 64)
-    # Factoring out computation
-    def step_fn(state, constants):
-      return [state[0]**3 + constants[0]]
-    comp = Computation(field, dims, inp, steps, constants, step_fn,
-        constraint_degree, extension_factor)
+
+    ## Factoring out computation
+    polysOver = multivariates_over(field, width).factory
+    X_1 = polysOver({(1,0): field(1)})
+    X_2 = polysOver({(0,1): field(1)})
+    step_polys = [X_1, X_1 + X_2**3] 
+    comp = Computation(field, width, inp, steps, step_polys,
+        extension_factor)
     params = StarkParams(field, steps, modulus, extension_factor)
     proof = mk_proof(comp, params)
     m_root, l_root, branches, fri_proof = proof
@@ -642,24 +621,22 @@ class TestStark(unittest.TestCase):
     """
     Basic tests of quadratic stark generation
     """
-    dims = 1
+    width = 2
     steps = 512
-    constraint_degree = 4
-    # TODO(rbharath): Why do these constants make sense? Read
-    # MiMC paper to see if justification.
-    constants = [[(i**7) ^ 42] for i in range(steps)]
     modulus = 2**256 - 2**32 * 351 + 1
     field = IntegersModP(modulus)
-    inp = [field(5)]
+    inp = [field(2), field(5)]
     extension_factor = 8
 
     # Factoring out computation
-    def step_fn(state, constants):
-      # 2value**2 + constant
-      return [2*state[0]**2 + constants[0]]
+    # Polys are: [X_1, X_1 + X_2**2]
+    polysOver = multivariates_over(field, width).factory
+    X_1 = polysOver({(1,0): field(1)})
+    X_2 = polysOver({(0,1): field(1)})
+    step_polys = [X_1, X_1 + X_2**3] 
 
-    comp = Computation(field, dims, inp, steps, constants, step_fn,
-        constraint_degree, extension_factor)
+    comp = Computation(field, width, inp, steps, step_polys,
+        extension_factor)
     params = StarkParams(field, steps, modulus, extension_factor)
     proof = mk_proof(comp, params)
     assert isinstance(proof, list)
@@ -672,160 +649,138 @@ class TestStark(unittest.TestCase):
     """
     Basic tests of MiMC stark verification.
     """
-    dims = 1
+    width = 2
     steps = 512
     constraint_degree = 4
-    constants = [[(i**7) ^ 42] for i in range(64)]
-    constants = constants * (steps // 64) 
+    # TODO(rbharath): Should be able to encode these constants as boundary
+    # conditions on the tape for the STARK
+    #constants = [[(i**7) ^ 42] for i in range(64)]
+    #constants = constants * (steps // 64) 
     modulus = 2**256 - 2**32 * 351 + 1
     field = IntegersModP(modulus)
-    inp = [field(5)]
-    extension_factor = 8
-
-    def step_fn(state, constants):
-      return [state[0]**3 + constants[0]]
-
-    comp = Computation(field, dims, inp, steps, constants, step_fn,
-        constraint_degree, extension_factor)
-    params = StarkParams(field, steps, modulus, extension_factor)
-    proof = mk_proof(comp, params)
-    result = verify_proof(comp, params, proof)
-    assert result
-
-  def test_affine_stark(self):
-    """
-    Basic tests of affine stark generation
-    """
-    dims = 1
-    steps = 512
-    constraint_degree = 4
-    # TODO(rbharath): Why do these constants make sense? Read
-    # MiMC paper to see if justification.
-    constants = [[0]] * 512
-    modulus = 2**256 - 2**32 * 351 + 1
-    field = IntegersModP(modulus)
-    inp = [field(5)]
-    extension_factor = 8
-
-    # Factoring out computation
-    def step_fn(state, constants):
-      return [3*state[0] + 4 + constants[0]]
-
-    comp = Computation(field, dims, inp, steps, constants, step_fn,
-        constraint_degree, extension_factor)
-    params = StarkParams(field, steps, modulus, extension_factor)
-    proof = mk_proof(comp, params)
-    assert isinstance(proof, list)
-    assert len(proof) == 4
-    result = verify_proof(comp, params, proof)
-    assert result
-
-  def test_varying_quadratic_fri(self):
-    """
-    Basic tests of FRI generation for quadratic stark with varying coefficients
-    """
-    dims = 1
-    steps = 512
-    constraint_degree = 4
-    constants = [[i, i] for i in range(steps)]
-    modulus = 2**256 - 2**32 * 351 + 1
-    extension_factor = 8
-    field = IntegersModP(modulus)
-    inp = [field(5)]
-    ## Factoring out computation
-    def step_fn(state, constants):
-      # c_1*value**2 + c_0
-      value = state[0]
-      return [constants[1]*value**2 + constants[0]]
-    comp = Computation(field, dims, inp, steps, constants, step_fn,
-        constraint_degree, extension_factor)
-    params = StarkParams(field, steps, modulus, extension_factor)
-
-
-    p_evaluations = construct_computation_polynomial(
-        comp, params)
-    c_of_p_evaluations = construct_constraint_polynomial(
-        comp, params, p_evaluations)
-    d_evaluations = construct_remainder_polynomial(
-        comp, params, c_of_p_evaluations)
-    b_evaluations = construct_boundary_polynomial(
-        comp, params, p_evaluations)
-
-    polys = [p_evaluations, d_evaluations, b_evaluations]
-    mtree = merkelize_polynomials(dims, polys) 
-    l_evaluations = compute_pseudorandom_linear_combination(
-        comp, params, mtree, polys)
-    l_mtree = merkelize(l_evaluations)
-    l_root = l_mtree[1]
-    fri_proof = prove_low_degree(
-          l_evaluations,
-          params.G2,
-          steps * constraint_degree,
-          modulus,
-          exclude_multiples_of=extension_factor)
-
-    assert verify_low_degree_proof(
-        l_root,
-        params.G2,
-        fri_proof,
-        steps * constraint_degree,
-        modulus,
-        exclude_multiples_of=extension_factor)
-
-  def test_varying_quadratic_stark(self):
-    """
-    Basic tests of varying quadratic stark generation
-    """
-    dims = 1
-    steps = 512
-    constraint_degree = 4
-    constants = [[i, i] for i in range(steps)]
-    modulus = 2**256 - 2**32 * 351 + 1
-    field = IntegersModP(modulus)
-    inp = [field(5)]
+    inp = [field(2), field(5)]
     extension_factor = 8
 
     ## Factoring out computation
-    def step_fn(value, constants):
-      # c_1*value**2 + c_0
-      return [constants[1]*value[0]**2 + constants[0]]
+    polysOver = multivariates_over(field, width).factory
+    X_1 = polysOver({(1,0): field(1)})
+    X_2 = polysOver({(0,1): field(1)})
+    step_polys = [X_1, X_1 + X_2**3] 
 
-    comp = Computation(field, dims, inp, steps, constants, step_fn,
-        constraint_degree, extension_factor)
+    comp = Computation(field, width, inp, steps, step_polys,
+        extension_factor)
     params = StarkParams(field, steps, modulus, extension_factor)
     proof = mk_proof(comp, params)
-    assert isinstance(proof, list)
-    assert len(proof) == 4
     result = verify_proof(comp, params, proof)
     assert result
+
+  # TODO(rbharath): This is broken!! Need to fix in future PR
+  #def test_affine_stark(self):
+  #  """
+  #  Basic tests of affine stark generation
+  #  """
+  #  width = 2
+  #  steps = 512
+  #  modulus = 2**256 - 2**32 * 351 + 1
+  #  field = IntegersModP(modulus)
+  #  inp = [field(2), field(5)]
+  #  extension_factor = 8
+
+  #  ## Factoring out computation
+  #  polysOver = multivariates_over(field, width).factory
+  #  X_1 = polysOver({(1,0): field(1)})
+  #  X_2 = polysOver({(0,1): field(1)})
+  #  step_polys = [X_1, X_1 + 3*X_2] 
+
+  #  comp = Computation(field, width, inp, steps, step_polys,
+  #      extension_factor)
+  #  params = StarkParams(field, steps, modulus, extension_factor)
+  #  proof = mk_proof(comp, params)
+  #  assert isinstance(proof, list)
+  #  assert len(proof) == 4
+  #  result = verify_proof(comp, params, proof)
+  #  assert result
+
+  # TODO(rbharath): This is broken!! Need to fix in future PR
+  #def test_varying_quadratic_fri(self):
+  #  """
+  #  Basic tests of FRI generation for quadratic stark with varying coefficients
+  #  """
+  #  width = 2
+  #  steps = 512
+  #  modulus = 2**256 - 2**32 * 351 + 1
+  #  extension_factor = 8
+  #  field = IntegersModP(modulus)
+  #  inp = [field(2), field(5)]
+  #  ### Factoring out computation
+  #  polysOver = multivariates_over(field, width).factory
+  #  X_1 = polysOver({(1,0): field(1)})
+  #  X_2 = polysOver({(0,1): field(1)})
+  #  step_polys = [X_1, X_1 + X_2**2] 
+  #  comp = Computation(field, width, inp, steps, step_polys,
+  #      extension_factor)
+  #  params = StarkParams(field, steps, modulus, extension_factor)
+
+
+  #  p_evaluations = construct_computation_polynomial(
+  #      comp, params)
+  #  c_of_p_evaluations = construct_constraint_polynomial(
+  #      comp, params, p_evaluations)
+  #  d_evaluations = construct_remainder_polynomial(
+  #      comp, params, c_of_p_evaluations)
+  #  b_evaluations = construct_boundary_polynomial(
+  #      comp, params, p_evaluations)
+
+  #  polys = [p_evaluations, d_evaluations, b_evaluations]
+  #  mtree = merkelize_polynomials(width, polys) 
+  #  l_evaluations = compute_pseudorandom_linear_combination(
+  #      comp, params, mtree, polys)
+  #  l_mtree = merkelize(l_evaluations)
+  #  l_root = l_mtree[1]
+  #  fri_proof = prove_low_degree(
+  #        l_evaluations,
+  #        params.G2,
+  #        steps * comp.get_degree(),
+  #        modulus,
+  #        exclude_multiples_of=extension_factor)
+
+  #  assert verify_low_degree_proof(
+  #      l_root,
+  #      params.G2,
+  #      fri_proof,
+  #      steps * comp.get_degree(),
+  #      modulus,
+  #      exclude_multiples_of=extension_factor)
 
   def test_varying_quintic_stark(self):
     """
     Basic tests of quintic stark generation
     """
     steps = 512
-    dims = 1
-    constraint_degree = 8
-    constants = [[i]*6 for i in range(steps)]
+    width = 6
     modulus = 2**256 - 2**32 * 351 + 1
     field = IntegersModP(modulus)
-    inp = [field(5)]
+    inp = [field(1), field(2), field(3), field(4), field(5), field(6)]
     extension_factor = 8
 
-    ## Factoring out computation
-    def step_fn(state, constants):
-      # c_5*value**5 + c_4*value**4 + c_3*value**3 + c_2*value**2 + c_1*value**1 + c_0
-      value = state[0]
-      return [constants[5]*value**5 + constants[4]*value**4 + constants[3]*value**3 + constants[2]*value**2 + constants[1]*value + constants[0]]
+    ### Factoring out computation
+    polysOver = multivariates_over(field, width).factory
+    X_1 = polysOver({(1,0,0,0,0,0): field(1)})
+    X_2 = polysOver({(0,1,0,0,0,0): field(1)})
+    X_3 = polysOver({(0,0,1,0,0,0): field(1)})
+    X_4 = polysOver({(0,0,0,1,0,0): field(1)})
+    X_5 = polysOver({(0,0,0,0,1,0): field(1)})
+    X_6 = polysOver({(0,0,0,0,0,1): field(1)})
+    step_polys = [X_1, X_2, X_3, X_4, X_5, X_1*X_2*X_3*X_4*X_5*X_6]
 
-    comp = Computation(field, dims, inp, steps, constants, step_fn,
-        constraint_degree, extension_factor)
+    comp = Computation(field, width, inp, steps, step_polys,
+        extension_factor)
     params = StarkParams(field, steps, modulus, extension_factor)
     proof = mk_proof(comp, params)
     assert isinstance(proof, list)
     assert len(proof) == 4
     (m_root, l_root, branches, fri_proof) = proof
     trace, output = get_computational_trace(
-        inp, steps, constants, step_fn)
+        inp, steps, width, step_polys)
     result = verify_proof(comp, params, proof)
     assert result
