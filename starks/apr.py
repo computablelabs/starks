@@ -47,7 +47,7 @@ class APR(object):
     """
     self.comp = comp
     modulus = comp.field.p
-    self.width = comp.dims
+    self.width = comp.width
     # field = (Z/2[g]/h(g))
     self.field = comp.field
     # base_field = Z/2
