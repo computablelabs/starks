@@ -14,6 +14,7 @@ from starks.polynomial import polynomials_over
 from starks.poly_utils import construct_multivariate_dirac_delta
 from starks.poly_utils import construct_multivariate_coefficients
 from starks.utils import get_power_cycle
+from starks.finitefield import FiniteField
 
 class TestPolyUtils(unittest.TestCase):
   """
@@ -92,15 +93,25 @@ class TestPolyUtils(unittest.TestCase):
     polysOverMod = polynomials_over(mod7).factory
     xs = [mod7(1), mod7(6)]
     ys = [mod7(1), mod7(6)]
-    interp = lagrange_interp(modulus, xs, ys)
+    interp = lagrange_interp(mod7, xs, ys)
     # interp should equal x
     assert interp == polysOverMod([0, 1])
 
     xs = [mod7(1), mod7(6)]
     ys = [mod7(0), mod7(0)]
-    interp = lagrange_interp(modulus, xs, ys)
+    interp = lagrange_interp(mod7, xs, ys)
     # interp should equal 0
     assert interp == polysOverMod([0])
+
+    # Test lagrange interp over general finite field
+    Z5 = IntegersModP(5)
+    F25 = FiniteField(5, 2)
+    polysOverF = polynomials_over(F25).factory
+    xs = [F25(1), F25(2)]
+    ys = [F25(1), F25(2)]
+    interp = lagrange_interp(F25, xs, ys)
+    # interp should equal x
+    assert interp == polysOverF([F25(0), F25(1)])
 
   def test_lagrange_interp_4(self):
     """Test fast interpolation for degree 4 polynomials."""

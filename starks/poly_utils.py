@@ -15,6 +15,8 @@ from starks.numbertype import FieldElement
 from starks.numbertype import MultiVarPoly 
 from starks.multivariate_polynomial import multivariates_over
 from starks.reedsolomon import AffineSpace
+from starks.numbertype import Field
+from starks.numbertype import FieldElement
 
 def draw_random_interpolant(degree, xs, ys):
   """Constructs a random interpolating polynomial of <= specified degree."""
@@ -191,21 +193,27 @@ def multi_inv(field, values):
       inv = inv * values[i - 1]
   return outputs
 
-def zpoly(modulus, roots):
-  """Build a polynomial with the specified roots over Z/modulus.
+#def zpoly(modulus, roots):
+def zpoly(field, roots):
+  #"""Build a polynomial with the specified roots over Z/modulus.
+  """Build a polynomial with the specified roots over the given field.
   
   TODO(rbharath): Find a reference for this implementation. 
   """
-  mod = IntegersModP(modulus)
-  polysOverMod = polynomials_over(mod).factory
-  root = [mod(1)]
+  #mod = IntegersModP(modulus)
+  #polysOverMod = polynomials_over(mod).factory
+  polysOver = polynomials_over(field).factory
+  #root = [mod(1)]
+  root = [field(1)]
   for x in roots:
-    root.insert(0, mod(0))
+    #root.insert(0, mod(0))
+    root.insert(0, field(0))
     for j in range(len(root) - 1):
       root[j] -= root[j + 1] * x
-  return polysOverMod(root)
+  #return polysOverMod(root)
+  return polysOver(root)
 
-def lagrange_interp(modulus, xs, ys):
+def lagrange_interp(field: Field, xs: List[FieldElement], ys: List[FieldElement]):
   """
   Given p+1 y values and x values with no errors, recovers the original
   p+1 degree polynomial. Lagrange interpolation works roughly in the following way.
@@ -216,18 +224,22 @@ def lagrange_interp(modulus, xs, ys):
   3. Add these polynomials together.
   """
   # Generate master numerator polynomial, eg. (x - x1) * (x - x2) * ... * (x - xn)
-  root = zpoly(modulus, xs)
-  mod = IntegersModP(modulus)
-  polysOverMod = polynomials_over(mod).factory
+  #root = zpoly(modulus, xs)
+  root = zpoly(field, xs)
+  #mod = IntegersModP(modulus)
+  #polysOverMod = polynomials_over(mod).factory
+  polysOver = polynomials_over(field).factory
   assert len(root) == len(ys) + 1
   # print(root)
   # Generate per-value numerator polynomials, eg. for x=x2,
   # (x - x1) * (x - x3) * ... * (x - xn), by dividing the master
   # polynomial back by each x coordinate
-  nums = [root / polysOverMod([-x, 1]) for x in xs]
+  #nums = [root / polysOverMod([-x, 1]) for x in xs]
+  nums = [root / polysOver([-x, 1]) for x in xs]
   # Generate denominators by evaluating numerator polys at each x
   denoms = [nums[i](xs[i]) for i in range(len(xs))]
-  invdenoms = multi_inv(mod, denoms)
+  #invdenoms = multi_inv(mod, denoms)
+  invdenoms = multi_inv(field, denoms)
   # Generate output polynomial, which is the sum of the per-value numerator
   # polynomials rescaled to have the right y values
   b = [0 for y in ys]
@@ -237,7 +249,8 @@ def lagrange_interp(modulus, xs, ys):
     for j in range(len(ys)):
       if num_coefficients[j] and ys[i]:
         b[j] += num_coefficients[j] * yslice
-  return polysOverMod(b)
+  #return polysOverMod(b)
+  return polysOver(b)
 
 # Optimized version of the above restricted to deg-4 polynomials
 #def lagrange_interp_4(self, xs, ys):
