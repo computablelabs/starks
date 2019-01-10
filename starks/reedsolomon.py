@@ -21,6 +21,18 @@ class AffineSpace(object):
     length = field_size**basis_len
     return length
 
+  def __iter__(self):
+    """Iterates over the elements of the affine space."""
+    field_iterators = []
+    for _ in range(len(self.basis)):
+      field_iterators.append(self.field.__iter__())
+    for basis_vals in itertools.product(*field_iterators):
+      elt = self.shift
+      for val, basis_elt in zip(basis_vals, self.basis):
+        elt += val * basis_elt
+      yield elt
+
+
 class ReedSolomonCode(object):
   """Defines a Reed Solomon Code.
   

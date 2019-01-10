@@ -254,16 +254,22 @@ def lagrange_interp(field: Field, xs: List[FieldElement], ys: List[FieldElement]
 
 # Optimized version of the above restricted to deg-4 polynomials
 #def lagrange_interp_4(self, xs, ys):
-def lagrange_interp_4(modulus, xs, ys):
-  mod = IntegersModP(modulus)
-  polysOverMod = polynomials_over(mod).factory
+#def lagrange_interp_4(modulus, xs, ys):
+def lagrange_interp_4(field, xs, ys):
+  #mod = IntegersModP(modulus)
+  #polysOverMod = polynomials_over(mod).factory
+  polysOver = polynomials_over(field).factory
   x01, x02, x03, x12, x13, x23 = \
       xs[0] * xs[1], xs[0] * xs[2], xs[0] * xs[3], xs[1] * xs[2], xs[1] * xs[3], xs[2] * xs[3]
-  m = modulus
-  eq0 = polysOverMod([-x12 * xs[3], (x12 + x13 + x23), -xs[1] - xs[2] - xs[3], 1])
-  eq1 = polysOverMod([-x02 * xs[3], (x02 + x03 + x23), -xs[0] - xs[2] - xs[3], 1])
-  eq2 = polysOverMod([-x01 * xs[3], (x01 + x03 + x13), -xs[0] - xs[1] - xs[3], 1])
-  eq3 = polysOverMod([-x01 * xs[2], (x01 + x02 + x12), -xs[0] - xs[1] - xs[2], 1])
+  #m = modulus
+  #eq0 = polysOverMod([-x12 * xs[3], (x12 + x13 + x23), -xs[1] - xs[2] - xs[3], 1])
+  #eq1 = polysOverMod([-x02 * xs[3], (x02 + x03 + x23), -xs[0] - xs[2] - xs[3], 1])
+  #eq2 = polysOverMod([-x01 * xs[3], (x01 + x03 + x13), -xs[0] - xs[1] - xs[3], 1])
+  #eq3 = polysOverMod([-x01 * xs[2], (x01 + x02 + x12), -xs[0] - xs[1] - xs[2], 1])
+  eq0 = polysOver([-x12 * xs[3], (x12 + x13 + x23), -xs[1] - xs[2] - xs[3], 1])
+  eq1 = polysOver([-x02 * xs[3], (x02 + x03 + x23), -xs[0] - xs[2] - xs[3], 1])
+  eq2 = polysOver([-x01 * xs[3], (x01 + x03 + x13), -xs[0] - xs[1] - xs[3], 1])
+  eq3 = polysOver([-x01 * xs[2], (x01 + x02 + x12), -xs[0] - xs[1] - xs[2], 1])
   e0 = eq0(xs[0])
   e1 = eq1(xs[1])
   e2 = eq2(xs[2])
@@ -275,7 +281,8 @@ def lagrange_interp_4(modulus, xs, ys):
   inv_y1 = ys[1] * invall * e0 * e23 
   inv_y2 = ys[2] * invall * e01 * e3
   inv_y3 = ys[3] * invall * e01 * e2
-  return polysOverMod([
+  #return polysOverMod([
+  return polysOver([
       (eq0.coefficients[i] * inv_y0 + eq1.coefficients[i] * inv_y1 + eq2.coefficients[i] * inv_y2 + eq3.coefficients[i] * inv_y3)
       for i in range(4)
   ])
@@ -290,46 +297,58 @@ def lagrange_interp_4(modulus, xs, ys):
 
 # Optimized version of the above restricted to deg-2 polynomials
 #def lagrange_interp_2(self, xs, ys):
-def lagrange_interp_2(modulus, xs, ys):
-  mod = IntegersModP(modulus)
-  polysOverMod = polynomials_over(mod).factory
+#def lagrange_interp_2(modulus, xs, ys):
+def lagrange_interp_2(field, xs, ys):
+  #mod = IntegersModP(modulus)
+  #polysOverMod = polynomials_over(mod).factory
+  polysOver = polynomials_over(field).factory
   ###############################################
   if not isinstance(xs, list):
     xs = xs.coefficients
   if not isinstance(ys, list):
     ys = ys.coefficients
   ###############################################
-  m = modulus
-  eq0 = polysOverMod([-xs[1], 1])
-  eq1 = polysOverMod([-xs[0], 1])
+  #m = modulus
+  #eq0 = polysOverMod([-xs[1], 1])
+  #eq1 = polysOverMod([-xs[0], 1])
+  eq0 = polysOver([-xs[1], 1])
+  eq1 = polysOver([-xs[0], 1])
   e0 = eq0(xs[0])
   e1 = eq1(xs[1])
   invall = 1/(e0 * e1)
   inv_y0 = ys[0] * invall * e1
   inv_y1 = ys[1] * invall * e0
-  return polysOverMod([(eq0.coefficients[i] * inv_y0 + eq1.coefficients[i] * inv_y1) for i in range(2)])
+  #return polysOverMod([(eq0.coefficients[i] * inv_y0 + eq1.coefficients[i] * inv_y1) for i in range(2)])
+  return polysOver([(eq0.coefficients[i] * inv_y0 + eq1.coefficients[i] * inv_y1) for i in range(2)])
 
-def multi_interp_4(modulus, xsets, ysets):
+#def multi_interp_4(modulus, xsets, ysets):
+def multi_interp_4(field, xsets, ysets):
   """Optimized version of the above restricted to deg-4 polynomials"""
-  mod = IntegersModP(modulus)
-  polysOverMod = polynomials_over(mod).factory
+  #mod = IntegersModP(modulus)
+  #polysOverMod = polynomials_over(mod).factory
+  polysOver = polynomials_over(field).factory
   data = []
   invtargets = []
   for xs, ys in zip(xsets, ysets):
     x01, x02, x03, x12, x13, x23 = \
         xs[0] * xs[1], xs[0] * xs[2], xs[0] * xs[3], xs[1] * xs[2], xs[1] * xs[3], xs[2] * xs[3]
-    m = modulus
-    eq0 = polysOverMod([-x12 * xs[3], (x12 + x13 + x23), -xs[1] - xs[2] - xs[3], 1])
-    eq1 = polysOverMod([-x02 * xs[3], (x02 + x03 + x23), -xs[0] - xs[2] - xs[3], 1])
-    eq2 = polysOverMod([-x01 * xs[3], (x01 + x03 + x13), -xs[0] - xs[1] - xs[3], 1])
-    eq3 = polysOverMod([-x01 * xs[2], (x01 + x02 + x12), -xs[0] - xs[1] - xs[2], 1])
+    #m = modulus
+    #eq0 = polysOverMod([-x12 * xs[3], (x12 + x13 + x23), -xs[1] - xs[2] - xs[3], 1])
+    #eq1 = polysOverMod([-x02 * xs[3], (x02 + x03 + x23), -xs[0] - xs[2] - xs[3], 1])
+    #eq2 = polysOverMod([-x01 * xs[3], (x01 + x03 + x13), -xs[0] - xs[1] - xs[3], 1])
+    #eq3 = polysOverMod([-x01 * xs[2], (x01 + x02 + x12), -xs[0] - xs[1] - xs[2], 1])
+    eq0 = polysOver([-x12 * xs[3], (x12 + x13 + x23), -xs[1] - xs[2] - xs[3], 1])
+    eq1 = polysOver([-x02 * xs[3], (x02 + x03 + x23), -xs[0] - xs[2] - xs[3], 1])
+    eq2 = polysOver([-x01 * xs[3], (x01 + x03 + x13), -xs[0] - xs[1] - xs[3], 1])
+    eq3 = polysOver([-x01 * xs[2], (x01 + x02 + x12), -xs[0] - xs[1] - xs[2], 1])
     e0 = eq0(xs[0])
     e1 = eq1(xs[1])
     e2 = eq2(xs[2])
     e3 = eq3(xs[3])
     data.append([ys, eq0, eq1, eq2, eq3])
     invtargets.extend([e0, e1, e2, e3])
-  invalls = multi_inv(mod, invtargets)
+  #invalls = multi_inv(mod, invtargets)
+  invalls = multi_inv(field, invtargets)
   o = []
   for (i, (ys, eq0, eq1, eq2, eq3)) in enumerate(data):
     invallz = invalls[i * 4:i * 4 + 4]
@@ -337,6 +356,7 @@ def multi_interp_4(modulus, xsets, ysets):
     inv_y1 = ys[1] * invallz[1]
     inv_y2 = ys[2] * invallz[2]
     inv_y3 = ys[3] * invallz[3]
-    o.append(polysOverMod([(eq0.coefficients[i] * inv_y0 + eq1.coefficients[i] * inv_y1 + eq2.coefficients[i] * inv_y2 +
+    #o.append(polysOverMod([(eq0.coefficients[i] * inv_y0 + eq1.coefficients[i] * inv_y1 + eq2.coefficients[i] * inv_y2 +
+    o.append(polysOver([(eq0.coefficients[i] * inv_y0 + eq1.coefficients[i] * inv_y1 + eq2.coefficients[i] * inv_y2 +
                eq3.coefficients[i] * inv_y3) for i in range(4)]))
   return o

@@ -120,7 +120,8 @@ class TestPolyUtils(unittest.TestCase):
     polysOverMod = polynomials_over(mod7).factory
     xs = [mod7(1), mod7(2), mod7(3), mod7(6)]
     ys = [mod7(1), mod7(2), mod7(3), mod7(6)]
-    interp = lagrange_interp_4(modulus, xs, ys)
+    #interp = lagrange_interp_4(modulus, xs, ys)
+    interp = lagrange_interp_4(mod7, xs, ys)
     # interp should equal x
     assert interp == polysOverMod([0, 1])
 
@@ -131,7 +132,8 @@ class TestPolyUtils(unittest.TestCase):
     polysOverMod = polynomials_over(mod7).factory
     xs = [mod7(1), mod7(2)]
     ys = [mod7(1), mod7(2)]
-    interp = lagrange_interp_2(modulus, xs, ys)
+    #interp = lagrange_interp_2(modulus, xs, ys)
+    interp = lagrange_interp_2(mod7, xs, ys)
     # interp should equal x
     assert interp == polysOverMod([0, 1])
 
@@ -142,7 +144,8 @@ class TestPolyUtils(unittest.TestCase):
     polysOverMod = polynomials_over(mod7).factory
     xs = [mod7(1), mod7(2), mod7(3), mod7(6)]
     ys = [mod7(1), mod7(2), mod7(3), mod7(6)]
-    interp = multi_interp_4(modulus, [xs, xs], [ys, ys])
+    #interp = multi_interp_4(modulus, [xs, xs], [ys, ys])
+    interp = multi_interp_4(mod7, [xs, xs], [ys, ys])
     # interp should equal x
     assert len(interp) == 2
     assert interp[0] == polysOverMod([0, 1])
