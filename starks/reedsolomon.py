@@ -3,6 +3,16 @@ from typing import List
 from starks.numbertype import Field
 from starks.numbertype import FieldElement
 
+class SmoothMultiplicativeGroup(object):
+  """Defines a smooth multiplicative group.
+
+  A smooth multiplicative group is a group of order 2^n which
+  is a multiplicative subgroup of some finite field.
+  """
+
+  def __init__(self):
+    pass
+
 class AffineSpace(object):
   """Defines an affine space (of polynomials typically)."""
   def __init__(self, field: Field, basis: List[FieldElement], shift=None):
@@ -96,6 +106,8 @@ class FRI(object):
     Note that if values is a n-degree polynomial, root_of_unity
     should be a n-th root of unity.
     """
+    # Is this the right iteration?
+    values = [f(x) for x in rs]
     # If the degree we are checking for is less than or equal
     # to 32, use the polynomial directly as a proof
     # TODO(rbharath): Why does this make sense?
@@ -104,7 +116,6 @@ class FRI(object):
       return [[x.to_bytes() for x in values]]
 
     # Calculate the set of x coordinates
-    #xs = get_power_cycle(root_of_unity, modulus)
     xs = get_power_cycle(root_of_unity, field)
     
     assert len(values) == len(xs)
@@ -145,16 +156,13 @@ class FRI(object):
       branches.append([mk_branch(m2, y)] +
                       [mk_branch(m, y + (len(xs) // 4) * j) for j in range(4)])
 
-    # This component of the proof
     o = [m2[1], branches]
 
     # Recurse...
-    return [o] + prove_low_degree(
+    return [o] + self.prove_proximity(
         column,
-        #f.exp(root_of_unity, 4),
         root_of_unity**4,
         maxdeg_plus_1 // 4,
-        #modulus,
         field,
         exclude_multiples_of=exclude_multiples_of)
 

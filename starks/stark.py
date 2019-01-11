@@ -22,7 +22,9 @@ class StarkParams(object):
   def __init__(self, field, steps: int, modulus: FieldElement,
       extension_factor: int, spot_check_security_factor: int =80):
     """
-    TODO(rbharath): Change this class to use finite fields.
+    TODO(rbharath): I believe what this class is doing is
+    constructing a smooth multiplicative group. Alternatively,
+    this could be an affine space.
 
     Parameters
     ----------
@@ -236,6 +238,9 @@ def mk_proof(comp: Computation, params: StarkParams):
   """Generate a STARK for a MIMC calculation"""
   start_time = time.time()
 
+  # TODO(rbharath): I think by computing with explicit
+  # polynomials, this function becomes a *lot* simpler. Then
+  # the evaluation can be done only once.
   p_evaluations = construct_computation_polynomial(
       comp, params)
 
@@ -252,6 +257,10 @@ def mk_proof(comp: Computation, params: StarkParams):
 
   polys = [p_evaluations, d_evaluations, b_evaluations]
   # Compute their Merkle root
+  # TODO(rbharath): The merkelization is computed on the
+  # affine subspace of the RS[F, L, pho] I believe.
+  # Alternatively on a smooth multiplicative group, which is
+  # what's happening now.
   mtree = merkelize_polynomials(comp.width, polys)
 
   l_evaluations = compute_pseudorandom_linear_combination(

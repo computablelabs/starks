@@ -12,89 +12,89 @@ from starks.numbertype import Field
 # The number of spot checks performed at each recursion of the
 # FRI proof.
 
-def prove_low_degree(values: List[FieldElement],
-                     root_of_unity: FieldElement,
-                     maxdeg_plus_1: int,
-                     #modulus: int,
-                     field: Field,
-                     exclude_multiples_of:int = 0,
-                     fri_spot_check_security_factor:int = 40):
-  """
-  Generate an FRI proof that the polynomial that has the
-  specified values at successive powers of the specified root
-  of unity has a degree lower than maxdeg_plus_1
-  
-  We use maxdeg+1 instead of maxdeg because it's more
-  mathematically convenient in this case.
-
-  Note that if values is a n-degree polynomial, root_of_unity
-  should be a n-th root of unity.
-  """
-  #f = PrimeField(modulus)
-  print('Proving %d values are degree <= %d' % (len(values), maxdeg_plus_1))
-
-  # If the degree we are checking for is less than or equal to
-  # 32, use the polynomial directly as a proof
-  # TODO(rbharath): Why does this make sense?
-  if maxdeg_plus_1 <= 16:
-    print('Produced FRI proof')
-    #return [[x.to_bytes(32, 'big') for x in values]]
-    return [[x.to_bytes() for x in values]]
-
-  # Calculate the set of x coordinates
-  #xs = get_power_cycle(root_of_unity, modulus)
-  xs = get_power_cycle(root_of_unity, field)
-  
-  assert len(values) == len(xs)
-
-  # Put the values into a Merkle tree. This is the root that
-  # the proof will be checked against. Note this is a list of
-  # length 2*len(values) storing the complete merkle tree.
-  m = merkelize(values)
-
-  # Select a pseudo-random x coordinate
-  # This is the merkle-root of the polynomial.
-  #special_x = int.from_bytes(m[1], 'big') % modulus
-  special_x = field(m[1])
-
-  # Calculate the "column" at that x coordinate (see
-  # https://vitalik.ca/general/2017/11/22/starks_part_2.html)
-  # We calculate the column by Lagrange-interpolating each
-  # row, and not directly from the polynomial, as this is more
-  # efficient
-  quarter_len = len(xs) // 4
-  x_polys = multi_interp_4(field,
-      [[xs[i + quarter_len * j] for j in range(4)] for i in range(quarter_len)],
-      [[values[i + quarter_len * j]
-        for j in range(4)]
-       for i in range(quarter_len)])
-  #column = [f.eval_quartic(p, special_x) for p in x_polys]
-  column = [p(special_x) for p in x_polys]
-  m2 = merkelize(column)
-
-  # Pseudo-randomly select y indices to sample
-  ys = get_pseudorandom_indices(
-      m2[1], len(column), fri_spot_check_security_factor, exclude_multiples_of=exclude_multiples_of)
-
-  # Compute the Merkle branches for the values in the
-  # polynomial and the column
-  branches = []
-  for y in ys:
-    branches.append([mk_branch(m2, y)] +
-                    [mk_branch(m, y + (len(xs) // 4) * j) for j in range(4)])
-
-  # This component of the proof
-  o = [m2[1], branches]
-
-  # Recurse...
-  return [o] + prove_low_degree(
-      column,
-      #f.exp(root_of_unity, 4),
-      root_of_unity**4,
-      maxdeg_plus_1 // 4,
-      #modulus,
-      field,
-      exclude_multiples_of=exclude_multiples_of)
+#def prove_low_degree(values: List[FieldElement],
+#                     root_of_unity: FieldElement,
+#                     maxdeg_plus_1: int,
+#                     #modulus: int,
+#                     field: Field,
+#                     exclude_multiples_of:int = 0,
+#                     fri_spot_check_security_factor:int = 40):
+#  """
+#  Generate an FRI proof that the polynomial that has the
+#  specified values at successive powers of the specified root
+#  of unity has a degree lower than maxdeg_plus_1
+#  
+#  We use maxdeg+1 instead of maxdeg because it's more
+#  mathematically convenient in this case.
+#
+#  Note that if values is a n-degree polynomial, root_of_unity
+#  should be a n-th root of unity.
+#  """
+#  #f = PrimeField(modulus)
+#  print('Proving %d values are degree <= %d' % (len(values), maxdeg_plus_1))
+#
+#  # If the degree we are checking for is less than or equal to
+#  # 32, use the polynomial directly as a proof
+#  # TODO(rbharath): Why does this make sense?
+#  if maxdeg_plus_1 <= 16:
+#    print('Produced FRI proof')
+#    #return [[x.to_bytes(32, 'big') for x in values]]
+#    return [[x.to_bytes() for x in values]]
+#
+#  # Calculate the set of x coordinates
+#  #xs = get_power_cycle(root_of_unity, modulus)
+#  xs = get_power_cycle(root_of_unity, field)
+#  
+#  assert len(values) == len(xs)
+#
+#  # Put the values into a Merkle tree. This is the root that
+#  # the proof will be checked against. Note this is a list of
+#  # length 2*len(values) storing the complete merkle tree.
+#  m = merkelize(values)
+#
+#  # Select a pseudo-random x coordinate
+#  # This is the merkle-root of the polynomial.
+#  #special_x = int.from_bytes(m[1], 'big') % modulus
+#  special_x = field(m[1])
+#
+#  # Calculate the "column" at that x coordinate (see
+#  # https://vitalik.ca/general/2017/11/22/starks_part_2.html)
+#  # We calculate the column by Lagrange-interpolating each
+#  # row, and not directly from the polynomial, as this is more
+#  # efficient
+#  quarter_len = len(xs) // 4
+#  x_polys = multi_interp_4(field,
+#      [[xs[i + quarter_len * j] for j in range(4)] for i in range(quarter_len)],
+#      [[values[i + quarter_len * j]
+#        for j in range(4)]
+#       for i in range(quarter_len)])
+#  #column = [f.eval_quartic(p, special_x) for p in x_polys]
+#  column = [p(special_x) for p in x_polys]
+#  m2 = merkelize(column)
+#
+#  # Pseudo-randomly select y indices to sample
+#  ys = get_pseudorandom_indices(
+#      m2[1], len(column), fri_spot_check_security_factor, exclude_multiples_of=exclude_multiples_of)
+#
+#  # Compute the Merkle branches for the values in the
+#  # polynomial and the column
+#  branches = []
+#  for y in ys:
+#    branches.append([mk_branch(m2, y)] +
+#                    [mk_branch(m, y + (len(xs) // 4) * j) for j in range(4)])
+#
+#  # This component of the proof
+#  o = [m2[1], branches]
+#
+#  # Recurse...
+#  return [o] + prove_low_degree(
+#      column,
+#      #f.exp(root_of_unity, 4),
+#      root_of_unity**4,
+#      maxdeg_plus_1 // 4,
+#      #modulus,
+#      field,
+#      exclude_multiples_of=exclude_multiples_of)
 
 
 def verify_low_degree_proof(merkle_root,
