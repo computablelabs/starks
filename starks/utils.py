@@ -1,9 +1,10 @@
 import time
 from starks.merkle_tree import blake
-from starks.numbertype import FieldElement
 from starks.modp import IntegersModP
 from typing import Dict
 from typing import List
+from starks.numbertype import Field
+from starks.numbertype import FieldElement
 
 
 def plus_one(num: int) -> int:
@@ -27,14 +28,16 @@ def mimc(inp: int, steps: int, round_constants: List[int]):
 
 # TODO(rbharath): The type-constructor style of IntegersModP makes type
 # signatures difficult...
-def get_power_cycle(r: FieldElement, modulus: int):
+#def get_power_cycle(r: FieldElement, modulus: int):
+def get_power_cycle(r: FieldElement, field: Field):
   """
   Get the set of powers of R, until but not including when the
   powers loop back to 1
   """
-  mod = IntegersModP(modulus)
-  o = [mod(1), r]
-  while o[-1] != 1:
+  #mod = IntegersModP(modulus)
+  #o = [mod(1), r]
+  o = [field(1), r]
+  while o[-1] != field(1):
     #o.append((o[-1] * r) % modulus)
     o.append(o[-1] * r)
   return o[:-1]

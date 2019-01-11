@@ -39,14 +39,14 @@ class TestPolyUtils(unittest.TestCase):
 
     # Test 1 root
     roots = [3]
-    poly = zpoly(modulus, roots)
+    poly = zpoly(mod7, roots)
     assert poly(mod7(3)) == 0
     # Check equals x - 3
     assert poly == polysMod7([-3, 1])
 
     # Test 2 roots
     roots = [1, 2]
-    poly = zpoly(modulus, roots)
+    poly = zpoly(mod7, roots)
     assert poly(mod7(1)) == 0
     assert poly(mod7(2)) == 0
     # Check equals x^2 - 3x + 2

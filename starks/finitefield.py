@@ -28,7 +28,9 @@ def FiniteField(p, m, polynomialModulus=None):
     operatorPrecedence = 3
 
     def __init__(self, poly):
-      if type(poly) is Fq:
+      if isinstance(poly, bytes):
+        self.poly = Polynomial(poly)
+      elif type(poly) is Fq:
         self.poly = poly.poly
       elif type(poly) is int or type(poly) is Zp:
         self.poly = Polynomial([Zp(poly)])
@@ -94,6 +96,10 @@ def FiniteField(p, m, polynomialModulus=None):
         )
 
       return Fq(x) * Fq(d.coefficients[0].inverse())
+
+    # TODO(rbharath): This function is broken!!
+    def to_bytes(self):
+      return self.poly.to_bytes()
 
   Fq.__name__ = 'F_{%d^%d}' % (p, m)
   Fq.p = p

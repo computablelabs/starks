@@ -7,6 +7,7 @@ from starks.utils import get_pseudorandom_indices
 from starks.poly_utils import lagrange_interp
 from starks.poly_utils import multi_interp_4
 from starks.numbertype import FieldElement
+from starks.numbertype import Field
 
 # The number of spot checks performed at each recursion of the
 # FRI proof.
@@ -14,7 +15,8 @@ from starks.numbertype import FieldElement
 def prove_low_degree(values: List[FieldElement],
                      root_of_unity: FieldElement,
                      maxdeg_plus_1: int,
-                     modulus: int,
+                     #modulus: int,
+                     field: Field,
                      exclude_multiples_of:int = 0,
                      fri_spot_check_security_factor:int = 40):
   """
@@ -40,7 +42,8 @@ def prove_low_degree(values: List[FieldElement],
     return [[x.to_bytes() for x in values]]
 
   # Calculate the set of x coordinates
-  xs = get_power_cycle(root_of_unity, modulus)
+  #xs = get_power_cycle(root_of_unity, modulus)
+  xs = get_power_cycle(root_of_unity, field)
   
   assert len(values) == len(xs)
 
@@ -51,7 +54,8 @@ def prove_low_degree(values: List[FieldElement],
 
   # Select a pseudo-random x coordinate
   # This is the merkle-root of the polynomial.
-  special_x = int.from_bytes(m[1], 'big') % modulus
+  #special_x = int.from_bytes(m[1], 'big') % modulus
+  special_x = field(m[1])
 
   # Calculate the "column" at that x coordinate (see
   # https://vitalik.ca/general/2017/11/22/starks_part_2.html)
@@ -59,7 +63,8 @@ def prove_low_degree(values: List[FieldElement],
   # row, and not directly from the polynomial, as this is more
   # efficient
   quarter_len = len(xs) // 4
-  x_polys = multi_interp_4(modulus,
+  #x_polys = multi_interp_4(modulus,
+  x_polys = multi_interp_4(field,
       [[xs[i + quarter_len * j] for j in range(4)] for i in range(quarter_len)],
       [[values[i + quarter_len * j]
         for j in range(4)]
@@ -88,7 +93,8 @@ def prove_low_degree(values: List[FieldElement],
       #f.exp(root_of_unity, 4),
       root_of_unity**4,
       maxdeg_plus_1 // 4,
-      modulus,
+      #modulus,
+      field,
       exclude_multiples_of=exclude_multiples_of)
 
 
@@ -96,7 +102,8 @@ def verify_low_degree_proof(merkle_root,
                             root_of_unity,
                             proof,
                             maxdeg_plus_1,
-                            modulus,
+                            #modulus,
+                            field,
                             exclude_multiples_of=0,
                             fri_spot_check_security_factor=40):
   """Verify an FRI proof"""
@@ -123,7 +130,8 @@ def verify_low_degree_proof(merkle_root,
     print('Verifying degree <= %d' % maxdeg_plus_1)
 
     # Calculate the pseudo-random x coordinate
-    special_x = int.from_bytes(merkle_root, 'big') % modulus
+    #special_x = int.from_bytes(merkle_root, 'big') % modulus
+    special_x = field(merkle_root)
 
     # Calculate the pseudo-randomly sampled y indices
     ys = get_pseudorandom_indices(
@@ -156,7 +164,8 @@ def verify_low_degree_proof(merkle_root,
     # points from the polynomial and the one point from the
     # column that are on that y coordinate are on the same deg
     # < 4 polynomial
-    polys = multi_interp_4(modulus, xcoords, rows)
+    #polys = multi_interp_4(modulus, xcoords, rows)
+    polys = multi_interp_4(field, xcoords, rows)
 
     for p, c in zip(polys, columnvals):
       assert p(special_x) == c
@@ -177,14 +186,16 @@ def verify_low_degree_proof(merkle_root,
   assert mtree[1] == merkle_root
 
   # Check the degree of the data
-  powers = get_power_cycle(root_of_unity, modulus)
+  #powers = get_power_cycle(root_of_unity, modulus)
+  powers = get_power_cycle(root_of_unity, field)
   if exclude_multiples_of:
     pts = [x for x in range(len(data)) if x % exclude_multiples_of]
   else:
     pts = range(len(data))
 
   #poly = f.lagrange_interp([powers[x] for x in pts[:maxdeg_plus_1]],
-  poly = lagrange_interp(modulus,
+  #poly = lagrange_interp(modulus,
+  poly = lagrange_interp(field,
           [powers[x] for x in pts[:maxdeg_plus_1]],
           [data[x] for x in pts[:maxdeg_plus_1]])
   for x in pts[maxdeg_plus_1:]:
