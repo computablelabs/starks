@@ -63,7 +63,6 @@ def prove_low_degree(values: List[FieldElement],
   # row, and not directly from the polynomial, as this is more
   # efficient
   quarter_len = len(xs) // 4
-  #x_polys = multi_interp_4(modulus,
   x_polys = multi_interp_4(field,
       [[xs[i + quarter_len * j] for j in range(4)] for i in range(quarter_len)],
       [[values[i + quarter_len * j]

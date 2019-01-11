@@ -125,7 +125,8 @@ def construct_boundary_polynomial(comp: Computation, params: StarkParams, p_eval
   inv_z2_evaluations = []
   zeropoly2 = polysOver([-1, 1])*polysOver([-params.last_step_position, 1])
   for dim in range(comp.width):
-    interpolant = lagrange_interp_2(params.modulus, polysOver([1, params.last_step_position]),
+    #interpolant = lagrange_interp_2(params.modulus, polysOver([1, params.last_step_position]),
+    interpolant = lagrange_interp_2(params.field, polysOver([1, params.last_step_position]),
         polysOver([comp.inp[dim], comp.output[dim]]))
     i_evaluations_dim = [interpolant(x) for x in params.xs]
     inv_z2_evaluations_dim = multi_inv(comp.field, [zeropoly2(x) for x in params.xs])
@@ -231,16 +232,8 @@ def compute_merkle_spot_checks(mtree, l_mtree, comp, params, samples=80):
   return branches
 
 
-def mk_proof(comp, params):
-  """Generate a STARK for a MIMC calculation
-  
-  Parameters
-  ----------
-  comp: A Computation object
-    Stores the Algebraic Intermediate Representation
-  modulus: Int
-    TODO(rbharath): This shouldn't be exposed
-  """
+def mk_proof(comp: Computation, params: StarkParams):
+  """Generate a STARK for a MIMC calculation"""
   start_time = time.time()
 
   p_evaluations = construct_computation_polynomial(
@@ -275,13 +268,14 @@ def mk_proof(comp, params):
           l_evaluations,
           params.G2,
           comp.steps * comp.get_degree(),
-          params.modulus,
+          #params.modulus,
+          params.field, # TODO(rbharath): This should be serialized
           exclude_multiples_of=comp.extension_factor)
   ]
   print("STARK computed in %.4f sec" % (time.time() - start_time))
   return o
 
-def verify_proof(comp, params, proof):
+def verify_proof(comp: Computation, params: StarkParams, proof):
   """Verifies a STARK
   
   Parameters
@@ -304,7 +298,8 @@ def verify_proof(comp, params, proof):
       params.G2,
       fri_proof,
       comp.steps * comp.get_degree(),
-      params.modulus,
+      #params.modulus,
+      params.field,
       exclude_multiples_of=comp.extension_factor)
 
   ## Performs the spot checks
@@ -324,7 +319,7 @@ def verify_proof(comp, params, proof):
 def verify_proof_at_position(comp, params, ks, proof, i, pos):
   """Verifies merkle proof at given position in extended trace"""
   field = comp.field
-  modulus = params.modulus
+  #modulus = params.modulus
   polysOver = polynomials_over(field).factory
   k1, k2, k3, k4 = ks
   m_root, l_root, branches, fri_proof = proof
@@ -367,7 +362,8 @@ def verify_proof_at_position(comp, params, ks, proof, i, pos):
   # TODO(rbharath): How do I promote a single-dim poly into a multidimensional poly?
   zeropoly2 = polysOver([-1, 1])*polysOver([-params.last_step_position, 1])
   for dim in range(comp.width):
-    interpolant_dim = lagrange_interp_2(modulus, [1, params.last_step_position], [comp.inp[dim], comp.output[dim]])
+    #interpolant_dim = lagrange_interp_2(modulus, [1, params.last_step_position], [comp.inp[dim], comp.output[dim]])
+    interpolant_dim = lagrange_interp_2(field, [1, params.last_step_position], [comp.inp[dim], comp.output[dim]])
     assert (p_of_x[dim] - b_of_x[dim] * zeropoly2(x) - interpolant_dim(x)) == 0
 
   # TODO(rbharath): I'm commenting this out for now, but I think commenting
