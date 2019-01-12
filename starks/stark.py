@@ -1,4 +1,6 @@
 import time
+from typing import List
+from typing import Tuple
 from starks.merkle_tree import blake
 from starks.merkle_tree import verify_branch
 from starks.merkle_tree import mk_branch
@@ -7,15 +9,14 @@ from starks.merkle_tree import merkelize_polynomials
 from starks.merkle_tree import unpack_merkle_leaf
 from starks.polynomial import polynomials_over
 from starks.poly_utils import lagrange_interp_2 
-from starks.numbertype import FieldElement
-from starks.numbertype import Vector
 from starks.fft import fft
 from starks.fri import prove_low_degree, verify_low_degree_proof
 from starks.utils import get_power_cycle, get_pseudorandom_indices, is_a_power_of_2
 from starks.air import Computation
 from starks.poly_utils import multi_inv
-from typing import List
-from typing import Tuple
+from starks.numbertype import FieldElement
+from starks.numbertype import Vector
+from starks.numbertype import Poly
 
 class StarkParams(object):
   """Holds the cryptographic parameters needed for STARK"""
@@ -58,24 +59,27 @@ class StarkParams(object):
     self.xs = get_power_cycle(self.G2, modulus)
     self.last_step_position = self.xs[(steps - 1) * extension_factor]
 
-def construct_computation_polynomial(comp: Computation, params: StarkParams) -> List[Vector]:
-  """Constructs polynomial for the given computation."""
-  # Interpolate the computational trace into a polynomial P,
-  # with each step along a successive power of G1
-  computational_trace_polynomial = fft(
-      comp.computational_trace, params.modulus, params.G1,
-      inv=True, dims=comp.width)
-  assert len(computational_trace_polynomial) == comp.steps
-  p_evaluations = fft(computational_trace_polynomial,
-      params.modulus, params.G2, dims=comp.width)
-  assert len(p_evaluations) == comp.steps*params.extension_factor
-  print(
-      'Converted computational steps into a polynomial and low-degree extended it'
-  )
-  return p_evaluations
+#def construct_computation_polynomial(comp: Computation, params: StarkParams) -> List[Vector]:
+#def construct_computation_polynomial(comp: Computation, params: StarkParams) -> Poly:
+#  """Constructs polynomial for the given computation."""
+#  # Interpolate the computational trace into a polynomial P,
+#  # with each step along a successive power of G1
+#  # TODO(rbharath): This is where the binary field fft comes into play.
+#  #computational_trace_polynomial = fft(
+#  #    comp.computational_trace, params.modulus, params.G1,
+#  #    inv=True, dims=comp.width)
+#  #assert len(computational_trace_polynomial) == comp.steps
+#  #p_evaluations = fft(computational_trace_polynomial,
+#  #    params.modulus, params.G2, dims=comp.width)
+#  #assert len(p_evaluations) == comp.steps*params.extension_factor
+#  #print(
+#  #    'Converted computational steps into a polynomial and low-degree extended it'
+#  #)
+#  #return p_evaluations
 
-def construct_constraint_polynomial(comp: Computation, params: StarkParams,
-    p_evaluations: List[Vector]) -> List[Vector]:
+#def construct_constraint_polynomial(comp: Computation, params: StarkParams,
+#    p_evaluations: List[Vector]) -> List[Vector]:
+def construct_constraint_polynomials(trace_polys: List[Poly], params: StarkParams) -> List[Poly]:
   """Construct the constraint polynomial for the given tape.
 
   This function constructs a constraint polynomial for the
@@ -83,19 +87,26 @@ def construct_constraint_polynomial(comp: Computation, params: StarkParams,
   with MiMC.
   """
   # Create the composed polynomial such that
-  # C(P(x), P(g1*x), K(x)) = P(g1*x) - step_fn(P(x), K(x))
+  #### C(P(x), P(g1*x), K(x)) = P(g1*x) - step_fn(P(x), K(x))
+  # C(P(x), P(g1*x)) = P(g1*x) - step_fn(P(x))
   # here K(x) contains the constants.
-  p_next_step_evals = [p_evaluations[(i + params.extension_factor) % params.precision] for i in range(params.precision)]
-  # extensions[d] selects constants for the degree d term
-  # extensions[d][i] selects the degree d term for i-th step
-  # extensions[d][i][0] unpacks the output of fft() which adds an extra list
-  step_p_evals = [[comp.step_polys[j](
-    p_evaluations[i]) for j in range(comp.width)] for i in range(params.precision)]
-  c_of_p_evals = [[p_next[dim] - step_p[dim] for dim in range(comp.width)] for (p_next, step_p) in zip(p_next_step_evals, step_p_evals)]
-  print('Computed C(P, K) polynomial')
-  return c_of_p_evals
+  #p_next_step_evals = [p_evaluations[(i + params.extension_factor) % params.precision] for i in range(params.precision)]
+  Xi_s = generate_Xs()
+  # TODO(rbharath): This is wrong... g1*X_i?
+  next_step_traces = [trace_poly(X_i + 1) for (trace_poly, X_i) in zip(trace_polys, Xi_s)]
+  constraint_polys = [next_step_trace - step_poly(trace_poly) for next_step_trace, step_poly, trace_poly in zip(next_step_traces, step_poly, trace_polys)]
+  return constraint_polys
+  ## extensions[d] selects constants for the degree d term
+  ## extensions[d][i] selects the degree d term for i-th step
+  ## extensions[d][i][0] unpacks the output of fft() which adds an extra list
+  #step_p_evals = [[comp.step_polys[j](
+  #  p_evaluations[i]) for j in range(comp.width)] for i in range(params.precision)]
+  #c_of_p_evals = [[p_next[dim] - step_p[dim] for dim in range(comp.width)] for (p_next, step_p) in zip(p_next_step_evals, step_p_evals)]
+  #print('Computed C(P, K) polynomial')
+  #return c_of_p_evals
 
-def construct_remainder_polynomial(comp: Computation, params: StarkParams, c_of_p_evaluations: List[Vector]) -> List[Vector]:
+#def construct_remainder_polynomial(comp: Computation, params: StarkParams, c_of_p_evaluations: List[Vector]) -> List[Vector]:
+def construct_remainder_polynomial(constraint_polys: List[Poly]) -> List[Poly]:
   """Computes the remainder polynomial for the STARK.
   
   Compute D(x) = C(P(x), P(g1*x), K(x)) / Z(x)
@@ -234,23 +245,29 @@ def compute_merkle_spot_checks(mtree, l_mtree, comp, params, samples=80):
   return branches
 
 
+#def mk_proof(comp: Computation, params: StarkParams):
 def mk_proof(comp: Computation, params: StarkParams):
   """Generate a STARK for a MIMC calculation"""
   start_time = time.time()
 
+  fft_solver = FFT(params.field)
   # TODO(rbharath): I think by computing with explicit
   # polynomials, this function becomes a *lot* simpler. Then
   # the evaluation can be done only once.
-  p_evaluations = construct_computation_polynomial(
-      comp, params)
+  #p_evaluations = construct_computation_polynomial(
+  #    comp, params)
 
   # Construct the constraint polynomial (represented as a list
   # of point evaluations)
-  c_of_p_evaluations = construct_constraint_polynomial(
-      comp, params, p_evaluations)
+  #c_of_p_evaluations = construct_constraint_polynomial(
+  #    comp, params, p_evaluations)
 
-  d_evaluations = construct_remainder_polynomial(
-      comp, params, c_of_p_evaluations)
+  # list of length |width|
+  trace_polys = fft_solver.inv_fft(comp.computational_trace)
+  constraint_polys = construct_constraint_polynomials(
+      comp, params)
+  remainder_polys = construct_remainder_polynomial(
+      constraint_polys)
 
   b_evaluations = construct_boundary_polynomial(
       comp, params, p_evaluations)

@@ -3,6 +3,23 @@ from starks.numbertype import FieldElement
 from starks.numbertype import Vector
 
 # TODO(rbharath): The type signatures here don't account for multidimensional inputs! Should this be List[Vector] instead?
+
+class FFT(object):
+  """Abstract class that specifies a FFT solver."""
+
+  def __init__(self, field):
+    self.field = field
+    # How is this computed? Should this be a constructor argument?
+    self.root_of_unity = None
+
+  def fft(self, poly: Poly) -> List[FieldElement]:
+    """The FFT efficiently evaluates a polynomial on many field elements."""
+    raise NotImplementedError
+
+  def inv_fft(self, List[FieldElement]) -> Poly:
+    """Converts a polynomial represented as evaluations on m points to coefficients."""
+    raise NotImplementedError
+
 def _simple_ft(vals: List[FieldElement], roots_of_unity: FieldElement) -> List[FieldElement]:
   """Efficient base case implementation.
   
