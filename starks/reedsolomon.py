@@ -2,6 +2,7 @@
 from typing import List
 from starks.numbertype import Field
 from starks.numbertype import FieldElement
+from starks.numbertype import Poly
 
 class SmoothMultiplicativeGroup(object):
   """Defines a smooth multiplicative group.
@@ -87,7 +88,7 @@ class ReedSolomonCode(object):
 
 class FRI(object):
   """Implements Fast Reed Solomon Interactive Oracle Protocol"""
-  def __init__(self, rs: ReedSolomon):
+  def __init__(self, rs: ReedSolomonCode):
     self.rs = rs
 
   def prove_proximity(f: Poly,

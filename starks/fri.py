@@ -3,7 +3,8 @@ from starks.merkle_tree import merkelize
 from starks.merkle_tree import mk_branch
 from starks.merkle_tree import verify_branch
 from starks.utils import get_power_cycle
-from starks.utils import get_pseudorandom_indices
+#from starks.utils import get_pseudorandom_indices
+from starks.utils import get_pseudorandom_field_elements
 from starks.poly_utils import lagrange_interp
 from starks.poly_utils import multi_interp_4
 from starks.numbertype import FieldElement

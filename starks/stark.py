@@ -10,8 +10,10 @@ from starks.merkle_tree import unpack_merkle_leaf
 from starks.polynomial import polynomials_over
 from starks.poly_utils import lagrange_interp_2 
 from starks.fft import fft
-from starks.fri import prove_low_degree, verify_low_degree_proof
-from starks.utils import get_power_cycle, get_pseudorandom_indices, is_a_power_of_2
+# TODO(rbharath): Swap these out with object oriented API 
+#from starks.fri import prove_low_degree, verify_low_degree_proof
+from starks.utils import get_power_cycle, is_a_power_of_2
+from starks.utils import get_pseudorandom_field_elements
 from starks.air import Computation
 from starks.poly_utils import multi_inv
 from starks.numbertype import FieldElement
@@ -56,7 +58,8 @@ class StarkParams(object):
     self.G1 = self.G2**extension_factor
 
     ## Powers of the higher-order root of unity
-    self.xs = get_power_cycle(self.G2, modulus)
+    #self.xs = get_power_cycle(self.G2, modulus)
+    self.xs = get_power_cycle(self.G2, self.field)
     self.last_step_position = self.xs[(steps - 1) * extension_factor]
 
 #def construct_computation_polynomial(comp: Computation, params: StarkParams) -> List[Vector]:
@@ -106,7 +109,7 @@ def construct_constraint_polynomials(trace_polys: List[Poly], params: StarkParam
   #return c_of_p_evals
 
 #def construct_remainder_polynomial(comp: Computation, params: StarkParams, c_of_p_evaluations: List[Vector]) -> List[Vector]:
-def construct_remainder_polynomial(constraint_polys: List[Poly]) -> List[Poly]:
+def construct_remainder_polynomials(constraint_polys: List[Poly]) -> List[Poly]:
   """Computes the remainder polynomial for the STARK.
   
   Compute D(x) = C(P(x), P(g1*x), K(x)) / Z(x)
@@ -133,7 +136,7 @@ def construct_remainder_polynomial(constraint_polys: List[Poly]) -> List[Poly]:
   #return d_evaluations
   return ds
 
-def construct_boundary_polynomial(comp: Computation, params: StarkParams, p_evaluations: List[Vector]) -> List[Vector]:
+def construct_boundary_polynomials(comp: Computation, params: StarkParams, p_evaluations: List[Vector]) -> List[Vector]:
   """Polynomial encoding boundary constraints on tape.
   
   Compute interpolant of ((1, input), (x_atlast_step, output))

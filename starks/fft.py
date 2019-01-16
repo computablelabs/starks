@@ -1,6 +1,7 @@
 from typing import List
 from starks.numbertype import FieldElement
 from starks.numbertype import Vector
+from starks.numbertype import Poly
 
 # TODO(rbharath): The type signatures here don't account for multidimensional inputs! Should this be List[Vector] instead?
 
@@ -16,7 +17,7 @@ class FFT(object):
     """The FFT efficiently evaluates a polynomial on many field elements."""
     raise NotImplementedError
 
-  def inv_fft(self, List[FieldElement]) -> Poly:
+  def inv_fft(self, values: List[FieldElement]) -> Poly:
     """Converts a polynomial represented as evaluations on m points to coefficients."""
     raise NotImplementedError
 

@@ -10,17 +10,19 @@ from starks.merkle_tree import unpack_merkle_leaf
 from starks.air import Computation
 from starks.air import get_computational_trace
 from starks.fft import fft 
-from starks.fri import prove_low_degree 
-from starks.fri import verify_low_degree_proof 
-from starks.utils import get_pseudorandom_indices
+# TODO(rbharath): These need to be swapped out for correct imports
+#from starks.fri import prove_low_degree 
+#from starks.fri import verify_low_degree_proof 
+#from starks.utils import get_pseudorandom_indices
+from starks.utils import get_pseudorandom_field_elements
 from starks.stark import get_power_cycle 
 from starks.stark import mk_proof
 from starks.stark import StarkParams 
 from starks.stark import verify_proof
-from starks.stark import construct_computation_polynomial 
-from starks.stark import construct_constraint_polynomial 
-from starks.stark import construct_remainder_polynomial 
-from starks.stark import construct_boundary_polynomial 
+#from starks.stark import construct_computation_polynomial 
+from starks.stark import construct_constraint_polynomials
+from starks.stark import construct_remainder_polynomials
+from starks.stark import construct_boundary_polynomials
 from starks.stark import get_pseudorandom_ks
 from starks.stark import compute_pseudorandom_linear_combination_1d
 from starks.stark import compute_pseudorandom_linear_combination

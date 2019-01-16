@@ -4,9 +4,10 @@ except ImportError:
   from itertools import izip_longest as zip_longest
 import fractions
 
-from starks.numbertype import DomainElement
 from starks.numbertype import memoize
 from starks.numbertype import typecheck
+from starks.numbertype import DomainElement
+from starks.numbertype import Poly
 
 
 def strip(L, elt):
@@ -18,9 +19,6 @@ def strip(L, elt):
     i -= 1
 
   return L[:i + 1]
-
-class Poly(DomainElement):
-  pass
 
 @memoize
 def polynomials_over(field=fractions.Fraction):
