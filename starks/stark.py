@@ -114,19 +114,24 @@ def construct_remainder_polynomial(constraint_polys: List[Poly]) -> List[Poly]:
   TODO(rbharath): I think this is supposed to equal 
   Z(x) = (x - 1)(x-2)...(x-(steps_1)). How are these equal?
   """
-  z_num_evaluations = [
-      # TODO(rbharath): Is this right??
-      params.xs[(i * comp.steps) % params.precision] - 1 for i in range(params.precision)
-  ]
+  #z_num_evaluations = [
+  #    # TODO(rbharath): Is this right??
+  #    params.xs[(i * comp.steps) % params.precision] - 1 for i in range(params.precision)
+  #]
+  Xi_s = generate_Xs()
+  z_nums = [X_i**steps - 1 for X_i in Xi_s]
   z_num_inv = multi_inv(comp.field, z_num_evaluations)
   # (x_i - x_{step-1}) list
-  z_den_evaluations = [params.xs[i] - params.last_step_position for i in range(params.precision)]
+  #z_den_evaluations = [params.xs[i] - params.last_step_position for i in range(params.precision)]
+  z_dens = [X_i - witness.last_step_position for X_i in Xi_s]
   d_evaluations = [
       [cp[dim] * zd * zni for dim in range(comp.width)]
       for cp, zd, zni in zip(c_of_p_evaluations, z_den_evaluations, z_num_inv)
   ]
-  print('Computed D polynomial')
-  return d_evaluations
+  ds = [cp * zd / zn for (cp, zp, zn) in zip(constraint_polys, z_dens, z_nums)]
+  print('Computed D polynomials')
+  #return d_evaluations
+  return ds
 
 def construct_boundary_polynomial(comp: Computation, params: StarkParams, p_evaluations: List[Vector]) -> List[Vector]:
   """Polynomial encoding boundary constraints on tape.
