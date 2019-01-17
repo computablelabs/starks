@@ -60,7 +60,7 @@ class TestStark(unittest.TestCase):
     # state = [c_0, c_1, value]
     inp = [field(2), field(2), field(5)]
     width = 3
-    steps = 512
+    steps = 4
     spot_check_security_factor = 80
     polysOver = multivariates_over(field, width).factory
     extension_factor = 8
@@ -68,17 +68,23 @@ class TestStark(unittest.TestCase):
     [X_1, X_2, X_3] = generate_Xi_s(field, width)
     step_polys = [X_1, X_2, X_1 + X_2*X_3**2] 
     comp = Computation(field, width, inp, steps, step_polys, extension_factor)
-    params = StarkParams(field, steps, modulus, extension_factor)
+    params = StarkParams(field, steps, modulus, extension_factor, width, step_polys)
 
-    #p_evaluations = construct_computation_polynomial(
-    #    comp, params)
-    trace_polys = construct_trace_polynomials()
-    c_of_p = construct_constraint_polynomials(
-        field, width, params)
-    d_evaluations = construct_remainder_polynomial(
-        comp, params, c_of_p_evaluations)
-    b_evaluations = construct_boundary_polynomial(
-        comp, params, p_evaluations)
+    witness = comp.generate_witness()
+    boundary = comp.generate_boundary_constraints()
+    trace_polys = construct_trace_polynomials(witness, params)
+    ######################################
+    print("trace_polys")
+    print(trace_polys)
+    ######################################
+    constraint_polys = construct_constraint_polynomials(trace_polys, params)
+    ######################################
+    print("constraint_polys")
+    print(constraint_polys)
+    ######################################
+    remainder_polys = construct_remainder_polynomials(constraint_polys, params)
+    b_evaluations = construct_boundary_polynomials(
+        trace_polys, params)
 
     polys = [p_evaluations, d_evaluations, b_evaluations]
     mtree = merkelize_polynomials(width, polys)
@@ -144,11 +150,8 @@ class TestStark(unittest.TestCase):
     field = IntegersModP(modulus)
     # state = [c_0, c_1, value]
     inp = [field(2), field(2), field(5)]
-    polysOver = multivariates_over(field, width).factory
     ## Factoring out computation
-    X_1 = polysOver({(1,0,0): field(1)})
-    X_2 = polysOver({(0,1,0): field(1)})
-    X_3 = polysOver({(0,0,1): field(1)})
+    [X_1, X_2, X_3] = generate_Xi_s(field, width)
     step_polys = [X_1, X_2, X_1 + X_2*X_3**2] 
     comp = Computation(field, width, inp, steps, step_polys, extension_factor)
     params = StarkParams(field, steps, modulus, extension_factor)
@@ -195,11 +198,7 @@ class TestStark(unittest.TestCase):
     extension_factor = 8
     field = IntegersModP(modulus)
     inp = [field(2), field(2), field(5)]
-    ## Factoring out computation
-    polysOver = multivariates_over(field, width).factory
-    X_1 = polysOver({(1,0,0): field(1)})
-    X_2 = polysOver({(0,1,0): field(1)})
-    X_3 = polysOver({(0,0,1): field(1)})
+    [X_1, X_2, X_3] = generate_Xi_s(field, width)
     step_polys = [X_1, X_2, X_1 + X_2*X_3**2] 
     comp = Computation(field, width, inp, steps, step_polys,
         extension_factor)
@@ -507,18 +506,16 @@ class TestStark(unittest.TestCase):
     inp = [field(0), field(1)]
     extension_factor = 8
     ## Factoring out computation
-    polysOver = multivariates_over(field, width).factory
-    X_1 = polysOver({(1,0): field(1)})
-    X_2 = polysOver({(0,1): field(1)})
+    [X_1, X_2] = generate_Xi_s(field, width)
     step_polys = [X_2, X_1 + X_2] 
     comp = Computation(field, width, inp, steps, step_polys,
         extension_factor)
-    params = StarkParams(field, steps, modulus, extension_factor)
+    params = StarkParams(field, steps, modulus, extension_factor, width, step_polys)
 
-    p_evaluations = construct_computation_polynomial(
-        comp, params)
-    c_of_p_evaluations = construct_constraint_polynomial(
-        comp, params, p_evaluations)
+    witness = comp.generate_witness()
+    trace_polys = construct_trace_polynomials(witness, params)
+    constraint_polys = construct_constraint_polynomials(trace_polys, params)
+    remainder_polys = construct_remainder_polynomials(constraint_polys, params)
     d_evaluations = construct_remainder_polynomial(
         comp, params, c_of_p_evaluations)
     b_evaluations = construct_boundary_polynomial(
@@ -558,12 +555,11 @@ class TestStark(unittest.TestCase):
     modulus = 2**256 - 2**32 * 351 + 1
     field = IntegersModP(modulus)
     inp = [field(2), field(5)]
-    polysOver = multivariates_over(field, width).factory
     [X_1, X_2] = generate_Xi_s(field, width)
     step_polys = [X_2, X_1 + 2*X_2**2] 
     comp = Computation(field, width, inp, steps, step_polys,
         extension_factor)
-    witness = comp.get_witness()
+    witness = comp.generate_witness()
     params = StarkParams(field, steps, modulus, extension_factor, width, step_polys)
     trace_polys = construct_trace_polynomials(witness, params)
     assert len(trace_polys) == width
@@ -585,14 +581,13 @@ class TestStark(unittest.TestCase):
     modulus = 2**256 - 2**32 * 351 + 1
     field = IntegersModP(modulus)
     inp = [field(2), field(5)]
-    polysOver = multivariates_over(field, width).factory
     [X_1, X_2] = generate_Xi_s(field, width)
     #step_polys = [X_2, X_1 + 2*X_2**2] 
     step_polys = [X_2, X_1] 
     comp = Computation(field, width, inp, steps, step_polys,
         extension_factor)
     params = StarkParams(field, steps, modulus, extension_factor, width, step_polys)
-    witness = comp.get_witness()
+    witness = comp.generate_witness()
     trace_polys = construct_trace_polynomials(witness, params)
     constraint_polys = construct_constraint_polynomials(trace_polys, params)
     assert len(constraint_polys) == width
@@ -608,9 +603,7 @@ class TestStark(unittest.TestCase):
     extension_factor = 8
 
     ## Factoring out computation
-    polysOver = multivariates_over(field, width).factory
-    X_1 = polysOver({(1,0): field(1)})
-    X_2 = polysOver({(0,1): field(1)})
+    [X_1, X_2] = generate_Xi_s(field, width)
     step_polys = [X_1, X_1 + X_2**3] 
     comp = Computation(field, width, inp, steps, step_polys,
         extension_factor)
@@ -636,9 +629,7 @@ class TestStark(unittest.TestCase):
 
     # Factoring out computation
     # Polys are: [X_1, X_1 + X_2**2]
-    polysOver = multivariates_over(field, width).factory
-    X_1 = polysOver({(1,0): field(1)})
-    X_2 = polysOver({(0,1): field(1)})
+    [X_1, X_2] = generate_Xi_s(field, width)
     step_polys = [X_1, X_1 + X_2**3] 
 
     comp = Computation(field, width, inp, steps, step_polys,
@@ -668,9 +659,7 @@ class TestStark(unittest.TestCase):
     extension_factor = 8
 
     ## Factoring out computation
-    polysOver = multivariates_over(field, width).factory
-    X_1 = polysOver({(1,0): field(1)})
-    X_2 = polysOver({(0,1): field(1)})
+    [X_1, X_2] = generate_Xi_s(field, width)
     step_polys = [X_1, X_1 + X_2**3] 
 
     comp = Computation(field, width, inp, steps, step_polys,
@@ -770,13 +759,7 @@ class TestStark(unittest.TestCase):
     extension_factor = 8
 
     ### Factoring out computation
-    polysOver = multivariates_over(field, width).factory
-    X_1 = polysOver({(1,0,0,0,0,0): field(1)})
-    X_2 = polysOver({(0,1,0,0,0,0): field(1)})
-    X_3 = polysOver({(0,0,1,0,0,0): field(1)})
-    X_4 = polysOver({(0,0,0,1,0,0): field(1)})
-    X_5 = polysOver({(0,0,0,0,1,0): field(1)})
-    X_6 = polysOver({(0,0,0,0,0,1): field(1)})
+    [X_1, X_2, X_3, X_4, X_5, X_6] = generate_Xi_s(field, width)
     step_polys = [X_1, X_2, X_3, X_4, X_5, X_1*X_2*X_3*X_4*X_5*X_6]
 
     comp = Computation(field, width, inp, steps, step_polys,

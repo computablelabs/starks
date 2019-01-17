@@ -18,6 +18,8 @@ a computation of length T with a state of size w, the trace is O(wT) which
 could possibly be very large.
 """
 
+from typing import List
+from typing import Tuple
 from starks.utils import is_a_power_of_2
 
 def get_computational_trace(inp, steps, width, step_polys):
@@ -107,15 +109,20 @@ class Computation(object):
     self.w = width 
     self.Polys = self.generate_constraint_polynomials(step_polys)
     self.C = self.generate_monotone_circuit(self.Polys)
-    self.B = self.generate_boundary_constraint(inp)
+    self.B = self.generate_boundary_constraints()
   
-  def get_witness(self):
+  def generate_witness(self):
     """Returns the witness (computational trace) for this computation."""
     return [[self.computational_trace[i][j] for i in range(self.steps)] for j in range(self.w)]
 
-  def generate_boundary_constraint(self, inp):
+  def generate_boundary_constraints(self) -> List[Tuple]:
     # TODO(rbharath): Fix this up
-    return []
+    boundary_constraints = []
+    for ind in range(self.w):
+      # (i, j, alpha) = (0, ind, inp[ind])
+      # This contraints specifies that the input must be fixed
+      boundary_constraints.append((0, ind, self.inp[ind]))
+    return boundary_constraints
 
   def generate_monotone_circuit(self, Polys):
     pass

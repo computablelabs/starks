@@ -224,8 +224,11 @@ class APR(object):
       neighbors.extend([(tau, n_id), (tau, n_cyc_1), (tau, n_cyc_0)])
     return neighbors
 
+  def get_boundary_conditions(self):
+    """Retrieves boundary conditions B."""
+    raise NotImplementedError
 
-  def generate_witness(self):
+  def get_witness(self):
     """A witness w^hat is in (L^F)^T. That is, it's a set of functions indexed
     by set T. Each function maps from space L to field F.
    
