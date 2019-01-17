@@ -580,8 +580,8 @@ class TestStark(unittest.TestCase):
     Tests construction of constraint polynomial.
     """
     width = 2
-    steps = 4 
-    extension_factor = 1
+    steps = 16 
+    extension_factor = 8
     modulus = 2**256 - 2**32 * 351 + 1
     field = IntegersModP(modulus)
     inp = [field(2), field(5)]
@@ -595,6 +595,8 @@ class TestStark(unittest.TestCase):
     witness = comp.get_witness()
     trace_polys = construct_trace_polynomials(witness, params)
     constraint_polys = construct_constraint_polynomials(trace_polys, params)
+    assert len(constraint_polys) == width
+    # TODO(rbharath): Add more meaningful test here.
 
   def test_compressed_stark(self):
     """Basic compressed stark test"""

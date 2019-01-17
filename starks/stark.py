@@ -91,35 +91,17 @@ def construct_constraint_polynomials(trace_polys: List[Poly], params: StarkParam
   """
   # Create the composed polynomial such that
   # C(P(x), P(g1*x)) = P(g1*x) - step_fn(P(x))
-  #p_next_step_evals = [p_evaluations[(i + params.extension_factor) % params.precision] for i in range(params.precision)]
   field, width = params.field, params.width
   Xi_s = generate_Xi_s(field, width)
-  # TODO(rbharath): This is wrong... g1*X_i?
   next_traces = [trace_poly(params.G1*X_i) for (trace_poly, X_i) in zip(trace_polys, Xi_s)]
-  # Convert trace polys to multidimensional
-  next_traces = [make_multivar(trace_poly, i, field, width) for (i, trace_poly) in enumerate(trace_polys)]
-  print("[type(next_trace) for next_trace in next_traces]")
-  print([type(next_trace) for next_trace in next_traces])
-  print("[str(next_trace) for next_trace in next_traces]")
-  print([str(next_trace) for next_trace in next_traces])
+  # Convert trace polys to multidimensional polys by evaluating
+  trace_polys = [trace_poly(X_i) for (X_i, trace_poly) in zip(Xi_s, trace_polys)]
   constraint_polys = []
   for next_trace, step_poly in zip(next_traces, params.step_polys):
     # TODO(rbharath): One of these is 1-d poly, while other is multi-d. How to handle?
-    print("step_poly")
-    print(step_poly)
-    print("type(step_poly(trace_polys))")
-    print(type(step_poly(trace_polys)))
     constraint_poly = next_trace - step_poly(trace_polys)
     constraint_polys.append(constraint_poly)
   return constraint_polys
-  ## extensions[d] selects constants for the degree d term
-  ## extensions[d][i] selects the degree d term for i-th step
-  ## extensions[d][i][0] unpacks the output of fft() which adds an extra list
-  #step_p_evals = [[comp.step_polys[j](
-  #  p_evaluations[i]) for j in range(comp.width)] for i in range(params.precision)]
-  #c_of_p_evals = [[p_next[dim] - step_p[dim] for dim in range(comp.width)] for (p_next, step_p) in zip(p_next_step_evals, step_p_evals)]
-  #print('Computed C(P, K) polynomial')
-  #return c_of_p_evals
 
 #def construct_remainder_polynomial(comp: Computation, params: StarkParams, c_of_p_evaluations: List[Vector]) -> List[Vector]:
 def construct_remainder_polynomials(constraint_polys: List[Poly]) -> List[Poly]:
