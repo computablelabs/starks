@@ -17,6 +17,7 @@ from starks.utils import get_power_cycle
 from starks.utils import is_a_power_of_2
 from starks.utils import get_pseudorandom_field_elements
 from starks.air import Computation
+from starks.poly_utils import make_multivar
 from starks.poly_utils import multi_inv
 from starks.numbertype import Field
 from starks.numbertype import FieldElement
@@ -67,34 +68,20 @@ class StarkParams(object):
     self.xs = get_power_cycle(self.G2, self.field)
     self.last_step_position = self.xs[(steps - 1) * extension_factor]
 
-#def construct_computation_polynomial(comp: Computation, params: StarkParams) -> List[Vector]:
+# TODO(rbharath): This is where the binary field fft will come into play.
 def construct_trace_polynomials(witness, params: StarkParams) -> Poly:
   """Constructs polynomial for the given computation."""
   # Interpolate the computational trace into a polynomial P,
   # with each step along a successive power of G1
-  # TODO(rbharath): This is where the binary field fft comes into play.
   # TODO(rbharath): This could be better...
   field = params.field
-  root_of_unity = params.G1
-  nonbinary_fft = NonBinaryFFT(field, root_of_unity, params.width)
+  nonbinary_fft = NonBinaryFFT(field, params.G1, params.width)
   trace_polys = []
   for witness_dim in witness:
-    dim_trace = nonbinary_fft.inv_fft(
-        #comp.computational_trace, params.modulus, params.G1,
-        witness_dim)
+    dim_trace = nonbinary_fft.inv_fft(witness_dim)
     trace_polys.append(dim_trace)
   return trace_polys
-  #assert len(computational_trace_polynomial) == comp.steps
-  #p_evaluations = fft(computational_trace_polynomial,
-  #    params.modulus, params.G2, dims=comp.width)
-  #assert len(p_evaluations) == comp.steps*params.extension_factor
-  #print(
-  #    'Converted computational steps into a polynomial and low-degree extended it'
-  #)
-  #return p_evaluations
 
-#def construct_constraint_polynomial(comp: Computation, params: StarkParams,
-#    p_evaluations: List[Vector]) -> List[Vector]:
 def construct_constraint_polynomials(trace_polys: List[Poly], params: StarkParams) -> List[Poly]:
   """Construct the constraint polynomial for the given tape.
 
@@ -103,16 +90,25 @@ def construct_constraint_polynomials(trace_polys: List[Poly], params: StarkParam
   with MiMC.
   """
   # Create the composed polynomial such that
-  #### C(P(x), P(g1*x), K(x)) = P(g1*x) - step_fn(P(x), K(x))
   # C(P(x), P(g1*x)) = P(g1*x) - step_fn(P(x))
-  # here K(x) contains the constants.
   #p_next_step_evals = [p_evaluations[(i + params.extension_factor) % params.precision] for i in range(params.precision)]
-  Xi_s = generate_Xi_s(params.field, params.width)
+  field, width = params.field, params.width
+  Xi_s = generate_Xi_s(field, width)
   # TODO(rbharath): This is wrong... g1*X_i?
-  next_step_traces = [trace_poly(params.G1*X_i) for (trace_poly, X_i) in zip(trace_polys, Xi_s)]
+  next_traces = [trace_poly(params.G1*X_i) for (trace_poly, X_i) in zip(trace_polys, Xi_s)]
+  # Convert trace polys to multidimensional
+  next_traces = [make_multivar(trace_poly, i, field, width) for (i, trace_poly) in enumerate(trace_polys)]
+  print("[type(next_trace) for next_trace in next_traces]")
+  print([type(next_trace) for next_trace in next_traces])
+  print("[str(next_trace) for next_trace in next_traces]")
+  print([str(next_trace) for next_trace in next_traces])
   constraint_polys = []
-  for next_trace, step_poly, trace_poly in zip(next_step_traces, params.step_polys, trace_polys):
-    #constraint_poly = next_trace - step_poly(trace_poly)
+  for next_trace, step_poly in zip(next_traces, params.step_polys):
+    # TODO(rbharath): One of these is 1-d poly, while other is multi-d. How to handle?
+    print("step_poly")
+    print(step_poly)
+    print("type(step_poly(trace_polys))")
+    print(type(step_poly(trace_polys)))
     constraint_poly = next_trace - step_poly(trace_polys)
     constraint_polys.append(constraint_poly)
   return constraint_polys

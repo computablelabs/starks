@@ -23,7 +23,6 @@ class FFT(object):
 class NonBinaryFFT(FFT):
   """FFT that works for finite fields which don't have characteristic 2."""
   def __init__(self, field, root_of_unity, width):
-    print("FFFFFFFFF")
     self.field = field
     self.root_of_unity = root_of_unity
     self.width = width
@@ -39,8 +38,6 @@ class NonBinaryFFT(FFT):
     coeffs = fft_1d(values, self.field.p, self.root_of_unity,
         inv=True)
     return self.polysOver(coeffs)
-
-    
 
 def _simple_ft(vals: List[FieldElement], roots_of_unity: FieldElement) -> List[FieldElement]:
   """Efficient base case implementation.

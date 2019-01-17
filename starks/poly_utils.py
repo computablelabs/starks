@@ -16,7 +16,28 @@ from starks.numbertype import MultiVarPoly
 from starks.multivariate_polynomial import multivariates_over
 from starks.reedsolomon import AffineSpace
 from starks.numbertype import Field
+from starks.numbertype import Poly
+from starks.numbertype import MultiVarPoly
 from starks.numbertype import FieldElement
+
+def make_multivar(poly: Poly, i: int, field: Field, width: int) -> MultiVarPoly:
+  """Converts a univariate polynomial into multivariate.
+ 
+  Suppose poly = x^2 + 3
+
+  Suppose that width = 5, i = 2. Then returns
+
+  x_2^2 + 3
+  """
+  polysOver = multivariates_over(field, width).factory
+  pre = (0,) * i
+  post = (0,) * (width - (i+1))
+  index = pre + (1,) + post
+  X_i = polysOver({index: field(1)})
+  up_poly = 0
+  for degree, coeff in enumerate(poly.coefficients):
+    up_poly += coeff * X_i**degree
+  return up_poly
 
 def draw_random_interpolant(degree, xs, ys):
   """Constructs a random interpolating polynomial of <= specified degree."""

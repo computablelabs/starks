@@ -3,7 +3,7 @@ from starks.modp import IntegersModP
 from starks.multivariate_polynomial import multivariates_over
 from starks.utils import generate_Xi_s
 
-class TestMultiVariatePolynomial(unittest.TestCase):
+class TestMultivariate(unittest.TestCase):
   """"
   Basic tests for finite field multivariate polynomial construction.
   """
@@ -195,3 +195,8 @@ class TestMultiVariatePolynomial(unittest.TestCase):
 
     # This should equal y + 1
     state_polys = [X_1, X_2]
+    for step_poly in step_polys:
+      next_step = step_poly(state_polys)
+      # Since we start from the original polynomials the "next step" poly is
+      # just the transition poly.
+      assert next_step == step_poly

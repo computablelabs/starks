@@ -553,7 +553,7 @@ class TestStark(unittest.TestCase):
     Tests construction of computation polynomial
     """
     width = 2
-    steps = 512
+    steps = 128 
     extension_factor = 8
     modulus = 2**256 - 2**32 * 351 + 1
     field = IntegersModP(modulus)
@@ -567,28 +567,34 @@ class TestStark(unittest.TestCase):
     params = StarkParams(field, steps, modulus, extension_factor, width, step_polys)
     trace_polys = construct_trace_polynomials(witness, params)
     assert len(trace_polys) == width
-    # TODO(rbharath): Add a nontrivial test that the trace polynomial is correct
+    xs = get_power_cycle(params.G1, params.field) 
+    # Check that the trace polynomial reconstitutes the witness
+    for dim in range(width):
+      witness_dim = witness[dim]
+      trace_poly = trace_polys[dim]
+      for ind, x in enumerate(xs):
+        assert witness_dim[ind] == trace_poly(x)
 
   def test_constraint_polynomials(self):
     """
     Tests construction of constraint polynomial.
     """
     width = 2
-    steps = 512
-    extension_factor = 8
+    steps = 4 
+    extension_factor = 1
     modulus = 2**256 - 2**32 * 351 + 1
     field = IntegersModP(modulus)
     inp = [field(2), field(5)]
     polysOver = multivariates_over(field, width).factory
     [X_1, X_2] = generate_Xi_s(field, width)
-    step_polys = [X_2, X_1 + 2*X_2**2] 
+    #step_polys = [X_2, X_1 + 2*X_2**2] 
+    step_polys = [X_2, X_1] 
     comp = Computation(field, width, inp, steps, step_polys,
         extension_factor)
     params = StarkParams(field, steps, modulus, extension_factor, width, step_polys)
     witness = comp.get_witness()
     trace_polys = construct_trace_polynomials(witness, params)
     constraint_polys = construct_constraint_polynomials(trace_polys, params)
-    assert len(constraint_evals) == steps * extension_factor
 
   def test_compressed_stark(self):
     """Basic compressed stark test"""
