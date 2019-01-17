@@ -2,16 +2,15 @@ from typing import List
 from starks.numbertype import FieldElement
 from starks.numbertype import Vector
 from starks.numbertype import Poly
+from starks.polynomial import polynomials_over
 
 # TODO(rbharath): The type signatures here don't account for multidimensional inputs! Should this be List[Vector] instead?
 
 class FFT(object):
   """Abstract class that specifies a FFT solver."""
 
-  def __init__(self, field):
-    self.field = field
-    # How is this computed? Should this be a constructor argument?
-    self.root_of_unity = None
+  def __init__(self):
+    raise NotImplementedError
 
   def fft(self, poly: Poly) -> List[FieldElement]:
     """The FFT efficiently evaluates a polynomial on many field elements."""
@@ -20,6 +19,28 @@ class FFT(object):
   def inv_fft(self, values: List[FieldElement]) -> Poly:
     """Converts a polynomial represented as evaluations on m points to coefficients."""
     raise NotImplementedError
+
+class NonBinaryFFT(FFT):
+  """FFT that works for finite fields which don't have characteristic 2."""
+  def __init__(self, field, root_of_unity, width):
+    print("FFFFFFFFF")
+    self.field = field
+    self.root_of_unity = root_of_unity
+    self.width = width
+    self.polysOver = polynomials_over(self.field).factory
+
+  def fft(sel, poly: Poly) -> List[FieldElement]:
+    """Runs FFT algorithm."""
+    return fft_1d(poly.coeffs, self.field.p, self.root_of_unity,
+        inv=False)
+
+  def inv_fft(self, values: List[FieldElement]) -> Poly:
+    """Performs the inverse fft."""
+    coeffs = fft_1d(values, self.field.p, self.root_of_unity,
+        inv=True)
+    return self.polysOver(coeffs)
+
+    
 
 def _simple_ft(vals: List[FieldElement], roots_of_unity: FieldElement) -> List[FieldElement]:
   """Efficient base case implementation.

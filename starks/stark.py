@@ -9,7 +9,7 @@ from starks.merkle_tree import merkelize_polynomials
 from starks.merkle_tree import unpack_merkle_leaf
 from starks.polynomial import polynomials_over
 from starks.poly_utils import lagrange_interp_2 
-from starks.fft import fft
+from starks.fft import NonBinaryFFT
 # TODO(rbharath): Swap these out with object oriented API 
 #from starks.fri import prove_low_degree, verify_low_degree_proof
 from starks.utils import generate_Xi_s
@@ -26,7 +26,7 @@ from starks.numbertype import Poly
 class StarkParams(object):
   """Holds the cryptographic parameters needed for STARK"""
   def __init__(self, field, steps: int, modulus: FieldElement,
-      extension_factor: int, spot_check_security_factor: int =80):
+      extension_factor: int, width: int, step_polys: List[Poly], spot_check_security_factor: int =80):
     """
     TODO(rbharath): I believe what this class is doing is
     constructing a smooth multiplicative group. Alternatively,
@@ -48,6 +48,8 @@ class StarkParams(object):
     """
     self.field = field
     self.modulus = modulus
+    self.width = width
+    self.step_polys = step_polys
     self.extension_factor = extension_factor
     self.precision = steps * extension_factor
     self.spot_check_security_factor = spot_check_security_factor
@@ -71,9 +73,17 @@ def construct_trace_polynomials(witness, params: StarkParams) -> Poly:
   # Interpolate the computational trace into a polynomial P,
   # with each step along a successive power of G1
   # TODO(rbharath): This is where the binary field fft comes into play.
-  #computational_trace_polynomial = fft(
-  #    comp.computational_trace, params.modulus, params.G1,
-  #    inv=True, dims=comp.width)
+  # TODO(rbharath): This could be better...
+  field = params.field
+  root_of_unity = params.G1
+  nonbinary_fft = NonBinaryFFT(field, root_of_unity, params.width)
+  trace_polys = []
+  for witness_dim in witness:
+    dim_trace = nonbinary_fft.inv_fft(
+        #comp.computational_trace, params.modulus, params.G1,
+        witness_dim)
+    trace_polys.append(dim_trace)
+  return trace_polys
   #assert len(computational_trace_polynomial) == comp.steps
   #p_evaluations = fft(computational_trace_polynomial,
   #    params.modulus, params.G2, dims=comp.width)
@@ -85,7 +95,7 @@ def construct_trace_polynomials(witness, params: StarkParams) -> Poly:
 
 #def construct_constraint_polynomial(comp: Computation, params: StarkParams,
 #    p_evaluations: List[Vector]) -> List[Vector]:
-def construct_constraint_polynomials(field: Field, width: int, trace_polys: List[Poly], params: StarkParams) -> List[Poly]:
+def construct_constraint_polynomials(trace_polys: List[Poly], params: StarkParams) -> List[Poly]:
   """Construct the constraint polynomial for the given tape.
 
   This function constructs a constraint polynomial for the
@@ -97,10 +107,14 @@ def construct_constraint_polynomials(field: Field, width: int, trace_polys: List
   # C(P(x), P(g1*x)) = P(g1*x) - step_fn(P(x))
   # here K(x) contains the constants.
   #p_next_step_evals = [p_evaluations[(i + params.extension_factor) % params.precision] for i in range(params.precision)]
-  Xi_s = generate_Xs(width)
+  Xi_s = generate_Xi_s(params.field, params.width)
   # TODO(rbharath): This is wrong... g1*X_i?
-  next_step_traces = [trace_poly(X_i + 1) for (trace_poly, X_i) in zip(trace_polys, Xi_s)]
-  constraint_polys = [next_step_trace - step_poly(trace_poly) for next_step_trace, step_poly, trace_poly in zip(next_step_traces, step_poly, trace_polys)]
+  next_step_traces = [trace_poly(params.G1*X_i) for (trace_poly, X_i) in zip(trace_polys, Xi_s)]
+  constraint_polys = []
+  for next_trace, step_poly, trace_poly in zip(next_step_traces, params.step_polys, trace_polys):
+    #constraint_poly = next_trace - step_poly(trace_poly)
+    constraint_poly = next_trace - step_poly(trace_polys)
+    constraint_polys.append(constraint_poly)
   return constraint_polys
   ## extensions[d] selects constants for the degree d term
   ## extensions[d][i] selects the degree d term for i-th step
