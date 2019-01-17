@@ -14,6 +14,7 @@ from starks.fft import fft
 #from starks.fri import prove_low_degree 
 #from starks.fri import verify_low_degree_proof 
 #from starks.utils import get_pseudorandom_indices
+from starks.utils import generate_Xi_s
 from starks.utils import get_pseudorandom_field_elements
 from starks.stark import get_power_cycle 
 from starks.stark import mk_proof
@@ -50,9 +51,9 @@ class TestStark(unittest.TestCase):
     # Only tests that constructor works implicitly
     params = StarkParams(field, steps, modulus, extension_factor)
 
-  def test_get_pseudorandom_indices(self):
+  def test_get_pseudorandom_field_elements(self):
     """
-    Tests that pseudorandom indices are computed correctly.
+    Tests that pseudorandom elements are computed correctly.
     """
     modulus = 2**256 - 2**32 * 351 + 1
     field = IntegersModP(modulus)
@@ -64,17 +65,16 @@ class TestStark(unittest.TestCase):
     polysOver = multivariates_over(field, width).factory
     extension_factor = 8
     ## Factoring out computation
-    X_1 = polysOver({(1,0,0): field(1)})
-    X_2 = polysOver({(0,1,0): field(1)})
-    X_3 = polysOver({(0,0,1): field(1)})
+    [X_1, X_2, X_3] = generate_Xi_s(field, width)
     step_polys = [X_1, X_2, X_1 + X_2*X_3**2] 
     comp = Computation(field, width, inp, steps, step_polys, extension_factor)
     params = StarkParams(field, steps, modulus, extension_factor)
 
-    p_evaluations = construct_computation_polynomial(
-        comp, params)
-    c_of_p_evaluations = construct_constraint_polynomial(
-        comp, params, p_evaluations)
+    #p_evaluations = construct_computation_polynomial(
+    #    comp, params)
+    trace_polys = construct_trace_polynomials()
+    c_of_p = construct_constraint_polynomials(
+        field, width, params)
     d_evaluations = construct_remainder_polynomial(
         comp, params, c_of_p_evaluations)
     b_evaluations = construct_boundary_polynomial(

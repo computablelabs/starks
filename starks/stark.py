@@ -12,10 +12,13 @@ from starks.poly_utils import lagrange_interp_2
 from starks.fft import fft
 # TODO(rbharath): Swap these out with object oriented API 
 #from starks.fri import prove_low_degree, verify_low_degree_proof
-from starks.utils import get_power_cycle, is_a_power_of_2
+from starks.utils import generate_Xi_s
+from starks.utils import get_power_cycle
+from starks.utils import is_a_power_of_2
 from starks.utils import get_pseudorandom_field_elements
 from starks.air import Computation
 from starks.poly_utils import multi_inv
+from starks.numbertype import Field
 from starks.numbertype import FieldElement
 from starks.numbertype import Vector
 from starks.numbertype import Poly
@@ -63,26 +66,26 @@ class StarkParams(object):
     self.last_step_position = self.xs[(steps - 1) * extension_factor]
 
 #def construct_computation_polynomial(comp: Computation, params: StarkParams) -> List[Vector]:
-#def construct_computation_polynomial(comp: Computation, params: StarkParams) -> Poly:
-#  """Constructs polynomial for the given computation."""
-#  # Interpolate the computational trace into a polynomial P,
-#  # with each step along a successive power of G1
-#  # TODO(rbharath): This is where the binary field fft comes into play.
-#  #computational_trace_polynomial = fft(
-#  #    comp.computational_trace, params.modulus, params.G1,
-#  #    inv=True, dims=comp.width)
-#  #assert len(computational_trace_polynomial) == comp.steps
-#  #p_evaluations = fft(computational_trace_polynomial,
-#  #    params.modulus, params.G2, dims=comp.width)
-#  #assert len(p_evaluations) == comp.steps*params.extension_factor
-#  #print(
-#  #    'Converted computational steps into a polynomial and low-degree extended it'
-#  #)
-#  #return p_evaluations
+def construct_trace_polynomials(witness, params: StarkParams) -> Poly:
+  """Constructs polynomial for the given computation."""
+  # Interpolate the computational trace into a polynomial P,
+  # with each step along a successive power of G1
+  # TODO(rbharath): This is where the binary field fft comes into play.
+  #computational_trace_polynomial = fft(
+  #    comp.computational_trace, params.modulus, params.G1,
+  #    inv=True, dims=comp.width)
+  #assert len(computational_trace_polynomial) == comp.steps
+  #p_evaluations = fft(computational_trace_polynomial,
+  #    params.modulus, params.G2, dims=comp.width)
+  #assert len(p_evaluations) == comp.steps*params.extension_factor
+  #print(
+  #    'Converted computational steps into a polynomial and low-degree extended it'
+  #)
+  #return p_evaluations
 
 #def construct_constraint_polynomial(comp: Computation, params: StarkParams,
 #    p_evaluations: List[Vector]) -> List[Vector]:
-def construct_constraint_polynomials(trace_polys: List[Poly], params: StarkParams) -> List[Poly]:
+def construct_constraint_polynomials(field: Field, width: int, trace_polys: List[Poly], params: StarkParams) -> List[Poly]:
   """Construct the constraint polynomial for the given tape.
 
   This function constructs a constraint polynomial for the
@@ -94,7 +97,7 @@ def construct_constraint_polynomials(trace_polys: List[Poly], params: StarkParam
   # C(P(x), P(g1*x)) = P(g1*x) - step_fn(P(x))
   # here K(x) contains the constants.
   #p_next_step_evals = [p_evaluations[(i + params.extension_factor) % params.precision] for i in range(params.precision)]
-  Xi_s = generate_Xs()
+  Xi_s = generate_Xs(width)
   # TODO(rbharath): This is wrong... g1*X_i?
   next_step_traces = [trace_poly(X_i + 1) for (trace_poly, X_i) in zip(trace_polys, Xi_s)]
   constraint_polys = [next_step_trace - step_poly(trace_poly) for next_step_trace, step_poly, trace_poly in zip(next_step_traces, step_poly, trace_polys)]

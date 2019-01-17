@@ -5,6 +5,7 @@ from typing import Dict
 from typing import List
 from starks.numbertype import Field
 from starks.numbertype import FieldElement
+from starks.poly_utils import multivariates_over
 
 
 def plus_one(num: int) -> int:
@@ -26,21 +27,33 @@ def mimc(inp: int, steps: int, round_constants: List[int]):
   return inp
 
 
-# TODO(rbharath): The type-constructor style of IntegersModP makes type
-# signatures difficult...
-#def get_power_cycle(r: FieldElement, modulus: int):
 def get_power_cycle(r: FieldElement, field: Field):
   """
   Get the set of powers of R, until but not including when the
   powers loop back to 1
   """
-  #mod = IntegersModP(modulus)
-  #o = [mod(1), r]
   o = [field(1), r]
   while o[-1] != field(1):
-    #o.append((o[-1] * r) % modulus)
     o.append(o[-1] * r)
   return o[:-1]
+
+def generate_Xi_s(field: Field, width: int):
+  """
+  Constructs polynomials X_1,..,X_width
+
+  This helper method generates "index" polynomials. Using
+  these polynomials makes it easier to write more complex
+  polynomials programmatically.
+  """
+  polysOver = multivariates_over(field, width).factory
+  Xi_s = []
+  for i in range(width):
+    pre = (0,) * i
+    post = (0,) * (width - (i+1))
+    index = pre + (1,) + post
+    X_i = polysOver({index: field(1)})
+    Xi_s.append(X_i)
+  return Xi_s
 
 
 #def get_pseudorandom_indices(seed, modulus, count, exclude_multiples_of=0):
