@@ -165,13 +165,16 @@ def construct_boundary_polynomials(trace_polys: List[Poly], boundary: List[Tuple
     # Append to list
     i_evaluations.append(i_evaluations_dim)
     inv_z2_evaluations.append(inv_z2_evaluations_dim)
-  i_evaluations = [[i_evaluations[dim][j] for dim in range(comp.width)] for j in range(params.precision)]
-  inv_z2_evaluations = [[inv_z2_evaluations[dim][j] for dim in range(comp.width)] for j in range(params.precision)]
+  #i_evaluations = [[i_evaluations[dim][j] for dim in range(comp.width)] for j in range(params.precision)]
+  #inv_z2_evaluations = [[inv_z2_evaluations[dim][j] for dim in range(comp.width)] for j in range(params.precision)]
   # B = (P - I) / Z2
   b_evaluations = []
-  for p, i, invq in zip(p_evaluations, i_evaluations, inv_z2_evaluations):
-    b_evaluations_dim = [
-      (p[dim] - i[dim]) * invq[dim] for dim in range(comp.width) ]
+  #for p, i, invq in zip(p_evaluations, i_evaluations, inv_z2_evaluations):
+  for p, i, invq in zip(trace_polys, i_polys, inv_z2_polys):
+    #b_evaluations_dim = [
+    #  (p[dim] - i[dim]) * invq[dim] for dim in range(comp.width) ]
+    b_poly = [
+      (p - i) * invq for dim in range(comp.width) ]
     b_evaluations.append(b_evaluations_dim)
   print('Computed B polynomial')
   return b_evaluations
@@ -214,7 +217,8 @@ def compute_pseudorandom_linear_combination_1d(params: StarkParams, mtree: List[
   # proving the low-degreeness of P, B and D separately
   k1, k2, k3, k4 = get_pseudorandom_ks(mtree[1], 4)
   # TODO(rbharath): This isn't general, but fix later
-  [p_evaluations, d_evaluations, b_evaluations] = polys
+  #[p_evaluations, d_evaluations, b_evaluations] = polys
+  [trace_polys, reminder_polys, boundary_polys] = polys
   # Compute the linear combination. We don't even both
   # calculating it in coefficient form; we just compute the
   # evaluations
@@ -223,11 +227,15 @@ def compute_pseudorandom_linear_combination_1d(params: StarkParams, mtree: List[
   for i in range(1, params.precision):
     powers.append(powers[-1] * G2_to_the_steps)
 
-  l_evaluations_per_dim = []
+  #l_evaluations_per_dim = []
+  l_polys = []
   for dim in range(params.width):
-    l_evaluations_dim = [(d_evaluations[i][dim] + p_evaluations[i][dim] * k1 + p_evaluations[i][dim] * k2 * powers[i] + b_evaluations[i][dim] * k3 + b_evaluations[i][dim] * k4 * powers[i]) for i in range(params.precision)]
-    l_evaluations_per_dim.append(l_evaluations_dim)
-  return l_evaluations_per_dim
+    #l_evaluations_dim = [(d_evaluations[i][dim] + p_evaluations[i][dim] * k1 + p_evaluations[i][dim] * k2 * powers[i] + b_evaluations[i][dim] * k3 + b_evaluations[i][dim] * k4 * powers[i]) for i in range(params.precision)]
+    l_poly = reminder_poly + trace_poly * k1 + trace_poly * k2 * powers[i] + boundary_poly * k3 + boundary_poly * k4 * powers[i]
+    #l_evaluations_per_dim.append(l_evaluations_dim)
+    l_polys.append(l_poly)
+  #return l_evaluations_per_dim
+  return l_polys
 
 def compute_pseudorandom_linear_combination(params: StarkParams, mtree: List[bytes], polys: List[List[Vector]]):
   """Computes a pseudorandom linear combination of polys
@@ -281,16 +289,16 @@ def mk_proof(comp: Computation, params: StarkParams):
   #    comp, params, p_evaluations)
 
   # list of length |width|
-  trace_polys = fft_solver.inv_fft(comp.computational_trace)
+  trace_polys = construct_trace_polys(witness, params)
   constraint_polys = construct_constraint_polynomials(
-      comp, params)
-  remainder_polys = construct_remainder_polynomial(
-      constraint_polys)
-
-  b_evaluations = construct_boundary_polynomial(
+      trace_polys, params)
+  remainder_polys = construct_remainder_polynomials(
+      constraint_polys, params)
+  boundary_polys = construct_boundary_polynomials(
       comp, params, p_evaluations)
 
-  polys = [p_evaluations, d_evaluations, b_evaluations]
+  #polys = [p_evaluations, d_evaluations, b_evaluations]
+  polys = [trace_polys, reminder_polys, boundary_polys]
   # Compute their Merkle root
   # TODO(rbharath): The merkelization is computed on the
   # affine subspace of the RS[F, L, pho] I believe.
@@ -298,23 +306,28 @@ def mk_proof(comp: Computation, params: StarkParams):
   # what's happening now.
   mtree = merkelize_polynomials(comp.width, polys)
 
-  l_evaluations = compute_pseudorandom_linear_combination(
+  #l_evaluations = compute_pseudorandom_linear_combination(
+  #    comp, params, mtree, polys)
+  l_polys = compute_pseudorandom_linear_combination(
       comp, params, mtree, polys)
   l_mtree = merkelize(l_evaluations)
 
   branches = compute_merkle_spot_checks(mtree, l_mtree, comp, params)
 
+  fri = FRI()
   # Return the Merkle roots of P and D, the spot check Merkle
   # proofs, and low-degree proofs of P and D
   o = [
       mtree[1], l_mtree[1], branches,
-      prove_low_degree(
-          l_evaluations,
-          params.G2,
-          comp.steps * comp.get_degree(),
-          #params.modulus,
-          params.field, # TODO(rbharath): This should be serialized
-          exclude_multiples_of=comp.extension_factor)
+      #prove_low_degree(
+      #    #l_evaluations,
+      #    l_polys,
+      #    params.G2,
+      #    comp.steps * comp.get_degree(),
+      #    #params.modulus,
+      #    params.field, # TODO(rbharath): This should be serialized
+      #    exclude_multiples_of=comp.extension_factor)
+      fri.prove_proximity(l_polys, params.G2, comp.steps*comp.get_degree())
   ]
   print("STARK computed in %.4f sec" % (time.time() - start_time))
   return o
