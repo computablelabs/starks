@@ -5,6 +5,7 @@ except:
 blake = lambda x: blake2s(x).digest()
 from typing import List
 from starks.numbertype import FieldElement
+from starks.numbertype import Poly
 
 
 def permute4(values: List) -> List:
@@ -84,7 +85,13 @@ def verify_branch(root, index, proof, output_as_int=False):
   assert v == root
   return int.from_bytes(proof[0], 'big') if output_as_int else proof[0]
 
-def merkelize_polynomials(dims, polynomials):
+def evaluate_polynomials(polynomials: List[Poly]):
+  """Convert polynomials into evaluated form."""
+  fft = MultiDimNonBinaryFFT(field, root_of_unity, width)
+  values = fft.multi_fft(polynomials)
+  return values
+
+def merkelize_polynomials(dims, polynomials: List[Poly]):
   """Given a list of polynomial evaluations, merkelizes them together.
 
   Each leaf of the Merkle tree contains the concatenation of the values of
@@ -96,10 +103,12 @@ def merkelize_polynomials(dims, polynomials):
   ----------
   dims: Int
     Dimensionality
-  polynomials: List
+  polynomials: List of polynomials by dimension
     Each element much be a list of evaluations of a given poly. All of
     these should have the same length.
   """
+  # Convert the polynomials from polynomial form to evaluated form
+  polys = evaluate_polynomials(polynomials)
   # Note len(mtree_leaf) == 32 * dims * len(polys)
   # Note len(mtree) == 2 * precision now
   # This code packs each Merkle leaf as

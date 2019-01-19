@@ -83,10 +83,11 @@ class TestStark(unittest.TestCase):
     print(constraint_polys)
     ######################################
     remainder_polys = construct_remainder_polynomials(constraint_polys, params)
-    b_evaluations = construct_boundary_polynomials(
+    b_polys = construct_boundary_polynomials(
         trace_polys, witness, boundary, params)
 
-    polys = [p_evaluations, d_evaluations, b_evaluations]
+    #polys = [p_evaluations, d_evaluations, b_evaluations]
+    polys = [trace_polys, remainder_polys, b_polys]
     mtree = merkelize_polynomials(width, polys)
     l_evaluations = compute_pseudorandom_linear_combination(
         comp, params, mtree, polys)
@@ -109,10 +110,7 @@ class TestStark(unittest.TestCase):
     steps = 512
     spot_check_security_factor = 80
     extension_factor = 8
-    polysOver = multivariates_over(field, width).factory
-    X_1 = polysOver({(1,0,0): field(1)})
-    X_2 = polysOver({(0,1,0): field(1)})
-    X_3 = polysOver({(0,0,1): field(1)})
+    [X_1, X_2, X_3] = generate_Xi_s(field, width)
     step_polys = [X_1, X_2, X_1 + X_2*X_3**2] 
     comp = Computation(field, width, inp, steps, step_polys, extension_factor)
     params = StarkParams(field, steps, modulus, extension_factor)
@@ -251,10 +249,7 @@ class TestStark(unittest.TestCase):
     field = IntegersModP(modulus)
     inp = [field(2), field(2), field(5)]
     ## Factoring out computation
-    polysOver = multivariates_over(field, width).factory
-    X_1 = polysOver({(1,0,0): field(1)})
-    X_2 = polysOver({(0,1,0): field(1)})
-    X_3 = polysOver({(0,0,1): field(1)})
+    [X_1, X_2, X_3] = generate_Xi_s(field, width)
     step_polys = [X_1, X_2, X_1 + X_2*X_3**2] 
     comp = Computation(field, width, inp, steps, step_polys,
         extension_factor)
@@ -365,9 +360,7 @@ class TestStark(unittest.TestCase):
     modulus = 2**256 - 2**32 * 351 + 1
     field = IntegersModP(modulus)
     inp = [field(0), field(1)]
-    polysOver = multivariates_over(field, width).factory
-    X_1 = polysOver({(1,0): field(1)})
-    X_2 = polysOver({(0,1): field(1)})
+    [X_1, X_2] = generate_Xi_s(field, width)
     step_polys = [X_2, X_1 + X_2] 
     trace, output = get_computational_trace(inp, steps,
         width, step_polys)
@@ -387,9 +380,7 @@ class TestStark(unittest.TestCase):
     modulus = 2**256 - 2**32 * 351 + 1
     field = IntegersModP(modulus)
     inp = [field(0), field(1)]
-    polysOver = multivariates_over(field, width).factory
-    X_1 = polysOver({(1,0): field(1)})
-    X_2 = polysOver({(0,1): field(1)})
+    [X_1, X_2] = generate_Xi_s(field, width)
     step_polys = [X_2, X_1 + X_2] 
     comp = Computation(field, width, inp, steps, step_polys,
         extension_factor)
@@ -412,9 +403,7 @@ class TestStark(unittest.TestCase):
     modulus = 2**256 - 2**32 * 351 + 1
     field = IntegersModP(modulus)
     inp = [field(0), field(1)]
-    polysOver = multivariates_over(field, width).factory
-    X_1 = polysOver({(1,0): field(1)})
-    X_2 = polysOver({(0,1): field(1)})
+    [X_1, X_2] = generate_Xi_s(field, width)
     step_polys = [X_2, X_1 + X_2] 
     comp = Computation(field, width, inp, steps, step_polys,
         extension_factor)
@@ -437,9 +426,7 @@ class TestStark(unittest.TestCase):
     modulus = 2**256 - 2**32 * 351 + 1
     extension_factor = 8
     field = IntegersModP(modulus)
-    polysOver = multivariates_over(field, width).factory
-    X_1 = polysOver({(1,0): field(1)})
-    X_2 = polysOver({(0,1): field(1)})
+    [X_1, X_2] = generate_Xi_s(field, width)
     step_polys = [X_2, X_1 + X_2] 
     inp = [field(0), field(1)]
     ## Factoring out computation
@@ -470,9 +457,7 @@ class TestStark(unittest.TestCase):
     extension_factor = 8
     field = IntegersModP(modulus)
     inp = [field(0), field(1)]
-    polysOver = multivariates_over(field, width).factory
-    X_1 = polysOver({(1,0): field(1)})
-    X_2 = polysOver({(0,1): field(1)})
+    [X_1, X_2] = generate_Xi_s(field, width)
     step_polys = [X_2, X_1 + X_2] 
     ## Factoring out computation
     comp = Computation(field, width, inp, steps, step_polys,
@@ -535,9 +520,7 @@ class TestStark(unittest.TestCase):
   #  field = IntegersModP(modulus)
   #  inp = [field(0), field(1)]
   #  extension_factor = 8
-  #  polysOver = multivariates_over(field, width).factory
-  #  X_1 = polysOver({(1,0): field(1)})
-  #  X_2 = polysOver({(0,1): field(1)})
+  #  [X_1, X_2] = generate_Xi_s(field, width)
   #  step_polys = [X_2, X_1 + X_2] 
   #  comp = Computation(field, width, inp, steps, step_polys,
   #      extension_factor)
