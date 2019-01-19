@@ -84,7 +84,7 @@ class TestStark(unittest.TestCase):
     ######################################
     remainder_polys = construct_remainder_polynomials(constraint_polys, params)
     b_evaluations = construct_boundary_polynomials(
-        trace_polys, params)
+        trace_polys, witness, boundary, params)
 
     polys = [p_evaluations, d_evaluations, b_evaluations]
     mtree = merkelize_polynomials(width, polys)

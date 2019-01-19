@@ -145,39 +145,52 @@ def construct_remainder_polynomials(constraint_polys: List[Poly], params: StarkP
   return ds
 
 #def construct_boundary_polynomials(comp: Computation, params: StarkParams, p_evaluations: List[Vector]) -> List[Vector]:
-def construct_boundary_polynomials(trace_polys: List[Poly], boundary: List[Tuple], params: StarkParams) -> List[Vector]:
+def construct_boundary_polynomials(trace_polys: List[Poly], witness: List[List], boundary: List[Tuple], params: StarkParams) -> List[Vector]:
   """Polynomial encoding boundary constraints on tape.
   
   Compute interpolant of ((1, input), (x_atlast_step, output))
   """
   polysOver = polynomials_over(params.field).factory
-  i_evaluations = []
-  inv_z2_evaluations = []
+  #i_evaluations = []
+  interpolants = []
+  #inv_z2_evaluations = []
+  inv_z2_polys = []
   zeropoly2 = polysOver([-1, 1])*polysOver([-params.last_step_position, 1])
   for dim in range(params.width):
     constraint = boundary[dim]
-    (_, _, input_value) = contraint
+    ###########################################
+    print("constraint")
+    print(constraint)
+    ###########################################
+    (_, _, input_value) = constraint
+    output_dim = witness[dim][-1]
     interpolant = lagrange_interp_2(params.field, polysOver([1, params.last_step_position]),
         #polysOver([comp.inp[dim], comp.output[dim]]))
-        polysOver([input_value, comp.output[dim]]))
-    i_evaluations_dim = [interpolant(x) for x in params.xs]
-    inv_z2_evaluations_dim = multi_inv(comp.field, [zeropoly2(x) for x in params.xs])
+        polysOver([input_value, output_dim]))
+    interpolants.append(interpolant)
+    #i_evaluations_dim = [interpolant(x) for x in params.xs]
+    #inv_z2_evaluations_dim = multi_inv(params.field, [zeropoly2(x) for x in params.xs])
+    #inv_z2_polys = zer
     # Append to list
-    i_evaluations.append(i_evaluations_dim)
-    inv_z2_evaluations.append(inv_z2_evaluations_dim)
+    #i_evaluations.append(i_evaluations_dim)
+    #inv_z2_evaluations.append(inv_z2_evaluations_dim)
   #i_evaluations = [[i_evaluations[dim][j] for dim in range(comp.width)] for j in range(params.precision)]
   #inv_z2_evaluations = [[inv_z2_evaluations[dim][j] for dim in range(comp.width)] for j in range(params.precision)]
   # B = (P - I) / Z2
-  b_evaluations = []
+  #b_evaluations = []
+  b_polys = []
   #for p, i, invq in zip(p_evaluations, i_evaluations, inv_z2_evaluations):
-  for p, i, invq in zip(trace_polys, i_polys, inv_z2_polys):
+  for p, i in zip(trace_polys, interpolants):
     #b_evaluations_dim = [
     #  (p[dim] - i[dim]) * invq[dim] for dim in range(comp.width) ]
     b_poly = [
-      (p - i) * invq for dim in range(comp.width) ]
-    b_evaluations.append(b_evaluations_dim)
+      #(p - i) * invq for dim in range(comp.width) ]
+      ((p - i), zeropoly2) for dim in range(params.width) ]
+    #b_evaluations.append(b_evaluations_dim)
+    b_polys.append(b_poly)
   print('Computed B polynomial')
-  return b_evaluations
+  #return b_evaluations
+  return b_polys
 
 def get_pseudorandom_ks(m_root: bytes, num: int) -> List[int]:
   """Computes pseudorandom values from mtree root for linear combo.
