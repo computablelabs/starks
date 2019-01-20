@@ -135,7 +135,7 @@ def construct_constraint_polynomials(trace_polys: List[Poly], params: StarkParam
   field, width = params.field, params.width
   #Xi_s = generate_Xi_s(field, width)
   polysOver = polynomials_over(field).factory
-  X = polysOver([0, 1])
+  X = polysOver([field(0), field(1)])
   #next_traces = [trace_poly(params.G1*X_i) for (trace_poly, X_i) in zip(trace_polys, Xi_s)]
   next_traces = [trace_poly(params.G1*X) for trace_poly in trace_polys]
   # Convert trace polys to multidimensional polys by evaluating
@@ -157,10 +157,11 @@ def construct_remainder_polynomials(constraint_polys: List[Poly], params: StarkP
   Z(x) = (x - 1)(x-2)...(x-(steps_1)). How are these equal?
   """
   #Xi_s = generate_Xi_s(params.field, params.width)
-  polysOver = polynomials_over(params.field).factory
-  X = polysOver([0, 1])
+  field = params.field
+  polysOver = polynomials_over(field).factory
+  X = polysOver([field(0), field(1)])
   # TODO(rbharath): Write a unit test checking that the behavior of z is as desired (x-1)...(x-(steps-1))
-  z_num = X**params.steps - 1
+  z_num = X**params.steps - field(1)
   z_den = X - params.last_step_position
   # Check division is OK
   assert z_num % z_den == 0
@@ -197,9 +198,7 @@ def construct_boundary_polynomials(trace_polys: List[Poly], witness: List[List],
   # B = (P - I) / Z2
   b_polys = []
   for p, i in zip(trace_polys, interpolants):
-    b_poly = [
-      (p - i)/zeropoly2 for dim in range(params.width) ]
-    #b_evaluations.append(b_evaluations_dim)
+    b_poly = (p - i)/zeropoly2
     b_polys.append(b_poly)
   print('Computed B polynomial')
   #return b_evaluations
@@ -256,9 +255,9 @@ def compute_pseudorandom_linear_combination_1d(params: StarkParams, entropy: byt
 
   #l_evaluations_per_dim = []
   l_polys = []
-  for dim in range(params.width):
+  for (trace_poly, remainder_poly, boundary_poly) in zip(trace_polys, remainder_polys, boundary_polys):
     #l_evaluations_dim = [(d_evaluations[i][dim] + p_evaluations[i][dim] * k1 + p_evaluations[i][dim] * k2 * powers[i] + b_evaluations[i][dim] * k3 + b_evaluations[i][dim] * k4 * powers[i]) for i in range(params.precision)]
-    l_poly = reminder_poly + trace_poly * k1 + trace_poly * k2 * powers[i] + boundary_poly * k3 + boundary_poly * k4 * powers[i]
+    l_poly = remainder_poly + trace_poly * k1 + trace_poly * k2 * powers[i] + boundary_poly * k3 + boundary_poly * k4 * powers[i]
     #l_evaluations_per_dim.append(l_evaluations_dim)
     l_polys.append(l_poly)
   #return l_evaluations_per_dim

@@ -1,4 +1,5 @@
 from typing import List
+from starks.numbertype import Field
 from starks.numbertype import FieldElement
 from starks.numbertype import Vector
 from starks.numbertype import Poly
@@ -38,14 +39,14 @@ class NonBinaryFFT(FFT):
     self.width = width
     self.polysOver = polynomials_over(self.field).factory
 
-  def fft(sel, poly: Poly) -> List[FieldElement]:
+  def fft(self, poly: Poly) -> List[FieldElement]:
     """Runs FFT algorithm."""
-    return fft_1d(poly.coeffs, self.field.p, self.root_of_unity,
+    return fft_1d(self.field, poly.coefficients, self.field.p, self.root_of_unity,
         inv=False)
 
   def inv_fft(self, values: List[FieldElement]) -> Poly:
     """Performs the inverse fft."""
-    coeffs = fft_1d(values, self.field.p, self.root_of_unity,
+    coeffs = fft_1d(self.field, values, self.field.p, self.root_of_unity,
         inv=True)
     return self.polysOver(coeffs)
 
@@ -91,11 +92,11 @@ def fft(vals: List[Vector], modulus: int, root_of_unity: FieldElement,
   return fft_joint
 
 
-def fft_1d(vals: List[FieldElement], modulus: int, root_of_unity: FieldElement, inv: bool = False) -> List[FieldElement]:
+def fft_1d(field: Field, vals: List[FieldElement], modulus: int, root_of_unity: FieldElement, inv: bool = False) -> List[FieldElement]:
   """Computes FFT for one dimensional inputs"""
   # Build up roots of unity
-  rootz = [1, root_of_unity]
-  while rootz[-1] != 1:
+  rootz = [field(1), root_of_unity]
+  while rootz[-1] != field(1):
     rootz.append((rootz[-1] * root_of_unity))
   # Fill in vals with zeroes if needed
   if len(rootz) > len(vals) + 1:

@@ -84,17 +84,24 @@ class TestStark(unittest.TestCase):
     trace_polys = construct_trace_polynomials(witness, params)
     constraint_polys = construct_constraint_polynomials(trace_polys, params)
     remainder_polys = construct_remainder_polynomials(constraint_polys, params)
-    b_polys = construct_boundary_polynomials(
+    boundary_polys = construct_boundary_polynomials(
         trace_polys, witness, boundary, params)
 
     fft_solver = NonBinaryFFT(params.field, params.G2, params.width)
-    polys = trace_polys + remainder_polys + b_polys
+    polys = trace_polys + remainder_polys + boundary_polys
     poly_evals = []
+    #for poly in polys:
+    #  print("type(poly)")
+    #  print(type(poly))
+    #  print("poly")
+    #  print(poly)
     for poly in polys:
       poly_eval = fft_solver.fft(poly)
       poly_evals.append(poly_eval)
     mtree = merkelize_polynomial_evaluations(width, poly_evals)
-    l_poly = compute_pseudorandom_linear_combination(params, mtree[1], polys)
+    l_poly = compute_pseudorandom_linear_combination(params, mtree[1],
+        trace_polys, remainder_polys, boundary_polys)
+    l_evaluations = fft_solver.fft(l_poly)
     l_mtree = merkelize(l_evaluations)
 
     indices = get_pseudorandom_indices(l_mtree[1],
