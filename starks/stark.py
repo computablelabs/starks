@@ -98,9 +98,10 @@ def construct_constraint_polynomials(trace_polys: List[Poly], params: StarkParam
   # Convert trace polys to multidimensional polys by evaluating
   trace_polys = [trace_poly(X_i) for (X_i, trace_poly) in zip(Xi_s, trace_polys)]
   constraint_polys = []
+  transition_poly = step_poly(trace_polys)
   for next_trace, step_poly in zip(next_traces, params.step_polys):
     # TODO(rbharath): One of these is 1-d poly, while other is multi-d. How to handle?
-    constraint_poly = next_trace - step_poly(trace_polys)
+    constraint_poly = next_trace - transition_poly
     constraint_polys.append(constraint_poly)
   return constraint_polys
 
@@ -112,32 +113,15 @@ def construct_remainder_polynomials(constraint_polys: List[Poly], params: StarkP
   TODO(rbharath): I think this is supposed to equal 
   Z(x) = (x - 1)(x-2)...(x-(steps_1)). How are these equal?
   """
-  #z_num_evaluations = [
-  #    # TODO(rbharath): Is this right??
-  #    params.xs[(i * comp.steps) % params.precision] - 1 for i in range(params.precision)
-  #]
   Xi_s = generate_Xi_s(params.field, params.width)
   polysOver = polynomials_over(params.field).factory
   X = polysOver([0, 1])
-  #z_nums = [X_i**params.steps - 1 for X_i in Xi_s]
   # TODO(rbharath): Write a unit test checking that the behavior of z is as desired (x-1)...(x-(steps-1))
   z_num = X**params.steps - 1
   z_den = X - params.last_step_position
   # Check division is OK
   assert z_num % z_den == 0
   z = z_num / z_den
-  print("constraint_polys[0]")
-  print(constraint_polys[0])
-  print("constraint_polys")
-  print(constraint_polys)
-  #z_num_inv = multi_inv(params.field, z_num_evaluations)
-  # (x_i - x_{step-1}) list
-  #z_den_evaluations = [params.xs[i] - params.last_step_position for i in range(params.precision)]
-  #z_dens = [X_i - params.last_step_position for X_i in Xi_s]
-  #d_evaluations = [
-  #    [cp[dim] * zd * zni for dim in range(comp.width)]
-  #    for cp, zd, zni in zip(constraint_polys, z_dens, z_num_inv)
-  #]
   # Implicitly representing the division...
   ds = [(cp, z(X_i)) for (cp, X_i) in zip(constraint_polys, Xi_s)]
   print('Computed D polynomials')
@@ -149,43 +133,25 @@ def construct_boundary_polynomials(trace_polys: List[Poly], witness: List[List],
   """Polynomial encoding boundary constraints on tape.
   
   Compute interpolant of ((1, input), (x_atlast_step, output))
+
+  TODO(rbharath): This assumes boundary has simplified form
   """
   polysOver = polynomials_over(params.field).factory
-  #i_evaluations = []
   interpolants = []
-  #inv_z2_evaluations = []
   inv_z2_polys = []
   zeropoly2 = polysOver([-1, 1])*polysOver([-params.last_step_position, 1])
   for dim in range(params.width):
     constraint = boundary[dim]
-    ###########################################
-    print("constraint")
-    print(constraint)
-    ###########################################
     (_, _, input_value) = constraint
     output_dim = witness[dim][-1]
     interpolant = lagrange_interp_2(params.field, polysOver([1, params.last_step_position]),
-        #polysOver([comp.inp[dim], comp.output[dim]]))
         polysOver([input_value, output_dim]))
     interpolants.append(interpolant)
-    #i_evaluations_dim = [interpolant(x) for x in params.xs]
-    #inv_z2_evaluations_dim = multi_inv(params.field, [zeropoly2(x) for x in params.xs])
-    #inv_z2_polys = zer
-    # Append to list
-    #i_evaluations.append(i_evaluations_dim)
-    #inv_z2_evaluations.append(inv_z2_evaluations_dim)
-  #i_evaluations = [[i_evaluations[dim][j] for dim in range(comp.width)] for j in range(params.precision)]
-  #inv_z2_evaluations = [[inv_z2_evaluations[dim][j] for dim in range(comp.width)] for j in range(params.precision)]
   # B = (P - I) / Z2
-  #b_evaluations = []
   b_polys = []
-  #for p, i, invq in zip(p_evaluations, i_evaluations, inv_z2_evaluations):
   for p, i in zip(trace_polys, interpolants):
-    #b_evaluations_dim = [
-    #  (p[dim] - i[dim]) * invq[dim] for dim in range(comp.width) ]
     b_poly = [
-      #(p - i) * invq for dim in range(comp.width) ]
-      ((p - i), zeropoly2) for dim in range(params.width) ]
+      (p - i)/zeropoly2 for dim in range(params.width) ]
     #b_evaluations.append(b_evaluations_dim)
     b_polys.append(b_poly)
   print('Computed B polynomial')
@@ -311,7 +277,7 @@ def mk_proof(comp: Computation, params: StarkParams):
       comp, params, p_evaluations)
 
   #polys = [p_evaluations, d_evaluations, b_evaluations]
-  polys = [trace_polys, reminder_polys, boundary_polys]
+  polys = [trace_polys, remainder_polys, boundary_polys]
   # Compute their Merkle root
   # TODO(rbharath): The merkelization is computed on the
   # affine subspace of the RS[F, L, pho] I believe.

@@ -39,6 +39,16 @@ def make_multivar(poly: Poly, i: int, field: Field, width: int) -> MultiVarPoly:
     up_poly += coeff * X_i**degree
   return up_poly
 
+# TODO(rbharath): Fill this out...
+def project_multivar(multivar_poly: MultiVarPoly, i: int, field: Field, width: int) -> Poly:
+  """Projects a multidimensional polynomial to a single dimensional polynomial."""
+  polysOver = polynomials_over(field).factory
+  multivarsOver = polynomials_over(field).factory
+  X = polysOver([0, 1])
+  for (term, coeff) in multivar_poly:
+    pass
+
+
 def draw_random_interpolant(degree, xs, ys):
   """Constructs a random interpolating polynomial of <= specified degree."""
   # TODO(rbharath): Need to implement this correctly
