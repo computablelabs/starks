@@ -5,7 +5,7 @@ from starks.merkle_tree import merkelize
 from starks.merkle_tree import verify_branch
 from starks.merkle_tree import mk_branch
 from starks.merkle_tree import blake
-from starks.merkle_tree import merkelize_polynomials
+from starks.merkle_tree import merkelize_polynomial_evaluations
 from starks.merkle_tree import unpack_merkle_leaf
 from starks.air import Computation
 from starks.air import get_computational_trace
@@ -557,14 +557,13 @@ class TestStark(unittest.TestCase):
     Tests construction of constraint polynomial.
     """
     width = 2
-    steps = 16 
-    extension_factor = 8
+    steps = 4 
+    extension_factor = 2
     modulus = 2**256 - 2**32 * 351 + 1
     field = IntegersModP(modulus)
     inp = [field(2), field(5)]
     [X_1, X_2] = generate_Xi_s(field, width)
-    #step_polys = [X_2, X_1 + 2*X_2**2] 
-    step_polys = [X_2, X_1] 
+    step_polys = [X_2, X_1 + 2*X_2**2] 
     comp = Computation(field, width, inp, steps, step_polys,
         extension_factor)
     params = StarkParams(field, steps, modulus, extension_factor, width, step_polys)

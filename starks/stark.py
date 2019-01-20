@@ -23,6 +23,7 @@ from starks.numbertype import Field
 from starks.numbertype import FieldElement
 from starks.numbertype import Vector
 from starks.numbertype import Poly
+from starks.numbertype import MultiVarPoly
 
 class StarkParams(object):
   """Holds the cryptographic parameters needed for STARK"""
@@ -83,34 +84,44 @@ def construct_trace_polynomials(witness, params: StarkParams) -> Poly:
     trace_polys.append(dim_trace)
   return trace_polys
 
-def project_multivarate_constraints(witness, params: StarkParams, constraint_polys: List[MultiVarPoly]) -> List[Poly]:
-  """Projects a multidimensional polynomial to a single dimensional polynomial."""
-  root_of_unity = params.G2
-  rootz = [1, root_of_unity]
-  while rootz[-1] != 1:
-    rootz.append((rootz[-1] * root_of_unity))
-  for dim, constraint_poly in enumerate(constraint_polys):
-    reduced = project_to_univariate(reduced_constraint, dim, field, width)
-    dims_except_cur = dims[:dim] + dims[dim+1:] 
-    for coeff_poly in reduced:
-      
-    pass
-
-  field, width = params.field, params.width
-  polysOver = polynomials_over(field).factory
-  fft_solver = NonBinaryFFT(field, params.G2, width)
-  dims = list(range(width))
-  for dim, (witness_dim, constraint_poly) in enumerate(zip(witness, constraint_polys)):
-    dims_except_cur = dims[:dim] + dims[dim+1:] 
-    reduced_constraint = constraint_poly
-    for other_dim in dims_except_cur:
-      reduced = project_to_univariate(reduced_constraint, other_dim, field, width)
-      # reduced_values: List[MultiVarPoly] of length
-      reduced_values = fft_solver.fft(reduced)
-    for (term, coeff) in constraint_poly:
-      prod = X
-      for i, power in enumerate(term):
-        prod *= witness_dim[
+#def project_multivarate_constraints(witness, params: StarkParams, constraint_polys: List[MultiVarPoly]) -> List[Poly]:
+#  """Projects a multidimensional polynomial to a single dimensional polynomial."""
+#  polysOver = polynomials_over(params.field).factory
+#  X = polysOver([0, 1])
+#  root_of_unity = params.G1
+#  rootz = [1, root_of_unity]
+#  while rootz[-1] != 1:
+#    rootz.append((rootz[-1] * root_of_unity))
+#  for step in range(len(rootz)):
+#    for dim, constraint_poly in enumerate(constraint_polys):
+#      values = []
+#      for other_dim in range(width):
+#        if other_dim == dim:
+#          values.append(X)
+#        else:
+#          values.append(witness[other_dim][step])
+#      evaluated = constraint_poly(values)
+#    reduced = project_to_univariate(reduced_constraint, dim, field, width)
+#    dims_except_cur = dims[:dim] + dims[dim+1:] 
+#    for coeff_poly in reduced:
+#      
+#    pass
+#
+#  field, width = params.field, params.width
+#  polysOver = polynomials_over(field).factory
+#  fft_solver = NonBinaryFFT(field, params.G2, width)
+#  dims = list(range(width))
+#  for dim, (witness_dim, constraint_poly) in enumerate(zip(witness, constraint_polys)):
+#    dims_except_cur = dims[:dim] + dims[dim+1:] 
+#    reduced_constraint = constraint_poly
+#    for other_dim in dims_except_cur:
+#      reduced = project_to_univariate(reduced_constraint, other_dim, field, width)
+#      # reduced_values: List[MultiVarPoly] of length
+#      reduced_values = fft_solver.fft(reduced)
+#    for (term, coeff) in constraint_poly:
+#      prod = X
+#      for i, power in enumerate(term):
+#        prod *= witness_dim[
 
 def construct_constraint_polynomials(trace_polys: List[Poly], params: StarkParams) -> List[MultiVarPoly]:
   """Construct the constraint polynomial for the given tape.
@@ -122,19 +133,22 @@ def construct_constraint_polynomials(trace_polys: List[Poly], params: StarkParam
   # Create the composed polynomial such that
   # C(P(x), P(g1*x)) = P(g1*x) - step_fn(P(x))
   field, width = params.field, params.width
-  Xi_s = generate_Xi_s(field, width)
-  next_traces = [trace_poly(params.G1*X_i) for (trace_poly, X_i) in zip(trace_polys, Xi_s)]
+  #Xi_s = generate_Xi_s(field, width)
+  polysOver = polynomials_over(field).factory
+  X = polysOver([0, 1])
+  #next_traces = [trace_poly(params.G1*X_i) for (trace_poly, X_i) in zip(trace_polys, Xi_s)]
+  next_traces = [trace_poly(params.G1*X) for trace_poly in trace_polys]
   # Convert trace polys to multidimensional polys by evaluating
-  trace_polys = [trace_poly(X_i) for (X_i, trace_poly) in zip(Xi_s, trace_polys)]
+  #trace_polys = [trace_poly(X_i) for (X_i, trace_poly) in zip(Xi_s, trace_polys)]
   constraint_polys = []
-  transition_poly = step_poly(trace_polys)
+  #transition_poly = step_poly(trace_polys)
   for next_trace, step_poly in zip(next_traces, params.step_polys):
     # TODO(rbharath): One of these is 1-d poly, while other is multi-d. How to handle?
-    constraint_poly = next_trace - transition_poly
+    constraint_poly = next_trace - step_poly(trace_polys) 
     constraint_polys.append(constraint_poly)
   return constraint_polys
 
-def construct_remainder_polynomials(witness, constraint_polys: List[Poly], params: StarkParams) -> List[Poly]:
+def construct_remainder_polynomials(constraint_polys: List[Poly], params: StarkParams) -> List[Poly]:
   """Computes the remainder polynomial for the STARK.
   
   Compute D(x) = C(P(x), P(g1*x)) / Z(x)
@@ -142,7 +156,7 @@ def construct_remainder_polynomials(witness, constraint_polys: List[Poly], param
   TODO(rbharath): I think this is supposed to equal 
   Z(x) = (x - 1)(x-2)...(x-(steps_1)). How are these equal?
   """
-  Xi_s = generate_Xi_s(params.field, params.width)
+  #Xi_s = generate_Xi_s(params.field, params.width)
   polysOver = polynomials_over(params.field).factory
   X = polysOver([0, 1])
   # TODO(rbharath): Write a unit test checking that the behavior of z is as desired (x-1)...(x-(steps-1))
@@ -152,10 +166,12 @@ def construct_remainder_polynomials(witness, constraint_polys: List[Poly], param
   assert z_num % z_den == 0
   z = z_num / z_den
   # Implicitly representing the division...
-  ds = []
-  for dim, (constraint_poly, Xi) in enumerate(zip(constraint_polys, Xi_s)):
-    ds.append((cp, z(Xi)))
-  #ds = [(cp, z(X_i)) for (cp, X_i) in zip(constraint_polys, Xi_s)]
+  #ds = []
+  #for dim, (constraint_poly, Xi) in enumerate(zip(constraint_polys, Xi_s)):
+  #  ds.append((cp, z(Xi)))
+  for cp in constraint_polys:
+    assert cp % z == 0
+  ds = [cp/z for cp in constraint_polys]
   print('Computed D polynomials')
   #return d_evaluations
   return ds
@@ -302,7 +318,7 @@ def mk_proof(witness: List[List[FieldElement]], boundary: List[Tuple], params: S
   boundary_polys = construct_boundary_polynomials(
       trace_polys, witness, boundary, params)
 
-  polys = [trace_polys, remainder_polys, boundary_polys]
+  polys = trace_polys + remainder_polys + boundary_polys
   # Compute their Merkle root
   # TODO(rbharath): The merkelization is computed on the
   # affine subspace of the RS[F, L, pho] I believe.
