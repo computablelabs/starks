@@ -324,21 +324,11 @@ def mk_proof(witness: List[List[FieldElement]], boundary: List[Tuple], params: S
   # affine subspace of the RS[F, L, pho] I believe.
   # Alternatively on a smooth multiplicative group, which is
   # what's happening now.
-  trace_evals = []
-  for trace_poly in trace_polys:
-    trace_poly_eval = fft_solver.fft(trace_poly)
-    trace_evals.append(trace_poly_eval)
-  remainder_evals= []
-  for remainder_poly in remainder_polys:
-    # TODO(rbharath): This is broken! Since multidimensional poly. Figure out
-    # how to fix.
-    remainder_poly_eval = fft_solver.fft(remainder_poly)
-    remainder_evals.append(remainder_poly_eval)
-  boundary_evals= []
-  for boundary_poly in boundary_polys:
-    boundary_poly_eval = fft_solver.fft(boundary_poly)
-    boundary_evals.append(boundary_poly_eval)
-  mtree = merkelize_polynomial_evaluations(params.width, trace_evals + remainder_evals + boundary_evals)
+  poly_evals = []
+  for poly in polys:
+    poly_eval = fft_solver.fft(poly)
+    poly_evals.append(poly_eval)
+  mtree = merkelize_polynomial_evaluations(params.width, poly_evals)
 
   #l_evaluations = compute_pseudorandom_linear_combination
   #    comp, params, mtree, polys)

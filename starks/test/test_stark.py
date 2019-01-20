@@ -10,6 +10,7 @@ from starks.merkle_tree import unpack_merkle_leaf
 from starks.air import Computation
 from starks.air import get_computational_trace
 from starks.fft import fft 
+from starks.fft import NonBinaryFFT
 # TODO(rbharath): These need to be swapped out for correct imports
 from starks.utils import generate_Xi_s
 from starks.utils import get_pseudorandom_field_elements
@@ -86,8 +87,13 @@ class TestStark(unittest.TestCase):
     b_polys = construct_boundary_polynomials(
         trace_polys, witness, boundary, params)
 
-    polys = [trace_polys, remainder_polys, b_polys]
-    mtree = merkelize_polynomials(width, polys)
+    fft_solver = NonBinaryFFT(params.field, params.G2, params.width)
+    polys = trace_polys + remainder_polys + b_polys
+    poly_evals = []
+    for poly in polys:
+      poly_eval = fft_solver.fft(poly)
+      poly_evals.append(poly_eval)
+    mtree = merkelize_polynomial_evaluations(width, poly_evals)
     l_poly = compute_pseudorandom_linear_combination(params, mtree[1], polys)
     l_mtree = merkelize(l_evaluations)
 
