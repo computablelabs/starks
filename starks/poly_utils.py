@@ -39,15 +39,17 @@ def make_multivar(poly: Poly, i: int, field: Field, width: int) -> MultiVarPoly:
     up_poly += coeff * X_i**degree
   return up_poly
 
-# TODO(rbharath): Fill this out...
-def project_multivar(multivar_poly: MultiVarPoly, i: int, field: Field, width: int) -> Poly:
-  """Projects a multidimensional polynomial to a single dimensional polynomial."""
-  polysOver = polynomials_over(field).factory
-  multivarsOver = polynomials_over(field).factory
+def project_to_univariate(multivar_poly: MultiVarPoly, ind: int, field: Field, width: int) -> Poly:
+  multiVarsOver = multivariates_over(field, width-1).factory
+  polysOver = polynomials_over(multiVarsOver).factory
   X = polysOver([0, 1])
+  out = 0 
   for (term, coeff) in multivar_poly:
-    pass
-
+    # Remove i-th variable 
+    term_minus_i = term[:i] + term[i+1:]
+    coeff = multiVarsOver({term_minus_i: coeff})
+    out += coeff * X**term[i]
+  return out
 
 def draw_random_interpolant(degree, xs, ys):
   """Constructs a random interpolating polynomial of <= specified degree."""

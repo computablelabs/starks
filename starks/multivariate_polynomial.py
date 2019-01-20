@@ -164,7 +164,7 @@ def multivariates_over(field: Field, num_vars: int) -> MultiVarPoly:
       assert len(vals) == num_vars
       y = field(0)
       power_of_x = 1
-      for i, (a, a_coeff) in enumerate(self):
+      for _, (a, a_coeff) in enumerate(self):
         prod = field(1)
         for i, power in enumerate(a):
           prod *= vals[i]**power

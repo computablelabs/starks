@@ -177,7 +177,7 @@ class FRI(object):
 #                            exclude_multiples_of=0,
 #                            fri_spot_check_security_factor=40):
   def verify_proximity_proof(self,
-                             merkle_root: bytes
+                             merkle_root: bytes,
                              root_of_unity: FieldElement,
                              proof: List[bytes],
                              max_deg_plus_1: int,

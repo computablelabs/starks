@@ -91,7 +91,7 @@ def evaluate_polynomials(polynomials: List[Poly]):
   values = fft.multi_fft(polynomials)
   return values
 
-def merkelize_polynomials(dims, polynomials: List[Poly]):
+def merkelize_polynomial_evaluations(dims, polynomials: List[List[FieldElement]]):
   """Given a list of polynomial evaluations, merkelizes them together.
 
   Each leaf of the Merkle tree contains the concatenation of the values of
@@ -107,8 +107,6 @@ def merkelize_polynomials(dims, polynomials: List[Poly]):
     Each element much be a list of evaluations of a given poly. All of
     these should have the same length.
   """
-  # Convert the polynomials from polynomial form to evaluated form
-  polys = evaluate_polynomials(polynomials)
   # Note len(mtree_leaf) == 32 * dims * len(polys)
   # Note len(mtree) == 2 * precision now
   # This code packs each Merkle leaf as

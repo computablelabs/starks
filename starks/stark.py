@@ -5,7 +5,7 @@ from starks.merkle_tree import blake
 from starks.merkle_tree import verify_branch
 from starks.merkle_tree import mk_branch
 from starks.merkle_tree import merkelize
-from starks.merkle_tree import merkelize_polynomials
+from starks.merkle_tree import merkelize_polynomial_evaluations
 from starks.merkle_tree import unpack_merkle_leaf
 from starks.polynomial import polynomials_over
 from starks.poly_utils import lagrange_interp_2 
@@ -83,7 +83,36 @@ def construct_trace_polynomials(witness, params: StarkParams) -> Poly:
     trace_polys.append(dim_trace)
   return trace_polys
 
-def construct_constraint_polynomials(trace_polys: List[Poly], params: StarkParams) -> List[Poly]:
+def project_multivarate_constraints(witness, params: StarkParams, constraint_polys: List[MultiVarPoly]) -> List[Poly]:
+  """Projects a multidimensional polynomial to a single dimensional polynomial."""
+  root_of_unity = params.G2
+  rootz = [1, root_of_unity]
+  while rootz[-1] != 1:
+    rootz.append((rootz[-1] * root_of_unity))
+  for dim, constraint_poly in enumerate(constraint_polys):
+    reduced = project_to_univariate(reduced_constraint, dim, field, width)
+    dims_except_cur = dims[:dim] + dims[dim+1:] 
+    for coeff_poly in reduced:
+      
+    pass
+
+  field, width = params.field, params.width
+  polysOver = polynomials_over(field).factory
+  fft_solver = NonBinaryFFT(field, params.G2, width)
+  dims = list(range(width))
+  for dim, (witness_dim, constraint_poly) in enumerate(zip(witness, constraint_polys)):
+    dims_except_cur = dims[:dim] + dims[dim+1:] 
+    reduced_constraint = constraint_poly
+    for other_dim in dims_except_cur:
+      reduced = project_to_univariate(reduced_constraint, other_dim, field, width)
+      # reduced_values: List[MultiVarPoly] of length
+      reduced_values = fft_solver.fft(reduced)
+    for (term, coeff) in constraint_poly:
+      prod = X
+      for i, power in enumerate(term):
+        prod *= witness_dim[
+
+def construct_constraint_polynomials(trace_polys: List[Poly], params: StarkParams) -> List[MultiVarPoly]:
   """Construct the constraint polynomial for the given tape.
 
   This function constructs a constraint polynomial for the
@@ -105,7 +134,7 @@ def construct_constraint_polynomials(trace_polys: List[Poly], params: StarkParam
     constraint_polys.append(constraint_poly)
   return constraint_polys
 
-def construct_remainder_polynomials(constraint_polys: List[Poly], params: StarkParams) -> List[Poly]:
+def construct_remainder_polynomials(witness, constraint_polys: List[Poly], params: StarkParams) -> List[Poly]:
   """Computes the remainder polynomial for the STARK.
   
   Compute D(x) = C(P(x), P(g1*x)) / Z(x)
@@ -123,12 +152,14 @@ def construct_remainder_polynomials(constraint_polys: List[Poly], params: StarkP
   assert z_num % z_den == 0
   z = z_num / z_den
   # Implicitly representing the division...
-  ds = [(cp, z(X_i)) for (cp, X_i) in zip(constraint_polys, Xi_s)]
+  ds = []
+  for dim, (constraint_poly, Xi) in enumerate(zip(constraint_polys, Xi_s)):
+    ds.append((cp, z(Xi)))
+  #ds = [(cp, z(X_i)) for (cp, X_i) in zip(constraint_polys, Xi_s)]
   print('Computed D polynomials')
   #return d_evaluations
   return ds
 
-#def construct_boundary_polynomials(comp: Computation, params: StarkParams, p_evaluations: List[Vector]) -> List[Vector]:
 def construct_boundary_polynomials(trace_polys: List[Poly], witness: List[List], boundary: List[Tuple], params: StarkParams) -> List[Vector]:
   """Polynomial encoding boundary constraints on tape.
   
@@ -180,7 +211,8 @@ def get_pseudorandom_ks(m_root: bytes, num: int) -> List[int]:
     ks = [int.from_bytes(blake(m_root + byte_list[ind]), 'big') for ind in range(num)]
     return ks
 
-def compute_pseudorandom_linear_combination_1d(params: StarkParams, mtree: List[bytes], polys: List[List[Vector]]) -> List[Vector]:
+#def compute_pseudorandom_linear_combination_1d(params: StarkParams, mtree: List[bytes], polys: List[List[Vector]]) -> List[Vector]:
+def compute_pseudorandom_linear_combination_1d(params: StarkParams, entropy: bytes, trace_polys: List[Poly], remainder_polys: List[Poly], boundary_polys: List[Poly]) -> List[Vector]:
   """Computes the pseudorandom linear combination for 1-d slice of poly.
 
   A FRI proofs of low degree for a polynomial takes space.
@@ -194,10 +226,10 @@ def compute_pseudorandom_linear_combination_1d(params: StarkParams, mtree: List[
   # linear combination of P * x^steps, P, B * x^steps, B and
   # D, and prove the low-degreeness of that, instead of
   # proving the low-degreeness of P, B and D separately
-  k1, k2, k3, k4 = get_pseudorandom_ks(mtree[1], 4)
+  k1, k2, k3, k4 = get_pseudorandom_ks(entropy, 4)
   # TODO(rbharath): This isn't general, but fix later
   #[p_evaluations, d_evaluations, b_evaluations] = polys
-  [trace_polys, reminder_polys, boundary_polys] = polys
+  #[trace_polys, reminder_polys, boundary_polys] = polys
   # Compute the linear combination. We don't even both
   # calculating it in coefficient form; we just compute the
   # evaluations
@@ -216,7 +248,8 @@ def compute_pseudorandom_linear_combination_1d(params: StarkParams, mtree: List[
   #return l_evaluations_per_dim
   return l_polys
 
-def compute_pseudorandom_linear_combination(params: StarkParams, mtree: List[bytes], polys: List[List[Vector]]):
+#def compute_pseudorandom_linear_combination(params: StarkParams, mtree: List[bytes], polys: List[List[Vector]]):
+def compute_pseudorandom_linear_combination(params: StarkParams, entropy: bytes, trace_polys: List[Poly], remainder_polys: List[Poly], boundary_polys: List[Poly]) -> Poly:
   """Computes a pseudorandom linear combination of polys
 
   A deterministic procedure for pseudorandomly combining dimensions
@@ -226,11 +259,14 @@ def compute_pseudorandom_linear_combination(params: StarkParams, mtree: List[byt
   powers = [1]
   for i in range(1, params.precision):
     powers.append(powers[-1] * G2_to_the_steps)
-  l_evaluations_per_dim = compute_pseudorandom_linear_combination_1d(params, mtree, polys)
-  l_ks = get_pseudorandom_ks(mtree[1], params.width)
-  l_evaluations = [sum([l_evals_dim[i] + l_evals_dim[i] * l_k * powers[i] for (l_evals_dim, l_k) in zip(l_evaluations_per_dim, l_ks)]) for i in range(params.precision)]
+  #l_evaluations_per_dim = compute_pseudorandom_linear_combination_1d(params, entropy, polys)
+  l_polys = compute_pseudorandom_linear_combination_1d(params, entropy, trace_polys, remainder_polys, boundary_polys)
+  l_ks = get_pseudorandom_ks(entropy, params.width)
+  #l_evaluations = [sum([l_evals_dim[i] + l_evals_dim[i] * l_k * powers[i] for (l_evals_dim, l_k) in zip(l_evaluations_per_dim, l_ks)]) for i in range(params.precision)]
+  l_joint_poly = sum([l_poly + l_poly * l_k * powers[i] for (l_poly, l_k) in zip(l_polys, l_ks)])
   print('Computed random linear combination')
-  return l_evaluations
+  #return l_evaluations
+  return l_joint_poly 
 
 # TODO(rbharath): This function is poorly structured since it computes spot
 # checks for both the mtree and the ltree simultaneously. This makes
@@ -251,47 +287,51 @@ def compute_merkle_spot_checks(mtree, l_mtree, params, samples=80):
 
 
 #def mk_proof(comp: Computation, params: StarkParams):
-def mk_proof(comp: Computation, params: StarkParams):
+def mk_proof(witness: List[List[FieldElement]], boundary: List[Tuple], params: StarkParams):
   """Generate a STARK for a MIMC calculation"""
   start_time = time.time()
 
-  fft_solver = FFT(params.field)
-  # TODO(rbharath): I think by computing with explicit
-  # polynomials, this function becomes a *lot* simpler. Then
-  # the evaluation can be done only once.
-  #p_evaluations = construct_computation_polynomial(
-  #    comp, params)
-
-  # Construct the constraint polynomial (represented as a list
-  # of point evaluations)
-  #c_of_p_evaluations = construct_constraint_polynomial(
-  #    comp, params, p_evaluations)
-
+  fft_solver = NonBinaryFFT(params.field, params.G2, params.width)
   # list of length |width|
   trace_polys = construct_trace_polys(witness, params)
   constraint_polys = construct_constraint_polynomials(
       trace_polys, params)
+  one_dimensional_constraint_polys = project_multivariate_constraints(witness, constraint_polys)
   remainder_polys = construct_remainder_polynomials(
-      constraint_polys, params)
+      witness, one_dimensional_constraint_polys, params)
   boundary_polys = construct_boundary_polynomials(
-      comp, params, p_evaluations)
+      trace_polys, witness, boundary, params)
 
-  #polys = [p_evaluations, d_evaluations, b_evaluations]
   polys = [trace_polys, remainder_polys, boundary_polys]
   # Compute their Merkle root
   # TODO(rbharath): The merkelization is computed on the
   # affine subspace of the RS[F, L, pho] I believe.
   # Alternatively on a smooth multiplicative group, which is
   # what's happening now.
-  mtree = merkelize_polynomials(comp.width, polys)
+  trace_evals = []
+  for trace_poly in trace_polys:
+    trace_poly_eval = fft_solver.fft(trace_poly)
+    trace_evals.append(trace_poly_eval)
+  remainder_evals= []
+  for remainder_poly in remainder_polys:
+    # TODO(rbharath): This is broken! Since multidimensional poly. Figure out
+    # how to fix.
+    remainder_poly_eval = fft_solver.fft(remainder_poly)
+    remainder_evals.append(remainder_poly_eval)
+  boundary_evals= []
+  for boundary_poly in boundary_polys:
+    boundary_poly_eval = fft_solver.fft(boundary_poly)
+    boundary_evals.append(boundary_poly_eval)
+  mtree = merkelize_polynomial_evaluations(params.width, trace_evals + remainder_evals + boundary_evals)
 
-  #l_evaluations = compute_pseudorandom_linear_combination(
+  #l_evaluations = compute_pseudorandom_linear_combination
   #    comp, params, mtree, polys)
-  l_polys = compute_pseudorandom_linear_combination(
-      comp, params, mtree, polys)
+  l_poly = compute_pseudorandom_linear_combination(
+      params, mtree[1], trace_polys, remainder_polys, boundary_polys)
+  l_evaluations = fft_solver.fft(l_poly)
   l_mtree = merkelize(l_evaluations)
 
-  branches = compute_merkle_spot_checks(mtree, l_mtree, comp, params)
+  branches = compute_merkle_spot_checks(mtree, l_mtree, params)
 
   fri = FRI()
   # Return the Merkle roots of P and D, the spot check Merkle
@@ -306,12 +346,13 @@ def mk_proof(comp: Computation, params: StarkParams):
       #    #params.modulus,
       #    params.field, # TODO(rbharath): This should be serialized
       #    exclude_multiples_of=comp.extension_factor)
-      fri.prove_proximity(l_polys, params.G2, comp.steps*comp.get_degree())
+      fri.prove_proximity(l_poly, params.G2, params.steps*params.get_degree())
   ]
   print("STARK computed in %.4f sec" % (time.time() - start_time))
   return o
 
-def verify_proof(comp: Computation, params: StarkParams, proof):
+#def verify_proof(comp: Computation, params: StarkParams, proof):
+def verify_proof(proof: List[bytes], params: StarkParams):
   """Verifies a STARK
   
   Parameters
@@ -326,15 +367,14 @@ def verify_proof(comp: Computation, params: StarkParams, proof):
   start_time = time.time()
   m_root, l_root, branches, fri_proof = proof
 
-  #_, constants_polynomials = construct_constants_polynomials(comp, params)
-
   # Verifies the low-degree proofs
-  assert verify_low_degree_proof(
+  fri = FRI()
+  assert fri.verify_proximity_proof(
       l_root,
       params.G2,
       fri_proof,
-      comp.steps * comp.get_degree(),
-      #params.modulus,
+      # TODO(rbharath): Degree must be in parameters
+      params.steps * params.get_degree(),
       params.field,
       exclude_multiples_of=comp.extension_factor)
 
@@ -346,48 +386,49 @@ def verify_proof(comp: Computation, params: StarkParams, proof):
   ks = get_pseudorandom_ks(m_root, 4)
   for i, pos in enumerate(positions):
     #verify_proof_at_position(comp, params, ks, proof, i, pos, constants_polynomials)
-    verify_proof_at_position(comp, params, ks, proof, i, pos)
+    verify_proof_at_position(params, ks, proof, i, pos)
 
   print('Verified %d consistency checks' % params.spot_check_security_factor)
   print('Verified STARK in %.4f sec' % (time.time() - start_time))
   return True
 
-def verify_proof_at_position(comp, params, ks, proof, i, pos):
+def verify_proof_at_position(params, ks, proof, i, pos):
   """Verifies merkle proof at given position in extended trace"""
-  field = comp.field
+  field = params.field
+  width = params.width
   #modulus = params.modulus
   polysOver = polynomials_over(field).factory
   k1, k2, k3, k4 = ks
   m_root, l_root, branches, fri_proof = proof
   x = params.G2**pos
-  x_to_the_steps = x**comp.steps
+  x_to_the_steps = x**params.steps
   # Recall m is the merkle tree of the raw polynomials, and l
   # is the merkle tree of the pseudorandom combination
   # polynomial. Leaf node from m[pos]
   mbranch1 = verify_branch(m_root, pos, branches[i * 3])
-  unpacked_leaf1 = unpack_merkle_leaf(mbranch1, comp.width, 3)
+  unpacked_leaf1 = unpack_merkle_leaf(mbranch1, width, 3)
   # Leaf node from m[pos + extension_factor]
   mbranch2 = verify_branch(
       m_root,
       (pos + params.extension_factor) % params.precision,
       branches[i * 3 + 1])
-  unpacked_leaf2 = unpack_merkle_leaf(mbranch2, comp.width, 3)
+  unpacked_leaf2 = unpack_merkle_leaf(mbranch2, width, 3)
   # Leaf node from l[pos]
   l_of_x = verify_branch(l_root, pos, branches[i * 3 + 2],
       output_as_int=True)
 
   # This undoes the packing that's done in merkelize_polynomials
-  p_of_x = [field(p_of_x_dim) for p_of_x_dim in unpacked_leaf1[:comp.width]]
-  p_of_g1x = [field(p_of_g1x_dim) for p_of_g1x_dim in unpacked_leaf2[:comp.width]]
-  d_of_x = [field(d_of_x_dim) for d_of_x_dim in unpacked_leaf1[comp.width:2*comp.width]]
-  b_of_x = [field(b_of_x_dim) for b_of_x_dim in unpacked_leaf1[2*comp.width:]]
+  p_of_x = [field(p_of_x_dim) for p_of_x_dim in unpacked_leaf1[:width]]
+  p_of_g1x = [field(p_of_g1x_dim) for p_of_g1x_dim in unpacked_leaf2[:width]]
+  d_of_x = [field(d_of_x_dim) for d_of_x_dim in unpacked_leaf1[width:2*width]]
+  b_of_x = [field(b_of_x_dim) for b_of_x_dim in unpacked_leaf1[2*width:]]
 
-  zvalue = (x**comp.steps - 1)/(x - params.last_step_position)
+  zvalue = (x**params.steps - 1)/(x - params.last_step_position)
   k_of_xs = []
 
   # Check transition constraints C(P(x)) = Z(x) * D(x)
-  f_of_p_of_x = [comp.step_polys[i](p_of_x) for i in range(comp.width)]
-  for dim in range(comp.width):
+  f_of_p_of_x = [params.step_polys[i](p_of_x) for i in range(width)]
+  for dim in range(width):
     p_of_g1x_dim = p_of_g1x[dim]
     p_of_x_dim = p_of_x[dim]
     d_of_x_dim = d_of_x[dim]
@@ -397,8 +438,9 @@ def verify_proof_at_position(comp, params, ks, proof, i, pos):
   # Check boundary constraints B(x) * Q(x) + I(x) = P(x)
   # TODO(rbharath): How do I promote a single-dim poly into a multidimensional poly?
   zeropoly2 = polysOver([-1, 1])*polysOver([-params.last_step_position, 1])
-  for dim in range(comp.width):
+  for dim in range(width):
     #interpolant_dim = lagrange_interp_2(modulus, [1, params.last_step_position], [comp.inp[dim], comp.output[dim]])
+    # TODO(rbharath): Add output_dim extraction
     interpolant_dim = lagrange_interp_2(field, [1, params.last_step_position], [comp.inp[dim], comp.output[dim]])
     assert (p_of_x[dim] - b_of_x[dim] * zeropoly2(x) - interpolant_dim(x)) == 0
 

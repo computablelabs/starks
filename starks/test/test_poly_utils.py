@@ -13,6 +13,7 @@ from starks.poly_utils import generate_primitive_polynomial
 from starks.polynomial import polynomials_over
 from starks.poly_utils import construct_multivariate_dirac_delta
 from starks.poly_utils import construct_multivariate_coefficients
+from starks.poly_utils import project_to_univariate
 from starks.utils import get_power_cycle
 from starks.finitefield import FiniteField
 
@@ -30,6 +31,18 @@ class TestPolyUtils(unittest.TestCase):
 
     # 6^-1 = 6
     assert 1/mod7(6) == mod7(6)
+
+  def test_multivar_project(self):
+    """Test that multivariates can be projected."""
+    modulus = 7
+    field = IntegersModP(modulus)
+    width = 3
+    # Let's make polynomials in (Z/7)[x, y, z]
+    multi = multivariates_over(field, width).factory
+    # This should equal xy
+    xy_poly = multi({(1, 1, 0): 1})
+
+    x_poly = project_to_univariate(xy_poly, 0, field, width)
 
   def test_zpoly(self):
     """Test construction of polynomials with specified root"""

@@ -11,9 +11,6 @@ from starks.air import Computation
 from starks.air import get_computational_trace
 from starks.fft import fft 
 # TODO(rbharath): These need to be swapped out for correct imports
-#from starks.fri import prove_low_degree 
-#from starks.fri import verify_low_degree_proof 
-#from starks.utils import get_pseudorandom_indices
 from starks.utils import generate_Xi_s
 from starks.utils import get_pseudorandom_field_elements
 from starks.stark import get_power_cycle 
@@ -51,6 +48,17 @@ class TestStark(unittest.TestCase):
     # Only tests that constructor works implicitly
     params = StarkParams(field, steps, modulus, extension_factor)
 
+  def test_project_multivar(self):
+    """Test the multivariate projection."""
+    modulus = 7
+    mod7 = IntegersModP(modulus)
+    n = 3
+    # Let's make polynomials in (Z/7)[x, y, z]
+    multi = multivariates_over(mod7, n).factory
+    # This should equal xy
+    y_poly = multi({(1, 1, 0): 1})
+
+
   def test_get_pseudorandom_field_elements(self):
     """
     Tests that pseudorandom elements are computed correctly.
@@ -73,24 +81,14 @@ class TestStark(unittest.TestCase):
     witness = comp.generate_witness()
     boundary = comp.generate_boundary_constraints()
     trace_polys = construct_trace_polynomials(witness, params)
-    ######################################
-    print("trace_polys")
-    print(trace_polys)
-    ######################################
     constraint_polys = construct_constraint_polynomials(trace_polys, params)
-    ######################################
-    print("constraint_polys")
-    print(constraint_polys)
-    ######################################
     remainder_polys = construct_remainder_polynomials(constraint_polys, params)
     b_polys = construct_boundary_polynomials(
         trace_polys, witness, boundary, params)
 
-    #polys = [p_evaluations, d_evaluations, b_evaluations]
     polys = [trace_polys, remainder_polys, b_polys]
     mtree = merkelize_polynomials(width, polys)
-    l_evaluations = compute_pseudorandom_linear_combination(
-        comp, params, mtree, polys)
+    l_poly = compute_pseudorandom_linear_combination(params, mtree[1], polys)
     l_mtree = merkelize(l_evaluations)
 
     indices = get_pseudorandom_indices(l_mtree[1],

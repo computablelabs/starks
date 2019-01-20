@@ -20,14 +20,14 @@ class FFT(object):
     """Converts a polynomial represented as evaluations on m points to coefficients."""
     raise NotImplementedError
 
-class MultiDimNonBinaryFFT(FFT):
-  """FFT on multidimensional data."""
-
-  def multi_fft(self, polys: List[Poly]) -> List[List[FieldElement]]:
-    raise NotImplementedError
-
-  def multi_inv_fft(self, values: List[List[FieldElement]]) -> List[Poly]:
-    raise NotImplementedError
+#class MultiDimNonBinaryFFT(FFT):
+#  """FFT on multidimensional data."""
+#
+#  def multi_fft(self, polys: List[Poly]) -> List[List[FieldElement]]:
+#    raise NotImplementedError
+#
+#  def multi_inv_fft(self, values: List[List[FieldElement]]) -> List[Poly]:
+#    raise NotImplementedError
   
 
 class NonBinaryFFT(FFT):
