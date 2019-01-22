@@ -201,7 +201,6 @@ def compute_pseudorandom_linear_combination_1d(params: StarkParams, entropy: byt
   for i in range(1, params.precision):
     powers.append(powers[-1] * G2_to_the_steps)
 
-  #l_evaluations_per_dim = []
   l_polys = []
   for (trace_poly, remainder_poly, boundary_poly) in zip(trace_polys, remainder_polys, boundary_polys):
     l_poly = remainder_poly + trace_poly * k1 + trace_poly * k2 * powers[i] + boundary_poly * k3 + boundary_poly * k4 * powers[i]
