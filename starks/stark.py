@@ -11,11 +11,11 @@ from starks.polynomial import polynomials_over
 from starks.poly_utils import lagrange_interp_2 
 from starks.fft import NonBinaryFFT
 # TODO(rbharath): Swap these out with object oriented API 
-#from starks.fri import prove_low_degree, verify_low_degree_proof
+from starks.fri import FRI 
 from starks.utils import generate_Xi_s
 from starks.utils import get_power_cycle
 from starks.utils import is_a_power_of_2
-from starks.utils import get_pseudorandom_field_elements
+from starks.utils import get_pseudorandom_indices
 from starks.air import Computation
 from starks.poly_utils import make_multivar
 from starks.poly_utils import multi_inv
@@ -69,6 +69,9 @@ class StarkParams(object):
     #self.xs = get_power_cycle(self.G2, modulus)
     self.xs = get_power_cycle(self.G2, self.field)
     self.last_step_position = self.xs[(steps - 1) * extension_factor]
+
+  def get_degree(self):
+    return max([poly.degree() for poly in self.step_polys])
 
 # TODO(rbharath): This is where the binary field fft will come into play.
 def construct_trace_polynomials(witness, params: StarkParams) -> Poly:
@@ -308,12 +311,11 @@ def mk_proof(witness: List[List[FieldElement]], boundary: List[Tuple], params: S
 
   fft_solver = NonBinaryFFT(params.field, params.G2, params.width)
   # list of length |width|
-  trace_polys = construct_trace_polys(witness, params)
+  trace_polys = construct_trace_polynomials(witness, params)
   constraint_polys = construct_constraint_polynomials(
       trace_polys, params)
-  one_dimensional_constraint_polys = project_multivariate_constraints(witness, constraint_polys)
   remainder_polys = construct_remainder_polynomials(
-      witness, one_dimensional_constraint_polys, params)
+      constraint_polys, params)
   boundary_polys = construct_boundary_polynomials(
       trace_polys, witness, boundary, params)
 
@@ -338,7 +340,7 @@ def mk_proof(witness: List[List[FieldElement]], boundary: List[Tuple], params: S
 
   branches = compute_merkle_spot_checks(mtree, l_mtree, params)
 
-  fri = FRI()
+  fri = FRI(params)
   # Return the Merkle roots of P and D, the spot check Merkle
   # proofs, and low-degree proofs of P and D
   o = [
@@ -351,7 +353,7 @@ def mk_proof(witness: List[List[FieldElement]], boundary: List[Tuple], params: S
       #    #params.modulus,
       #    params.field, # TODO(rbharath): This should be serialized
       #    exclude_multiples_of=comp.extension_factor)
-      fri.prove_proximity(l_poly, params.G2, params.steps*params.get_degree())
+      fri.generate_proximity_proof(l_poly, params.G2, params.steps*params.get_degree())
   ]
   print("STARK computed in %.4f sec" % (time.time() - start_time))
   return o

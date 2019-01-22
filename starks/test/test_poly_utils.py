@@ -32,8 +32,8 @@ class TestPolyUtils(unittest.TestCase):
     # 6^-1 = 6
     assert 1/mod7(6) == mod7(6)
 
-  def test_multivar_project(self):
-    """Test that multivariates can be projected."""
+  def test_project_multivar(self):
+    """Test the multivariate projection."""
     modulus = 7
     field = IntegersModP(modulus)
     width = 3
@@ -41,8 +41,8 @@ class TestPolyUtils(unittest.TestCase):
     multi = multivariates_over(field, width).factory
     # This should equal xy
     xy_poly = multi({(1, 1, 0): 1})
-
     x_poly = project_to_univariate(xy_poly, 0, field, width)
+    # TODO(rbharath): Add more nontrivial tests
 
   def test_zpoly(self):
     """Test construction of polynomials with specified root"""
@@ -81,13 +81,13 @@ class TestPolyUtils(unittest.TestCase):
     outs = multi_inv(mod7, [mod7(0), mod7(1), mod7(1)])
 
     modulus = 2**256 - 2**32 * 351 + 1
-    mod = IntegersModP(modulus)
+    field = IntegersModP(modulus)
     ## Root of unity such that x^precision=1
-    G2 = mod(7)**((modulus - 1) // 4096)
+    G2 = field(7)**((modulus - 1) // 4096)
     ### Powers of the higher-order root of unity
-    xs = get_power_cycle(G2, modulus)
+    xs = get_power_cycle(G2, field)
     xs_minus_1 = [x - 1 for x in xs]
-    xs_minus_1_inv = multi_inv(mod, xs_minus_1)
+    xs_minus_1_inv = multi_inv(field, xs_minus_1)
     # Skip 0 since xs_minus_1[0] == 0
     for i in range(1, 5):
       assert xs_minus_1[i] * xs_minus_1_inv[i] == 1
@@ -95,7 +95,7 @@ class TestPolyUtils(unittest.TestCase):
     steps = 512
     precision = 4096
     z_evals = [xs[(i * steps) % precision] - 1 for i in range(precision)]
-    z_inv = multi_inv(mod, z_evals)
+    z_inv = multi_inv(field, z_evals)
     for i in range(1, 5):
       assert z_evals[i] * z_inv[i] == 1
 

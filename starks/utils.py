@@ -56,8 +56,9 @@ def generate_Xi_s(field: Field, width: int):
   return Xi_s
 
 
-#def get_pseudorandom_indices(seed, modulus, count, exclude_multiples_of=0):
-def get_pseudorandom_field_elements(entropy, field, count, exclude_multiples_of=0):
+# TODO(rbharath): This function needs to be reworkd to be more general
+def get_pseudorandom_indices(entropy, modulus, count, exclude_multiples_of=0):
+#def get_pseudorandom_field_elements(entropy, field, count, exclude_multiples_of=0):
   """Extract pseudorandom indices from entropy
 
   Draws pseudorandom numbers from a given range while avoiding
@@ -65,7 +66,7 @@ def get_pseudorandom_field_elements(entropy, field, count, exclude_multiples_of=
   sample random indices from a list of length 512 while
   avoiding indices that are multiples of 32.
   """
-  #assert modulus < 2**24
+  assert modulus < 2**24
   data = entropy 
   # Note that we must have len(data) >= 4 * count. This code #
   # expands data to have necessary length. Think of this as an
@@ -74,16 +75,16 @@ def get_pseudorandom_field_elements(entropy, field, count, exclude_multiples_of=
     data += blake(data[-32:])
   if exclude_multiples_of == 0:
     return [
-        #int.from_bytes(data[i:i + 4], 'big') % modulus
-        field(data[i:i + 4])
+        int.from_bytes(data[i:i + 4], 'big') % modulus
+        #field(data[i:i + 4])
         for i in range(0, count * 4, 4)
     ]
   else:
     # TODO(rbharath): This is horribly ugly. Figure out how to generalize this...
     real_modulus = modulus * (exclude_multiples_of - 1) // exclude_multiples_of
     o = [
-        #int.from_bytes(data[i:i + 4], 'big') % real_modulus
-        field(data[i:i + 4])
+        int.from_bytes(data[i:i + 4], 'big') % real_modulus
+        #field(data[i:i + 4])
         for i in range(0, count * 4, 4)
     ]
     return [x + 1 + x // (exclude_multiples_of - 1) for x in o]
