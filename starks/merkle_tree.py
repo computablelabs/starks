@@ -113,25 +113,7 @@ def merkelize_polynomial_evaluations(dims, polynomial_evals: List[List[FieldElem
   # polyval_1_dim_1 polyval_1_dim_2 poly_val_2_dim_1 poly_val_2_dim_2 ...
   # In the common case this is
   # [p_of_x_dim_1 p_of_x_dim_2 .. d_of_x_dim_1 d_of_x_dim_2... b_of_x_dim_1 b_of_x_dim_2]
-  ###################################################
-  #print("type(polynomial_evals[0][0])")
-  #print(type(polynomial_evals[0][0]))
-  #print("polynomial_evals[0][0].to_bytes()")
-  #print(polynomial_evals[0][0].to_bytes())
-  #for evals in zip(*polynomial_evals):
-  #  print("evals")
-  #  print(evals)
-  #  for val in evals:
-  #    print("type(val)")
-  #    print(type(val))
-  #    print("val.to_bytes()")
-  #    print(val.to_bytes())
-  #  break
-  ###################################################
   mtree = merkelize([
-      # TODO(rbharath): Assuming now in field. May fix later
-      #b''.join([val[dim].to_bytes(32, 'big') for val in evals for dim in range(dims)])
-      #b''.join([val[dim].to_bytes() for val in evals for dim in range(dims)])
       b''.join([val.to_bytes() for val in evals])
       for evals in zip(*polynomial_evals)])
   return mtree

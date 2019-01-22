@@ -10,7 +10,6 @@ from starks.merkle_tree import unpack_merkle_leaf
 from starks.polynomial import polynomials_over
 from starks.poly_utils import lagrange_interp_2 
 from starks.fft import NonBinaryFFT
-# TODO(rbharath): Swap these out with object oriented API 
 from starks.fri import FRI 
 from starks.utils import generate_Xi_s
 from starks.utils import get_power_cycle
@@ -66,19 +65,16 @@ class StarkParams(object):
     self.G1 = self.G2**extension_factor
 
     ## Powers of the higher-order root of unity
-    #self.xs = get_power_cycle(self.G2, modulus)
     self.xs = get_power_cycle(self.G2, self.field)
     self.last_step_position = self.xs[(steps - 1) * extension_factor]
 
   def get_degree(self):
     return max([poly.degree() for poly in self.step_polys])
 
-# TODO(rbharath): This is where the binary field fft will come into play.
 def construct_trace_polynomials(witness, params: StarkParams) -> Poly:
   """Constructs polynomial for the given computation."""
   # Interpolate the computational trace into a polynomial P,
   # with each step along a successive power of G1
-  # TODO(rbharath): This could be better...
   field = params.field
   nonbinary_fft = NonBinaryFFT(field, params.G1, params.width)
   trace_polys = []
@@ -86,45 +82,6 @@ def construct_trace_polynomials(witness, params: StarkParams) -> Poly:
     dim_trace = nonbinary_fft.inv_fft(witness_dim)
     trace_polys.append(dim_trace)
   return trace_polys
-
-#def project_multivarate_constraints(witness, params: StarkParams, constraint_polys: List[MultiVarPoly]) -> List[Poly]:
-#  """Projects a multidimensional polynomial to a single dimensional polynomial."""
-#  polysOver = polynomials_over(params.field).factory
-#  X = polysOver([0, 1])
-#  root_of_unity = params.G1
-#  rootz = [1, root_of_unity]
-#  while rootz[-1] != 1:
-#    rootz.append((rootz[-1] * root_of_unity))
-#  for step in range(len(rootz)):
-#    for dim, constraint_poly in enumerate(constraint_polys):
-#      values = []
-#      for other_dim in range(width):
-#        if other_dim == dim:
-#          values.append(X)
-#        else:
-#          values.append(witness[other_dim][step])
-#      evaluated = constraint_poly(values)
-#    reduced = project_to_univariate(reduced_constraint, dim, field, width)
-#    dims_except_cur = dims[:dim] + dims[dim+1:] 
-#    for coeff_poly in reduced:
-#      
-#    pass
-#
-#  field, width = params.field, params.width
-#  polysOver = polynomials_over(field).factory
-#  fft_solver = NonBinaryFFT(field, params.G2, width)
-#  dims = list(range(width))
-#  for dim, (witness_dim, constraint_poly) in enumerate(zip(witness, constraint_polys)):
-#    dims_except_cur = dims[:dim] + dims[dim+1:] 
-#    reduced_constraint = constraint_poly
-#    for other_dim in dims_except_cur:
-#      reduced = project_to_univariate(reduced_constraint, other_dim, field, width)
-#      # reduced_values: List[MultiVarPoly] of length
-#      reduced_values = fft_solver.fft(reduced)
-#    for (term, coeff) in constraint_poly:
-#      prod = X
-#      for i, power in enumerate(term):
-#        prod *= witness_dim[
 
 def construct_constraint_polynomials(trace_polys: List[Poly], params: StarkParams) -> List[MultiVarPoly]:
   """Construct the constraint polynomial for the given tape.
@@ -136,17 +93,12 @@ def construct_constraint_polynomials(trace_polys: List[Poly], params: StarkParam
   # Create the composed polynomial such that
   # C(P(x), P(g1*x)) = P(g1*x) - step_fn(P(x))
   field, width = params.field, params.width
-  #Xi_s = generate_Xi_s(field, width)
   polysOver = polynomials_over(field).factory
   X = polysOver([field(0), field(1)])
-  #next_traces = [trace_poly(params.G1*X_i) for (trace_poly, X_i) in zip(trace_polys, Xi_s)]
   next_traces = [trace_poly(params.G1*X) for trace_poly in trace_polys]
   # Convert trace polys to multidimensional polys by evaluating
-  #trace_polys = [trace_poly(X_i) for (X_i, trace_poly) in zip(Xi_s, trace_polys)]
   constraint_polys = []
-  #transition_poly = step_poly(trace_polys)
   for next_trace, step_poly in zip(next_traces, params.step_polys):
-    # TODO(rbharath): One of these is 1-d poly, while other is multi-d. How to handle?
     constraint_poly = next_trace - step_poly(trace_polys) 
     constraint_polys.append(constraint_poly)
   return constraint_polys
@@ -159,7 +111,6 @@ def construct_remainder_polynomials(constraint_polys: List[Poly], params: StarkP
   TODO(rbharath): I think this is supposed to equal 
   Z(x) = (x - 1)(x-2)...(x-(steps_1)). How are these equal?
   """
-  #Xi_s = generate_Xi_s(params.field, params.width)
   field = params.field
   polysOver = polynomials_over(field).factory
   X = polysOver([field(0), field(1)])
@@ -170,14 +121,10 @@ def construct_remainder_polynomials(constraint_polys: List[Poly], params: StarkP
   assert z_num % z_den == 0
   z = z_num / z_den
   # Implicitly representing the division...
-  #ds = []
-  #for dim, (constraint_poly, Xi) in enumerate(zip(constraint_polys, Xi_s)):
-  #  ds.append((cp, z(Xi)))
   for cp in constraint_polys:
     assert cp % z == 0
   ds = [cp/z for cp in constraint_polys]
   print('Computed D polynomials')
-  #return d_evaluations
   return ds
 
 def construct_boundary_polynomials(trace_polys: List[Poly], witness: List[List], boundary: List[Tuple], params: StarkParams) -> List[Vector]:
@@ -204,7 +151,6 @@ def construct_boundary_polynomials(trace_polys: List[Poly], witness: List[List],
     b_poly = (p - i)/zeropoly2
     b_polys.append(b_poly)
   print('Computed B polynomial')
-  #return b_evaluations
   return b_polys
 
 def get_pseudorandom_ks(m_root: bytes, num: int) -> List[int]:
@@ -229,7 +175,6 @@ def get_pseudorandom_ks(m_root: bytes, num: int) -> List[int]:
     ks = [int.from_bytes(blake(m_root + byte_list[ind]), 'big') for ind in range(num)]
     return ks
 
-#def compute_pseudorandom_linear_combination_1d(params: StarkParams, mtree: List[bytes], polys: List[List[Vector]]) -> List[Vector]:
 def compute_pseudorandom_linear_combination_1d(params: StarkParams, entropy: bytes, trace_polys: List[Poly], remainder_polys: List[Poly], boundary_polys: List[Poly]) -> List[Vector]:
   """Computes the pseudorandom linear combination for 1-d slice of poly.
 
@@ -259,14 +204,10 @@ def compute_pseudorandom_linear_combination_1d(params: StarkParams, entropy: byt
   #l_evaluations_per_dim = []
   l_polys = []
   for (trace_poly, remainder_poly, boundary_poly) in zip(trace_polys, remainder_polys, boundary_polys):
-    #l_evaluations_dim = [(d_evaluations[i][dim] + p_evaluations[i][dim] * k1 + p_evaluations[i][dim] * k2 * powers[i] + b_evaluations[i][dim] * k3 + b_evaluations[i][dim] * k4 * powers[i]) for i in range(params.precision)]
     l_poly = remainder_poly + trace_poly * k1 + trace_poly * k2 * powers[i] + boundary_poly * k3 + boundary_poly * k4 * powers[i]
-    #l_evaluations_per_dim.append(l_evaluations_dim)
     l_polys.append(l_poly)
-  #return l_evaluations_per_dim
   return l_polys
 
-#def compute_pseudorandom_linear_combination(params: StarkParams, mtree: List[bytes], polys: List[List[Vector]]):
 def compute_pseudorandom_linear_combination(params: StarkParams, entropy: bytes, trace_polys: List[Poly], remainder_polys: List[Poly], boundary_polys: List[Poly]) -> Poly:
   """Computes a pseudorandom linear combination of polys
 
@@ -277,18 +218,16 @@ def compute_pseudorandom_linear_combination(params: StarkParams, entropy: bytes,
   powers = [1]
   for i in range(1, params.precision):
     powers.append(powers[-1] * G2_to_the_steps)
-  #l_evaluations_per_dim = compute_pseudorandom_linear_combination_1d(params, entropy, polys)
   l_polys = compute_pseudorandom_linear_combination_1d(params, entropy, trace_polys, remainder_polys, boundary_polys)
   l_ks = get_pseudorandom_ks(entropy, params.width)
-  #l_evaluations = [sum([l_evals_dim[i] + l_evals_dim[i] * l_k * powers[i] for (l_evals_dim, l_k) in zip(l_evaluations_per_dim, l_ks)]) for i in range(params.precision)]
   l_joint_poly = sum([l_poly + l_poly * l_k * powers[i] for (l_poly, l_k) in zip(l_polys, l_ks)])
   print('Computed random linear combination')
-  #return l_evaluations
   return l_joint_poly 
 
-# TODO(rbharath): This function is poorly structured since it computes spot
-# checks for both the mtree and the ltree simultaneously. This makes
-# refactoring challenging. Break up and separate in future PR.
+# TODO(rbharath): This function is poorly structured since it
+# computes spot checks for both the mtree and the ltree
+# simultaneously. This makes refactoring challenging. Break up
+# and separate in future PR.
 def compute_merkle_spot_checks(mtree, l_mtree, params, samples=80):
   """Computes pseudorandom spot checks of Merkle tree."""
   # Do some spot checks of the Merkle tree at pseudo-random
@@ -304,7 +243,6 @@ def compute_merkle_spot_checks(mtree, l_mtree, params, samples=80):
   return branches
 
 
-#def mk_proof(comp: Computation, params: StarkParams):
 def mk_proof(witness: List[List[FieldElement]], boundary: List[Tuple], params: StarkParams):
   """Generate a STARK for a MIMC calculation"""
   start_time = time.time()
@@ -345,20 +283,11 @@ def mk_proof(witness: List[List[FieldElement]], boundary: List[Tuple], params: S
   # proofs, and low-degree proofs of P and D
   o = [
       mtree[1], l_mtree[1], branches,
-      #prove_low_degree(
-      #    #l_evaluations,
-      #    l_polys,
-      #    params.G2,
-      #    comp.steps * comp.get_degree(),
-      #    #params.modulus,
-      #    params.field, # TODO(rbharath): This should be serialized
-      #    exclude_multiples_of=comp.extension_factor)
       fri.generate_proximity_proof(l_poly, params.G2, params.steps*params.get_degree())
   ]
   print("STARK computed in %.4f sec" % (time.time() - start_time))
   return o
 
-#def verify_proof(comp: Computation, params: StarkParams, proof):
 def verify_proof(proof: List[bytes], witness, boundary, params: StarkParams):
   """Verifies a STARK
   

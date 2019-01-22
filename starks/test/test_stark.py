@@ -55,7 +55,6 @@ class TestStark(unittest.TestCase):
     """
     modulus = 2**256 - 2**32 * 351 + 1
     field = IntegersModP(modulus)
-    # state = [c_0, c_1, value]
     inp = [field(2), field(2), field(5)]
     width = 3
     steps = 4
@@ -373,115 +372,6 @@ class TestStark(unittest.TestCase):
     assert list(trace[2]) == [1, 2]
     assert list(trace[3]) == [2, 3]
     assert list(trace[4]) == [3, 5]
-
-  #def test_higher_dim_computation_polynomial(self):
-  #  """
-  #  Tests construction of multidim computation polynomial
-  #  """
-  #  width = 2
-  #  steps = 512
-  #  extension_factor = 8
-  #  modulus = 2**256 - 2**32 * 351 + 1
-  #  field = IntegersModP(modulus)
-  #  inp = [field(0), field(1)]
-  #  [X_1, X_2] = generate_Xi_s(field, width)
-  #  step_polys = [X_2, X_1 + X_2] 
-  #  comp = Computation(field, width, inp, steps, step_polys,
-  #      extension_factor)
-  #  params = StarkParams(field, steps, modulus, extension_factor, width, step_polys)
-  #  comp_poly_evals = construct_computation_polynomial(
-  #      comp, params)
-  #  assert len(comp_poly_evals) == steps * extension_factor
-  #  for cval in comp_poly_evals:
-  #    assert isinstance(cval, list)
-  #    assert len(cval) == width 
-
-
-  #def test_higher_dim_constraint_polynomial(self):
-  #  """
-  #  Tests construction of constraint polynomial.
-  #  """
-  #  width = 2
-  #  steps = 512
-  #  extension_factor = 8
-  #  modulus = 2**256 - 2**32 * 351 + 1
-  #  field = IntegersModP(modulus)
-  #  inp = [field(0), field(1)]
-  #  [X_1, X_2] = generate_Xi_s(field, width)
-  #  step_polys = [X_2, X_1 + X_2] 
-  #  comp = Computation(field, width, inp, steps, step_polys,
-  #      extension_factor)
-  #  params = StarkParams(field, steps, modulus, extension_factor)
-  #  comp_poly_evals = construct_computation_polynomial(
-  #      comp, params)
-  #  constraint_evals = construct_constraint_polynomial(
-  #      comp, params, comp_poly_evals)
-  #  assert len(constraint_evals) == steps * extension_factor
-  #  for cval in constraint_evals:
-  #    assert isinstance(cval, list)
-  #    assert len(cval) == width 
-
-  #def test_higher_dim_remainder_polynomial(self):
-  #  """
-  #  Basic tests of FRI generation for fibonacci stark
-  #  """
-  #  width = 2
-  #  steps = 512
-  #  modulus = 2**256 - 2**32 * 351 + 1
-  #  extension_factor = 8
-  #  field = IntegersModP(modulus)
-  #  [X_1, X_2] = generate_Xi_s(field, width)
-  #  step_polys = [X_2, X_1 + X_2] 
-  #  inp = [field(0), field(1)]
-  #  ## Factoring out computation
-  #  comp = Computation(field, width, inp, steps, step_polys,
-  #      extension_factor)
-  #  params = StarkParams(field, steps, modulus, extension_factor)
-
-  #  p_evaluations = construct_computation_polynomial(
-  #      comp, params)
-  #  c_of_p_evaluations = construct_constraint_polynomial(
-  #      comp, params, p_evaluations)
-  #  d_evaluations = construct_remainder_polynomial(
-  #      comp, params, c_of_p_evaluations)
-  #  assert len(d_evaluations) == params.precision
-  #  for ind, dval in enumerate(d_evaluations):
-  #    assert isinstance(dval, list)
-  #    assert len(dval) == width 
-  #    for dim in range(width):
-  #      assert isinstance(dval[dim], field)
-
-  #def test_higher_dim_boundary_polynomial(self):
-  #  """
-  #  Basic tests of FRI generation for fibonacci stark
-  #  """
-  #  width = 2
-  #  steps = 512
-  #  modulus = 2**256 - 2**32 * 351 + 1
-  #  extension_factor = 8
-  #  field = IntegersModP(modulus)
-  #  inp = [field(0), field(1)]
-  #  [X_1, X_2] = generate_Xi_s(field, width)
-  #  step_polys = [X_2, X_1 + X_2] 
-  #  ## Factoring out computation
-  #  comp = Computation(field, width, inp, steps, step_polys,
-  #      extension_factor)
-  #  params = StarkParams(field, steps, modulus, extension_factor)
-
-  #  p_evaluations = construct_computation_polynomial(
-  #      comp, params)
-  #  c_of_p_evaluations = construct_constraint_polynomial(
-  #      comp, params, p_evaluations)
-  #  d_evaluations = construct_remainder_polynomial(
-  #      comp, params, c_of_p_evaluations)
-  #  b_evaluations = construct_boundary_polynomial(
-  #      comp, params, p_evaluations)
-  #  assert len(b_evaluations) == params.precision
-  #  for ind, bval in enumerate(d_evaluations):
-  #    assert isinstance(bval, list)
-  #    assert len(bval) == width 
-  #    for dim in range(width):
-  #      assert isinstance(bval[dim], field)
 
   #def test_higher_dim_fri(self):
   #  """
