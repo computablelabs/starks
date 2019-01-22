@@ -47,6 +47,7 @@ class FRI(object):
       return [[x.to_bytes() for x in values]]
 
     # Calculate the set of x coordinates
+    field = self.params.field
     xs = get_power_cycle(root_of_unity, field)
     
     assert len(values) == len(xs)
@@ -90,11 +91,12 @@ class FRI(object):
     o = [m2[1], branches]
 
     # Recurse...
-    return [o] + self.prove_proximity(
-        column,
+    column_poly = self.fft_solver.inv_fft(column)
+    return [o] + self.generate_proximity_proof(
+        column_poly,
         root_of_unity**4,
         maxdeg_plus_1 // 4,
-        field,
+        #field,
         exclude_multiples_of=exclude_multiples_of)
 
 #def verify_low_degree_proof(merkle_root,

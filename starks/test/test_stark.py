@@ -617,7 +617,7 @@ class TestStark(unittest.TestCase):
     Basic tests of quadratic stark generation
     """
     width = 2
-    steps = 512
+    steps = 8
     modulus = 2**256 - 2**32 * 351 + 1
     field = IntegersModP(modulus)
     inp = [field(2), field(5)]
@@ -630,11 +630,14 @@ class TestStark(unittest.TestCase):
 
     comp = Computation(field, width, inp, steps, step_polys,
         extension_factor)
-    params = StarkParams(field, steps, modulus, extension_factor)
-    proof = mk_proof(comp, params)
+    params = StarkParams(field, steps, modulus, extension_factor, width, step_polys)
+
+    witness = comp.generate_witness()
+    boundary = comp.generate_boundary_constraints()
+    proof = mk_proof(witness, boundary, params)
     assert isinstance(proof, list)
     assert len(proof) == 4
-    result = verify_proof(comp, params, proof)
+    result = verify_proof(proof, witness, boundary, params)
     assert result
 
 
