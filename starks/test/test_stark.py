@@ -610,7 +610,7 @@ class TestStark(unittest.TestCase):
     L2 = bin_length(compress_fri(fri_proof))
     print("Approx proof length: %d (branches), %d (FRI proof), %d (total)" %
           (L1, L2, L1 + L2))
-    assert verify_proof(comp, params, proof)
+    assert verify_proof(proof, witness, boundary, params)
                         
   def test_quadratic_stark(self):
     """

@@ -359,7 +359,7 @@ def mk_proof(witness: List[List[FieldElement]], boundary: List[Tuple], params: S
   return o
 
 #def verify_proof(comp: Computation, params: StarkParams, proof):
-def verify_proof(proof: List[bytes], params: StarkParams):
+def verify_proof(proof: List[bytes], witness, boundary, params: StarkParams):
   """Verifies a STARK
   
   Parameters
@@ -375,7 +375,7 @@ def verify_proof(proof: List[bytes], params: StarkParams):
   m_root, l_root, branches, fri_proof = proof
 
   # Verifies the low-degree proofs
-  fri = FRI()
+  fri = FRI(params)
   assert fri.verify_proximity_proof(
       l_root,
       params.G2,
@@ -383,7 +383,7 @@ def verify_proof(proof: List[bytes], params: StarkParams):
       # TODO(rbharath): Degree must be in parameters
       params.steps * params.get_degree(),
       params.field,
-      exclude_multiples_of=comp.extension_factor)
+      exclude_multiples_of=params.extension_factor)
 
   ## Performs the spot checks
   samples = params.spot_check_security_factor
@@ -393,13 +393,13 @@ def verify_proof(proof: List[bytes], params: StarkParams):
   ks = get_pseudorandom_ks(m_root, 4)
   for i, pos in enumerate(positions):
     #verify_proof_at_position(comp, params, ks, proof, i, pos, constants_polynomials)
-    verify_proof_at_position(params, ks, proof, i, pos)
+    verify_proof_at_position(witness, boundary, params, ks, proof, i, pos)
 
   print('Verified %d consistency checks' % params.spot_check_security_factor)
   print('Verified STARK in %.4f sec' % (time.time() - start_time))
   return True
 
-def verify_proof_at_position(params, ks, proof, i, pos):
+def verify_proof_at_position(witness, boundary, params, ks, proof, i, pos):
   """Verifies merkle proof at given position in extended trace"""
   field = params.field
   width = params.width
@@ -448,8 +448,12 @@ def verify_proof_at_position(params, ks, proof, i, pos):
   for dim in range(width):
     #interpolant_dim = lagrange_interp_2(modulus, [1, params.last_step_position], [comp.inp[dim], comp.output[dim]])
     # TODO(rbharath): Add output_dim extraction
-    interpolant_dim = lagrange_interp_2(field, [1, params.last_step_position], [comp.inp[dim], comp.output[dim]])
-    assert (p_of_x[dim] - b_of_x[dim] * zeropoly2(x) - interpolant_dim(x)) == 0
+    constraint = boundary[dim]
+    (_, _, input_value) = constraint
+    # TODO(rbharath): Explicitly passing the witness here isn't optimal. Should the verifier have to use the witness?
+    output_dim = witness[dim][-1]
+    interpolant = lagrange_interp_2(field, [1, params.last_step_position], [input_value, output_dim])
+    assert (p_of_x[dim] - b_of_x[dim] * zeropoly2(x) - interpolant(x)) == 0
 
   # TODO(rbharath): I'm commenting this out for now, but I think commenting
   # out this check breaks security guarantees!! To fix this, we need a way

@@ -109,9 +109,9 @@ class FRI(object):
                              merkle_root: bytes,
                              root_of_unity: FieldElement,
                              proof: List[bytes],
-                             max_deg_plus_1: int,
+                             maxdeg_plus_1: int,
                              field: Field,
-                             exculde_multiples_of:int = 0,
+                             exclude_multiples_of:int = 0,
                              fri_spot_check_security_factor:int = 40) -> bool:
     """Verifies proximity of this function to this RS code."""
     # Calculate which root of unity we're working with
