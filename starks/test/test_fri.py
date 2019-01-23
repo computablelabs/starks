@@ -6,6 +6,9 @@ from starks.compression import compress_fri
 from starks.modp import IntegersModP
 from starks.polynomial import polynomials_over
 from starks.fft import NonBinaryFFT
+from starks.poly_utils import multivariates_over
+from starks.air import Computation
+from starks.stark import get_power_cycle 
 
 
 class TestFRI(unittest.TestCase):
@@ -133,3 +136,78 @@ class TestFRI(unittest.TestCase):
     #  raise Exception("Fake data passed FRI")
     #except:
     #  pass
+
+  def test_varying_quadratic_fri(self):
+    """
+    Basic tests of FRI generation for quadratic stark with varying coefficients
+    """
+    width = 2
+    steps = 512
+    modulus = 2**256 - 2**32 * 351 + 1
+    extension_factor = 8
+    field = IntegersModP(modulus)
+    inp = [field(2), field(5)]
+
+    precision = steps * extension_factor
+    G1 = field(7)**((modulus - 1) // steps)
+    G2 = field(7)**((modulus - 1) // precision)
+    xs = get_power_cycle(G2, field)
+    last_step_position = xs[(steps - 1) * extension_factor]
+    ### Factoring out computation
+    polysOver = multivariates_over(field, width).factory
+    X_1 = polysOver({(1,0): field(1)})
+    X_2 = polysOver({(0,1): field(1)})
+    step_polys = [X_1, X_1 + X_2**2] 
+    comp = Computation(field, width, inp, steps, step_polys,
+        extension_factor)
+    witness = comp.generate_witness()
+    boundary = comp.generate_boundary_constraints()
+    stark = STARK(field, steps, modulus, extension_factor, width, step_polys)
+
+
+    trace_polys = construct_trace_polynomials(witness, field, G1)
+    constraint_polys = construct_constraint_polynomials(step_polys,
+        trace_polys, field, G1, width)
+    remainder_polys = construct_remainder_polynomials(constraint_polys, field,
+        steps, last_step_position)
+    boundary_polys = construct_boundary_polynomials(
+        trace_polys, witness, boundary, field, last_step_position, width)
+
+    fft_solver = NonBinaryFFT(field, G2)
+    polys = trace_polys + remainder_polys + boundary_polys
+    poly_evals = []
+    for poly in polys:
+      poly_eval = fft_solver.fft(poly)
+      poly_evals.append(poly_eval)
+    mtree = merkelize_polynomial_evaluations(width, poly_evals)
+
+    l_poly = compute_pseudorandom_linear_combination(mtree[1],
+        trace_polys, remainder_polys, boundary_polys, field, G2, precision,
+        steps, width)
+    l_evaluations = fft_solver.fft(l_poly)
+    l_mtree = merkelize(l_evaluations)
+    l_root = l_mtree[1]
+
+    fri = FRI(field)
+    proof = fri.generate_proximity_proof(l_poly, G2, steps*comp.get_degree(), exclude_multiples_of=extension_factor)
+    #fri_proof = prove_low_degree(
+    #      l_evaluations,
+    #      params.G2,
+    #      steps * comp.get_degree(),
+    #      modulus,
+    #      exclude_multiples_of=extension_factor)
+
+    fft_solver = NonBinaryFFT(field, root_of_unity)
+    evaluations = fft_solver.fft(poly)
+    e_mtree = merkelize(evaluations)
+    mroot = e_mtree[1]
+    verification = fri.verify_proximity_proof(proof, mroot, root_of_unity, degree)
+    assert verification
+    #assert verify_low_degree_proof(
+    #    l_root,
+    #    params.G2,
+    #    fri_proof,
+    #    steps * comp.get_degree(),
+    #    modulus,
+    #    exclude_multiples_of=extension_factor)
+
