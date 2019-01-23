@@ -100,9 +100,9 @@ class FRI(object):
         exclude_multiples_of=exclude_multiples_of)
 
   def verify_proximity_proof(self,
+                             proof: List[bytes],
                              merkle_root: bytes,
                              root_of_unity: FieldElement,
-                             proof: List[bytes],
                              maxdeg_plus_1: int,
                              exclude_multiples_of:int = 0,
                              fri_spot_check_security_factor:int = 40) -> bool:

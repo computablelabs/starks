@@ -9,15 +9,11 @@ from starks.merkle_tree import merkelize_polynomial_evaluations
 from starks.merkle_tree import unpack_merkle_leaf
 from starks.air import Computation
 from starks.air import get_computational_trace
-from starks.fft import fft 
 from starks.fft import NonBinaryFFT
 # TODO(rbharath): These need to be swapped out for correct imports
 from starks.utils import generate_Xi_s
 from starks.utils import get_pseudorandom_indices
 from starks.stark import get_power_cycle 
-from starks.stark import mk_proof
-from starks.stark import StarkParams 
-from starks.stark import verify_proof
 from starks.stark import construct_trace_polynomials
 from starks.stark import construct_constraint_polynomials
 from starks.stark import construct_remainder_polynomials
@@ -25,7 +21,7 @@ from starks.stark import construct_boundary_polynomials
 from starks.stark import get_pseudorandom_ks
 from starks.stark import compute_pseudorandom_linear_combination_1d
 from starks.stark import compute_pseudorandom_linear_combination
-from starks.stark import compute_merkle_spot_checks
+from starks.stark import STARK 
 from starks.modp import IntegersModP
 from starks.compression import bin_length
 from starks.compression import compress_branches
@@ -40,14 +36,41 @@ class TestStark(unittest.TestCase):
   Basic tests for Stark construction implementation. 
   """
 
-  def test_stark_params(self):
+  def test_trace_polynomials(self):
+    """
+    Tests construction of computation polynomial
+    """
+    width = 2
+    steps = 128 
+    extension_factor = 8
+    modulus = 2**256 - 2**32 * 351 + 1
+    field = IntegersModP(modulus)
+    inp = [field(2), field(5)]
+    [X_1, X_2] = generate_Xi_s(field, width)
+    step_polys = [X_2, X_1 + 2*X_2**2] 
+    comp = Computation(field, width, inp, steps, step_polys,
+        extension_factor)
+    witness = comp.generate_witness()
+    params = STARK(field, steps, modulus, extension_factor, width, step_polys)
+    trace_polys = construct_trace_polynomials(witness, params.field, params.G1)
+    assert len(trace_polys) == width
+    xs = get_power_cycle(params.G1, params.field) 
+    # Check that the trace polynomial reconstitutes the witness
+    for dim in range(width):
+      witness_dim = witness[dim]
+      trace_poly = trace_polys[dim]
+      for ind, x in enumerate(xs):
+        assert witness_dim[ind] == trace_poly(x)
+
+
+  def test_stark_init(self):
     """Test generation of stark parameters."""
     steps = 512
     modulus = 2**256 - 2**32 * 351 + 1
     field = IntegersModP(modulus)
     extension_factor = 8
     # Only tests that constructor works implicitly
-    params = StarkParams(field, steps, modulus, extension_factor)
+    params = STARK(field, steps, modulus, extension_factor, width=1, step_polys=[])
 
   def test_get_pseudorandom_indices(self):
     """
@@ -65,17 +88,17 @@ class TestStark(unittest.TestCase):
     [X_1, X_2, X_3] = generate_Xi_s(field, width)
     step_polys = [X_1, X_2, X_1 + X_2*X_3**2] 
     comp = Computation(field, width, inp, steps, step_polys, extension_factor)
-    params = StarkParams(field, steps, modulus, extension_factor, width, step_polys)
+    params = STARK(field, steps, modulus, extension_factor, width, step_polys)
 
     witness = comp.generate_witness()
     boundary = comp.generate_boundary_constraints()
-    trace_polys = construct_trace_polynomials(witness, params)
+    trace_polys = construct_trace_polynomials(witness, params.field, params.G1)
     constraint_polys = construct_constraint_polynomials(trace_polys, params)
     remainder_polys = construct_remainder_polynomials(constraint_polys, params)
     boundary_polys = construct_boundary_polynomials(
         trace_polys, witness, boundary, params)
 
-    fft_solver = NonBinaryFFT(params.field, params.G2, params.width)
+    fft_solver = NonBinaryFFT(params.field, params.G2)
     polys = trace_polys + remainder_polys + boundary_polys
     poly_evals = []
     for poly in polys:
@@ -107,17 +130,17 @@ class TestStark(unittest.TestCase):
     [X_1, X_2, X_3] = generate_Xi_s(field, width)
     step_polys = [X_1, X_2, X_1 + X_2*X_3**2] 
     comp = Computation(field, width, inp, steps, step_polys, extension_factor)
-    params = StarkParams(field, steps, modulus, extension_factor, width, step_polys)
+    params = STARK(field, steps, modulus, extension_factor, width, step_polys)
 
     witness = comp.generate_witness()
     boundary = comp.generate_boundary_constraints()
-    trace_polys = construct_trace_polynomials(witness, params)
+    trace_polys = construct_trace_polynomials(witness, params.field, params.G1)
     constraint_polys = construct_constraint_polynomials(trace_polys, params)
     remainder_polys = construct_remainder_polynomials(constraint_polys, params)
     boundary_polys = construct_boundary_polynomials(
         trace_polys, witness, boundary, params)
 
-    fft_solver = NonBinaryFFT(params.field, params.G2, params.width)
+    fft_solver = NonBinaryFFT(params.field, params.G2)
     polys = trace_polys + remainder_polys + boundary_polys
     poly_evals = []
     for poly in polys:
@@ -130,7 +153,7 @@ class TestStark(unittest.TestCase):
     l_mtree = merkelize(l_evaluations)
 
     # Compute merkle spot checks
-    branches = compute_merkle_spot_checks(mtree, l_mtree,
+    branches = stark.compute_merkle_spot_checks(mtree, l_mtree,
         params, samples=spot_check_security_factor)
 
     # Each spot check returns 3 branches, m[pos], m[pos+extension_factor], l[pos] 
@@ -354,25 +377,6 @@ class TestStark(unittest.TestCase):
   #   #   interpolant_dim = lagrange_interp_2(modulus, [1, params.last_step_position], [comp.inp[dim], comp.output[dim]])
   #   #   assert (p_of_x[dim] - b_of_x[dim] * zeropoly2(x) - interpolant_dim(x)) == 0
 
-  def test_higher_dim_trace(self):
-    """
-    Checks trace generation for multidimensional state.
-    """
-    width = 2
-    steps = 5
-    modulus = 2**256 - 2**32 * 351 + 1
-    field = IntegersModP(modulus)
-    inp = [field(0), field(1)]
-    [X_1, X_2] = generate_Xi_s(field, width)
-    step_polys = [X_2, X_1 + X_2] 
-    trace, output = get_computational_trace(inp, steps,
-        width, step_polys)
-    assert list(trace[0]) == [0, 1]
-    assert list(trace[1]) == [1, 1]
-    assert list(trace[2]) == [1, 2]
-    assert list(trace[3]) == [2, 3]
-    assert list(trace[4]) == [3, 5]
-
   #def test_higher_dim_fri(self):
   #  """
   #  Basic tests of FRI generation for fibonacci stark
@@ -429,32 +433,6 @@ class TestStark(unittest.TestCase):
   #  proof = mk_proof(comp, params)
   #  assert verify_proof(comp, params, proof)
 
-  def test_trace_polynomials(self):
-    """
-    Tests construction of computation polynomial
-    """
-    width = 2
-    steps = 128 
-    extension_factor = 8
-    modulus = 2**256 - 2**32 * 351 + 1
-    field = IntegersModP(modulus)
-    inp = [field(2), field(5)]
-    [X_1, X_2] = generate_Xi_s(field, width)
-    step_polys = [X_2, X_1 + 2*X_2**2] 
-    comp = Computation(field, width, inp, steps, step_polys,
-        extension_factor)
-    witness = comp.generate_witness()
-    params = StarkParams(field, steps, modulus, extension_factor, width, step_polys)
-    trace_polys = construct_trace_polynomials(witness, params)
-    assert len(trace_polys) == width
-    xs = get_power_cycle(params.G1, params.field) 
-    # Check that the trace polynomial reconstitutes the witness
-    for dim in range(width):
-      witness_dim = witness[dim]
-      trace_poly = trace_polys[dim]
-      for ind, x in enumerate(xs):
-        assert witness_dim[ind] == trace_poly(x)
-
   def test_constraint_polynomials(self):
     """
     Tests construction of constraint polynomial.
@@ -469,38 +447,12 @@ class TestStark(unittest.TestCase):
     step_polys = [X_2, X_1 + 2*X_2**2] 
     comp = Computation(field, width, inp, steps, step_polys,
         extension_factor)
-    params = StarkParams(field, steps, modulus, extension_factor, width, step_polys)
+    params = STARK(field, steps, modulus, extension_factor, width, step_polys)
     witness = comp.generate_witness()
-    trace_polys = construct_trace_polynomials(witness, params)
+    trace_polys = construct_trace_polynomials(witness, params.field, params.G1)
     constraint_polys = construct_constraint_polynomials(trace_polys, params)
     assert len(constraint_polys) == width
     # TODO(rbharath): Add more meaningful test here.
-
-  def test_compressed_stark(self):
-    """Basic compressed stark test"""
-    width = 2
-    steps = 4
-    modulus = 2**256 - 2**32 * 351 + 1
-    field = IntegersModP(modulus)
-    inp = [field(2), field(5)]
-    extension_factor = 8
-
-    ## Factoring out computation
-    [X_1, X_2] = generate_Xi_s(field, width)
-    step_polys = [X_1, X_1 + X_2**3] 
-    comp = Computation(field, width, inp, steps, step_polys,
-        extension_factor)
-    params = StarkParams(field, steps, modulus, extension_factor, width, step_polys)
-
-    witness = comp.generate_witness()
-    boundary = comp.generate_boundary_constraints()
-    proof = mk_proof(witness, boundary, params)
-    m_root, l_root, branches, fri_proof = proof
-    L1 = bin_length(compress_branches(branches))
-    L2 = bin_length(compress_fri(fri_proof))
-    print("Approx proof length: %d (branches), %d (FRI proof), %d (total)" %
-          (L1, L2, L1 + L2))
-    assert verify_proof(proof, witness, boundary, params)
                         
   def test_quadratic_stark(self):
     """
@@ -520,7 +472,7 @@ class TestStark(unittest.TestCase):
 
     comp = Computation(field, width, inp, steps, step_polys,
         extension_factor)
-    params = StarkParams(field, steps, modulus, extension_factor, width, step_polys)
+    params = STARK(field, steps, modulus, extension_factor, width, step_polys)
 
     witness = comp.generate_witness()
     boundary = comp.generate_boundary_constraints()
@@ -536,7 +488,7 @@ class TestStark(unittest.TestCase):
     Basic tests of MiMC stark verification.
     """
     width = 2
-    steps = 512
+    steps = 8
     constraint_degree = 4
     # TODO(rbharath): Should be able to encode these constants as boundary
     # conditions on the tape for the STARK
@@ -553,9 +505,12 @@ class TestStark(unittest.TestCase):
 
     comp = Computation(field, width, inp, steps, step_polys,
         extension_factor)
-    params = StarkParams(field, steps, modulus, extension_factor)
-    proof = mk_proof(comp, params)
-    result = verify_proof(comp, params, proof)
+    witness = comp.generate_witness()
+    boundary = comp.generate_boundary_constraints()
+
+    params = STARK(field, steps, modulus, extension_factor, width, step_polys)
+    proof = mk_proof(witness, boundary, params)
+    result = verify_proof(proof, witness, boundary, params)
     assert result
 
   # TODO(rbharath): This is broken!! Need to fix in future PR
@@ -640,7 +595,7 @@ class TestStark(unittest.TestCase):
     """
     Basic tests of quintic stark generation
     """
-    steps = 512
+    steps = 8 
     width = 6
     modulus = 2**256 - 2**32 * 351 + 1
     field = IntegersModP(modulus)
@@ -653,12 +608,15 @@ class TestStark(unittest.TestCase):
 
     comp = Computation(field, width, inp, steps, step_polys,
         extension_factor)
-    params = StarkParams(field, steps, modulus, extension_factor)
-    proof = mk_proof(comp, params)
+    witness = comp.generate_witness()
+    boundary = comp.generate_boundary_constraints()
+
+    params = STARK(field, steps, modulus, extension_factor, width, step_polys)
+    proof = mk_proof(witness, boundary, params)
     assert isinstance(proof, list)
     assert len(proof) == 4
     (m_root, l_root, branches, fri_proof) = proof
     trace, output = get_computational_trace(
         inp, steps, width, step_polys)
-    result = verify_proof(comp, params, proof)
+    result = verify_proof(proof, witness, boundary, params)
     assert result
