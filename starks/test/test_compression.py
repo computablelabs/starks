@@ -27,13 +27,7 @@ class TestCompression(unittest.TestCase):
 
     # A root of unity is a number such that z^n = 1
     # This provides us a 6-th root of unity (z^6 = 1)
-    root_of_unity = field(3)**((modulus-1)//6)
-    #############################################
-    from starks.fft import NonBinaryFFT
-    fft_solver = NonBinaryFFT(field, root_of_unity)
-    evals = fft_solver.fft(poly)
-    assert 0 == 1
-    #############################################
+    root_of_unity = field(3)**((modulus-1)//8)
     
     fri = FRI(field, root_of_unity)
     proof = fri.generate_proximity_proof(poly, root_of_unity, degree, modulus)

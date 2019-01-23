@@ -37,10 +37,10 @@ class TestFFT(unittest.TestCase):
 
     # A root of unity is a number such that z^n = 1
     # This provides us a 6-th root of unity (z^6 = 1)
-    root_of_unity = field(3)**((modulus-1)//6)
+    root_of_unity = field(7)**((modulus-1)//8)
     fft_solver = NonBinaryFFT(field, root_of_unity)
     evaluations = fft_solver.fft(poly)
-    assert len(evaluations) == 6
+    assert len(evaluations) == 8
 
   def test_fft_inv(self):
     """Test of Inverse FFT."""

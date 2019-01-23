@@ -268,8 +268,6 @@ def mk_proof(witness: List[List[FieldElement]], boundary: List[Tuple], params: S
     poly_evals.append(poly_eval)
   mtree = merkelize_polynomial_evaluations(params.width, poly_evals)
 
-  #l_evaluations = compute_pseudorandom_linear_combination
-  #    comp, params, mtree, polys)
   l_poly = compute_pseudorandom_linear_combination(
       params, mtree[1], trace_polys, remainder_polys, boundary_polys)
   l_evaluations = fft_solver.fft(l_poly)

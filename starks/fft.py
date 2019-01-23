@@ -67,20 +67,6 @@ def _fft(vals: List[FieldElement], roots_of_unity: FieldElement) -> List[FieldEl
     o[i + len(L)] = (x - y_times_root)
   return o
 
-# TODO(rbharath): Remove in future PR if confirmed unnecessary
-#def fft(vals: List[Vector], modulus: int, root_of_unity: FieldElement,
-#    inv: bool =False, dims:int =1) -> List[Vector]:
-#  """Computes FFT for potentially multidimensional sequences"""
-#  fft_vals = []
-#  for dim in range(dims):
-#    vals_dim = [val[dim] for val in vals]
-#    fft_dim = fft_1d(vals_dim, modulus, root_of_unity, inv=inv)
-#    fft_vals.append(fft_dim)
-#  # We get tuples without the explicit list cast
-#  fft_joint = list([list(elt) for elt in zip(*fft_vals)])
-#  return fft_joint
-
-
 def fft_1d(field: Field, vals: List[FieldElement], modulus: int, root_of_unity: FieldElement, inv: bool = False) -> List[FieldElement]:
   """Computes FFT for one dimensional inputs"""
   # Build up roots of unity
