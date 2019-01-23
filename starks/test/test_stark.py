@@ -229,83 +229,41 @@ class TestStark(unittest.TestCase):
         trace_polys, witness, boundary, field, last_step_position, width)
 
     fft_solver = NonBinaryFFT(field, G2)
-    polys = trace_polys + remainder_polys + boundary_polys
-    poly_evals = []
-    for poly in polys:
-      poly_eval = fft_solver.fft(poly)
-      poly_evals.append(poly_eval)
+    trace_evals = []
+    for poly in trace_polys:
+      trace_eval = fft_solver.fft(poly)
+      trace_evals.append(trace_eval)
+    remainder_evals = []
+    for poly in remainder_polys:
+      remainder_eval = fft_solver.fft(poly)
+      remainder_evals.append(remainder_eval)
+    boundary_evals = []
+    for poly in boundary_polys:
+      boundary_eval = fft_solver.fft(poly)
+      boundary_evals.append(boundary_eval)
+    poly_evals = trace_evals + remainder_evals + boundary_evals
     mtree = merkelize_polynomial_evaluations(width, poly_evals)
     
     entropy = mtree[1]
-    l_evaluations_per_dim = compute_pseudorandom_linear_combination_1d(
+    l_polys_per_dim = compute_pseudorandom_linear_combination_1d(
         entropy, trace_polys, remainder_polys, boundary_polys, G2, steps, precision)
 
-    for i, pos in enumerate(range(precision)):
-      p_of_x = p_evaluations[pos]
-      next_pos = (pos + extension_factor) % precision
-      p_of_g1x = p_evaluations[next_pos]
-      d_of_x = d_evaluations[pos]
-      b_of_x = b_evaluations[pos]
+    for dim in range(width):
+      for i, pos in enumerate(range(precision)):
+        p_of_x = trace_evals[dim][pos]
+        next_pos = (pos + extension_factor) % precision
+        p_of_g1x = trace_evals[dim][next_pos]
+        d_of_x = remainder_evals[dim][pos]
+        b_of_x = boundary_evals[dim][pos]
 
-      x = G2**pos
-      x_to_the_steps = x**comp.steps
+        x = G2**pos
+        x_to_the_steps = x**steps
 
-      # Leaf node from l[pos]
-      k1, k2, k3, k4 = get_pseudorandom_ks(mtree[1], 4)
-      for dim in range(comp.width):
-        l_evaluations_dim = l_evaluations_per_dim[dim]
-        l_of_x_dim = l_evaluations_dim[pos]
-        assert (l_of_x_dim - d_of_x[dim] - k1 * p_of_x[dim] - k2 * p_of_x[dim] * x_to_the_steps - k3 * b_of_x[dim] - k4 * b_of_x[dim] * x_to_the_steps) == 0
-
-  #def test_compute_pseudorandom_combination(self):
-  #  """
-  #  Tests compute pseudorandom linear combination 
-  #  """
-  #  width = 3
-  #  steps = 512
-  #  modulus = 2**256 - 2**32 * 351 + 1
-  #  extension_factor = 8
-  #  field = IntegersModP(modulus)
-  #  inp = [field(2), field(2), field(5)]
-  #  [X_1, X_2, X_3] = generate_Xi_s(field, width)
-  #  step_polys = [X_1, X_2, X_1 + X_2*X_3**2] 
-  #  comp = Computation(field, width, inp, steps, step_polys,
-  #      extension_factor)
-  #  params = StarkParams(field, steps, modulus, extension_factor)
-
-  #  p_evaluations = construct_computation_polynomial(
-  #      comp, params)
-  #  c_of_p_evaluations = construct_constraint_polynomial(
-  #      comp, params, p_evaluations)
-  #  d_evaluations = construct_remainder_polynomial(
-  #      comp, params, c_of_p_evaluations)
-  #  b_evaluations = construct_boundary_polynomial(
-  #      comp, params, p_evaluations)
-
-  #  polys = [p_evaluations, d_evaluations, b_evaluations]
-  #  mtree = merkelize_polynomials(width, polys)
-  #  l_evaluations_per_dim = compute_pseudorandom_linear_combination_1d(
-  #      comp, params, mtree, polys)
-  #  l_evaluations = compute_pseudorandom_linear_combination_1d(
-  #      comp, params, mtree, polys)
-  #  m_root = mtree[1]
-
-  #  for i, pos in enumerate(range(params.precision)):
-  #    p_of_x = p_evaluations[pos]
-  #    next_pos = (pos + params.extension_factor) % params.precision
-  #    p_of_g1x = p_evaluations[next_pos]
-  #    d_of_x = d_evaluations[pos]
-  #    b_of_x = b_evaluations[pos]
-
-  #    x = params.G2**pos
-  #    x_to_the_steps = x**comp.steps
-
-  #    # Leaf node from l[pos]
-  #    k1, k2, k3, k4 = get_pseudorandom_ks(mtree[1], 4)
-  #    for dim in range(comp.width):
-  #      l_evaluations_dim = l_evaluations_per_dim[dim]
-  #      l_of_x_dim = l_evaluations_dim[pos]
-  #      assert (l_of_x_dim - d_of_x[dim] - k1 * p_of_x[dim] - k2 * p_of_x[dim] * x_to_the_steps - k3 * b_of_x[dim] - k4 * b_of_x[dim] * x_to_the_steps) == 0
+        # Leaf node from l[pos]
+        k1, k2, k3, k4 = get_pseudorandom_ks(mtree[1], 4)
+        for dim in range(width):
+          l_of_x_dim = l_polys_per_dim[dim](x)
+          assert (l_of_x_dim - d_of_x - k1 * p_of_x - k2 * p_of_x * x_to_the_steps - k3 * b_of_x - k4 * b_of_x * x_to_the_steps) == 0
 
   #def test_1d_end_to_end(self):
   #  """
@@ -421,42 +379,6 @@ class TestStark(unittest.TestCase):
   #   #   interpolant_dim = lagrange_interp_2(modulus, [1, params.last_step_position], [comp.inp[dim], comp.output[dim]])
   #   #   assert (p_of_x[dim] - b_of_x[dim] * zeropoly2(x) - interpolant_dim(x)) == 0
 
-  #def test_higher_dim_fri(self):
-  #  """
-  #  Basic tests of FRI generation for fibonacci stark
-  #  """
-  #  width = 2
-  #  steps = 4
-  #  modulus = 2**256 - 2**32 * 351 + 1
-  #  extension_factor = 8
-  #  field = IntegersModP(modulus)
-  #  inp = [field(0), field(1)]
-  #  extension_factor = 8
-  #  ## Factoring out computation
-  #  [X_1, X_2] = generate_Xi_s(field, width)
-  #  step_polys = [X_2, X_1 + X_2] 
-  #  comp = Computation(field, width, inp, steps, step_polys,
-  #      extension_factor)
-  #  params = StarkParams(field, steps, modulus, extension_factor, width, step_polys)
-
-  #  witness = comp.generate_witness()
-  #  boundary = comp.generate_boundary_constraints()
-  #  trace_polys = construct_trace_polynomials(witness, params)
-  #  constraint_polys = construct_constraint_polynomials(trace_polys, params)
-  #  remainder_polys = construct_remainder_polynomials(constraint_polys, params)
-  #  boundary_polys = construct_boundary_polynomials(
-  #      trace_polys, witness, boundary, params)
-
-  #  fft_solver = NonBinaryFFT(params.field, params.G2, params.width)
-  #  polys = trace_polys + remainder_polys + boundary_polys
-  #  poly_evals = []
-  #  for poly in polys:
-  #    poly_eval = fft_solver.fft(poly)
-  #    poly_evals.append(poly_eval)
-  #  mtree = merkelize_polynomial_evaluations(width, poly_evals)
-
-    #mtrees = merkelize_polynomials(width, [p_evaluations, d_evaluations, b_evaluations])
-
   # TODO(rbharath): This is broken!! Need to fix in future PR
   #def test_higher_dim_proof_verification(self):
   #  """
@@ -477,7 +399,6 @@ class TestStark(unittest.TestCase):
   #  proof = mk_proof(comp, params)
   #  assert verify_proof(comp, params, proof)
 
-                        
   def test_quadratic_stark(self):
     """
     Basic tests of quadratic stark generation
@@ -496,14 +417,14 @@ class TestStark(unittest.TestCase):
 
     comp = Computation(field, width, inp, steps, step_polys,
         extension_factor)
-    params = STARK(field, steps, modulus, extension_factor, width, step_polys)
+    stark = STARK(field, steps, modulus, extension_factor, width, step_polys)
 
     witness = comp.generate_witness()
     boundary = comp.generate_boundary_constraints()
-    proof = mk_proof(witness, boundary, params)
+    proof = stark.mk_proof(witness, boundary)
     assert isinstance(proof, list)
     assert len(proof) == 4
-    result = verify_proof(proof, witness, boundary, params)
+    result = stark.verify_proof(proof, witness, boundary)
     assert result
 
 

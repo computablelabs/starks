@@ -232,12 +232,13 @@ class STARK(object):
     fft_solver = NonBinaryFFT(self.field, self.G2)
     # list of length |width|
     trace_polys = construct_trace_polynomials(witness, self.field, self.G1)
-    constraint_polys = construct_constraint_polynomials(
-        trace_polys)
-    remainder_polys = construct_remainder_polynomials(
-        constraint_polys)
+    constraint_polys = construct_constraint_polynomials(self.step_polys,
+        trace_polys, self.field, self.G1, self.width)
+    remainder_polys = construct_remainder_polynomials(constraint_polys, self.field,
+        self.steps, self.last_step_position)
     boundary_polys = construct_boundary_polynomials(
-        trace_polys, witness, boundary)
+        trace_polys, witness, boundary, self.field,
+        self.last_step_position, self.width)
 
     polys = trace_polys + remainder_polys + boundary_polys
     # Compute their Merkle root
@@ -252,7 +253,8 @@ class STARK(object):
     mtree = merkelize_polynomial_evaluations(self.width, poly_evals)
 
     l_poly = compute_pseudorandom_linear_combination(
-        mtree[1], trace_polys, remainder_polys, boundary_polys)
+        mtree[1], trace_polys, remainder_polys, boundary_polys, self.field,
+        self.G2, self.precision, self.steps, self.width)
     l_evaluations = fft_solver.fft(l_poly)
     l_mtree = merkelize(l_evaluations)
 
