@@ -168,16 +168,11 @@ def compute_pseudorandom_linear_combination(entropy: bytes, trace_polys: List[Po
   powers = [1]
   for i in range(1, root_of_unity_degree):
     powers.append(powers[-1] * G2_to_the_steps)
-  l_polys = compute_pseudorandom_linear_combination_1d(entropy, trace_polys, remainder_polys, boundary_polys)
+  l_polys = compute_pseudorandom_linear_combination_1d(entropy, trace_polys, remainder_polys, boundary_polys, root_of_unity, steps, root_of_unity_degree)
   l_ks = get_pseudorandom_ks(entropy, width)
   l_joint_poly = sum([l_poly + l_poly * l_k * powers[i] for (l_poly, l_k) in zip(l_polys, l_ks)])
   print('Computed random linear combination')
   return l_joint_poly 
-
-# TODO(rbharath): This function is poorly structured since it
-# computes spot checks for both the mtree and the ltree
-# simultaneously. This makes refactoring challenging. Break up
-# and separate in future PR.
 
 class STARK(object):
   """Generates and verifies STARKs
@@ -376,6 +371,10 @@ class STARK(object):
     #        k3 * b_of_x - k4 * b_of_x * x_to_the_steps) % modulus == 0
 
 
+  # TODO(rbharath): This method is poorly structured since it
+  # computes spot checks for both the mtree and the ltree
+  # simultaneously. This makes refactoring challenging. Break up
+  # and separate in future PR.
   def compute_merkle_spot_checks(self, mtree, l_mtree, samples=80):
     """Computes pseudorandom spot checks of Merkle tree."""
     # Do some spot checks of the Merkle tree at pseudo-random
