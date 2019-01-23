@@ -1,14 +1,7 @@
 import unittest
-import time
-from starks.utils import mimc
 from starks.merkle_tree import merkelize
-from starks.merkle_tree import verify_branch
-from starks.merkle_tree import mk_branch
-from starks.merkle_tree import blake
 from starks.merkle_tree import merkelize_polynomial_evaluations
-from starks.merkle_tree import unpack_merkle_leaf
 from starks.air import Computation
-from starks.air import get_computational_trace
 from starks.fft import NonBinaryFFT
 # TODO(rbharath): These need to be swapped out for correct imports
 from starks.utils import generate_Xi_s
@@ -23,11 +16,6 @@ from starks.stark import compute_pseudorandom_linear_combination_1d
 from starks.stark import compute_pseudorandom_linear_combination
 from starks.stark import STARK 
 from starks.modp import IntegersModP
-from starks.compression import bin_length
-from starks.compression import compress_branches
-from starks.compression import compress_fri
-from starks.polynomial import polynomials_over
-from starks.poly_utils import lagrange_interp_2
 from starks.poly_utils import multivariates_over
 
 
@@ -265,139 +253,27 @@ class TestStark(unittest.TestCase):
           l_of_x_dim = l_polys_per_dim[dim](x)
           assert (l_of_x_dim - d_of_x - k1 * p_of_x - k2 * p_of_x * x_to_the_steps - k3 * b_of_x - k4 * b_of_x * x_to_the_steps) == 0
 
-  #def test_1d_end_to_end(self):
-  #  """
-  #  Tests stark end-to-end for 1d example 
-  #  """
-  #  width = 3
-  #  steps = 512
-  #  spot_check_security_factor = 80
-  #  modulus = 2**256 - 2**32 * 351 + 1
-  #  extension_factor = 8
-  #  field = IntegersModP(modulus)
-  #  inp = [field(2), field(2), field(5)]
-  #  ## Factoring out computation
-  #  [X_1, X_2, X_3] = generate_Xi_s(field, width)
-  #  step_polys = [X_1, X_2, X_1 + X_2*X_3**2] 
-  #  comp = Computation(field, width, inp, steps, step_polys,
-  #      extension_factor)
-  #  params = StarkParams(field, steps, modulus, extension_factor)
-
-  #  p_evaluations = construct_computation_polynomial(
-  #      comp, params)
-  #  c_of_p_evaluations = construct_constraint_polynomial(
-  #      comp, params, p_evaluations)
-  #  d_evaluations = construct_remainder_polynomial(
-  #      comp, params, c_of_p_evaluations)
-  #  b_evaluations = construct_boundary_polynomial(
-  #      comp, params, p_evaluations)
-
-  #  polys = [p_evaluations, d_evaluations, b_evaluations]
-  #  mtree = merkelize_polynomials(width, polys)
-  #  l_evaluations = compute_pseudorandom_linear_combination(
-  #      comp, params, mtree, polys)
-  #  l_mtree = merkelize(l_evaluations)
-  #  m_root = mtree[1]
-  #  l_root = l_mtree[1]
-  #  fri_proof = prove_low_degree(
-  #        l_evaluations,
-  #        params.G2,
-  #        # Manually filling in degree here
-  #        steps * 3,
-  #        modulus,
-  #        exclude_multiples_of=extension_factor)
-
-  #  assert verify_low_degree_proof(
-  #      l_root,
-  #      params.G2,
-  #      fri_proof,
-  #      # Manually filling in degree here
-  #      steps * 3,
-  #      modulus,
-  #      exclude_multiples_of=extension_factor)
-
-  #  # TODO(rbharath): Factor this into function?
-  #  byte_list = [b'0x01', b'0x02', b'0x03', b'0x04']
-  #  ks = [int.from_bytes(blake(mtree[1] + byte_list[ind]), 'big') for ind in range(4)]
-  #  k1, k2, k3, k4 = ks
-
-  #  branches = compute_merkle_spot_checks(mtree, l_mtree, comp, params)
-  #  positions = get_pseudorandom_indices(l_mtree[1],
-  #      params.precision, count=spot_check_security_factor,
-  #      exclude_multiples_of=params.extension_factor)
-
-  #  for i, pos in enumerate(positions):
-  #    branch1 = mk_branch(mtree, pos)
-  #    mbranch1 = verify_branch(m_root, pos, branch1)
-  #    unpacked_leaf1 = unpack_merkle_leaf(mbranch1, comp.width, 3)
-  #    next_pos = (pos + params.extension_factor) % params.precision
-  #    branch2 = mk_branch(mtree, next_pos) 
-  #    mbranch2 = verify_branch(m_root, next_pos, branch2)
-  #    unpacked_leaf2 = unpack_merkle_leaf(mbranch2, comp.width, 3)
-  #    # Leaf node from l[pos]
-  #    l_of_x = verify_branch(l_root, pos, branches[i * 3 + 2],
-  #        output_as_int=True)
-
-  #    # Check that p_of_x was recovered correctly
-  #    p_of_x = p_evaluations[pos]
-  #    p_of_x_recovered = [field(p_of_x_dim) for p_of_x_dim in unpacked_leaf1[:comp.width]]
-  #    assert len(p_of_x) == len(p_of_x_recovered)
-  #    for dim in range(comp.width):
-  #      assert p_of_x[dim] == p_of_x_recovered[dim]
-
-  #    # Check that p_of_g1x was recovered correctly
-  #    p_of_g1x = p_evaluations[next_pos]
-  #    p_of_g1x_recovered = [field(p_of_g1x_dim) for p_of_g1x_dim in unpacked_leaf2[:comp.width]]
-  #    assert len(p_of_g1x) == len(p_of_g1x_recovered)
-  #    for dim in range(comp.width):
-  #      assert p_of_g1x[dim] == p_of_g1x_recovered[dim]
-
-  #    d_of_x = d_evaluations[pos]
-  #    d_of_x_recovered = [field(d_of_x_dim) for d_of_x_dim in unpacked_leaf1[comp.width:2*comp.width]]
-  #    assert len(d_of_x) == len(d_of_x_recovered)
-  #    for dim in range(comp.width):
-  #      assert d_of_x[dim] == d_of_x_recovered[dim]
-
-  #    b_of_x = b_evaluations[pos]
-  #    b_of_x_recovered = [field(b_of_x_dim) for b_of_x_dim in unpacked_leaf1[2*comp.width:]]
-  #    assert len(b_of_x) == len(b_of_x_recovered)
-  #    for dim in range(comp.width):
-  #      assert b_of_x[dim] == b_of_x_recovered[dim]
-
-  #    x = params.G2**pos
-  #    x_to_the_steps = x**comp.steps
-  #    zvalue = (x**comp.steps - 1)/(x - params.last_step_position)
-  #    f_of_p_of_x = [comp.step_polys[i](p_of_x) for i in range(width)]
-  #    f_of_p_of_x_recovered = [comp.step_polys[i](p_of_x) for i in range(width)]
-  #    assert f_of_p_of_x == f_of_p_of_x_recovered
-  #    assert (p_of_g1x[0] - f_of_p_of_x[0] - zvalue * d_of_x[0]) == 0
-  #    assert (p_of_g1x_recovered[0] - f_of_p_of_x_recovered[0] - zvalue * d_of_x_recovered[0]) == 0
-
-  #    # TODO(rbharath): How do I do this with multidimensional polynomial?
-  #   # zeropoly2 = polysOver([-1, 1]) * polysOver([-params.last_step_position, 1])
-  #   # for dim in range(comp.width):
-  #   #   interpolant_dim = lagrange_interp_2(modulus, [1, params.last_step_position], [comp.inp[dim], comp.output[dim]])
-  #   #   assert (p_of_x[dim] - b_of_x[dim] * zeropoly2(x) - interpolant_dim(x)) == 0
-
   # TODO(rbharath): This is broken!! Need to fix in future PR
-  #def test_higher_dim_proof_verification(self):
-  #  """
-  #  Tests proof generation and verification for multidimensional state.
-  #  """
-  #  width = 2
-  #  steps = 8
-  #  constraint_degree = 4
-  #  modulus = 2**256 - 2**32 * 351 + 1
-  #  field = IntegersModP(modulus)
-  #  inp = [field(0), field(1)]
-  #  extension_factor = 8
-  #  [X_1, X_2] = generate_Xi_s(field, width)
-  #  step_polys = [X_2, X_1 + X_2] 
-  #  comp = Computation(field, width, inp, steps, step_polys,
-  #      extension_factor)
-  #  params = StarkParams(field, steps, modulus, extension_factor)
-  #  proof = mk_proof(comp, params)
-  #  assert verify_proof(comp, params, proof)
+  def test_higher_dim_proof_verification(self):
+    """
+    Tests proof generation and verification for multidimensional state.
+    """
+    width = 2
+    steps = 32 
+    modulus = 2**256 - 2**32 * 351 + 1
+    field = IntegersModP(modulus)
+    inp = [field(0), field(1)]
+    extension_factor = 8
+    [X_1, X_2] = generate_Xi_s(field, width)
+    step_polys = [X_2, X_1 + X_2] 
+    comp = Computation(field, width, inp, steps, step_polys,
+        extension_factor)
+    witness = comp.generate_witness()
+    boundary = comp.generate_boundary_constraints()
+
+    stark = STARK(field, steps, modulus, extension_factor, width, step_polys)
+    proof = stark.mk_proof(witness, boundary)
+    assert stark.verify_proof(proof, witness, boundary)
 
   def test_quadratic_stark(self):
     """
@@ -453,88 +329,39 @@ class TestStark(unittest.TestCase):
     witness = comp.generate_witness()
     boundary = comp.generate_boundary_constraints()
 
-    params = STARK(field, steps, modulus, extension_factor, width, step_polys)
-    proof = mk_proof(witness, boundary, params)
-    result = verify_proof(proof, witness, boundary, params)
+    stark = STARK(field, steps, modulus, extension_factor, width, step_polys)
+    proof = stark.mk_proof(witness, boundary)
+    result = stark.verify_proof(proof, witness, boundary)
     assert result
 
-  # TODO(rbharath): This is broken!! Need to fix in future PR
-  #def test_affine_stark(self):
-  #  """
-  #  Basic tests of affine stark generation
-  #  """
-  #  width = 2
-  #  steps = 512
-  #  modulus = 2**256 - 2**32 * 351 + 1
-  #  field = IntegersModP(modulus)
-  #  inp = [field(2), field(5)]
-  #  extension_factor = 8
+  def test_affine_stark(self):
+    """
+    Basic tests of affine stark generation
+    """
+    width = 2
+    steps = 32 
+    modulus = 2**256 - 2**32 * 351 + 1
+    field = IntegersModP(modulus)
+    inp = [field(2), field(5)]
+    extension_factor = 8
 
-  #  ## Factoring out computation
-  #  polysOver = multivariates_over(field, width).factory
-  #  X_1 = polysOver({(1,0): field(1)})
-  #  X_2 = polysOver({(0,1): field(1)})
-  #  step_polys = [X_1, X_1 + 3*X_2] 
+    ## Factoring out computation
+    polysOver = multivariates_over(field, width).factory
+    X_1 = polysOver({(1,0): field(1)})
+    X_2 = polysOver({(0,1): field(1)})
+    step_polys = [X_1, X_1 + 3*X_2] 
 
-  #  comp = Computation(field, width, inp, steps, step_polys,
-  #      extension_factor)
-  #  params = StarkParams(field, steps, modulus, extension_factor)
-  #  proof = mk_proof(comp, params)
-  #  assert isinstance(proof, list)
-  #  assert len(proof) == 4
-  #  result = verify_proof(comp, params, proof)
-  #  assert result
+    comp = Computation(field, width, inp, steps, step_polys,
+        extension_factor)
+    witness = comp.generate_witness()
+    boundary = comp.generate_boundary_constraints()
 
-  # TODO(rbharath): This is broken!! Need to fix in future PR
-  #def test_varying_quadratic_fri(self):
-  #  """
-  #  Basic tests of FRI generation for quadratic stark with varying coefficients
-  #  """
-  #  width = 2
-  #  steps = 512
-  #  modulus = 2**256 - 2**32 * 351 + 1
-  #  extension_factor = 8
-  #  field = IntegersModP(modulus)
-  #  inp = [field(2), field(5)]
-  #  ### Factoring out computation
-  #  polysOver = multivariates_over(field, width).factory
-  #  X_1 = polysOver({(1,0): field(1)})
-  #  X_2 = polysOver({(0,1): field(1)})
-  #  step_polys = [X_1, X_1 + X_2**2] 
-  #  comp = Computation(field, width, inp, steps, step_polys,
-  #      extension_factor)
-  #  params = StarkParams(field, steps, modulus, extension_factor)
-
-
-  #  p_evaluations = construct_computation_polynomial(
-  #      comp, params)
-  #  c_of_p_evaluations = construct_constraint_polynomial(
-  #      comp, params, p_evaluations)
-  #  d_evaluations = construct_remainder_polynomial(
-  #      comp, params, c_of_p_evaluations)
-  #  b_evaluations = construct_boundary_polynomial(
-  #      comp, params, p_evaluations)
-
-  #  polys = [p_evaluations, d_evaluations, b_evaluations]
-  #  mtree = merkelize_polynomials(width, polys) 
-  #  l_evaluations = compute_pseudorandom_linear_combination(
-  #      comp, params, mtree, polys)
-  #  l_mtree = merkelize(l_evaluations)
-  #  l_root = l_mtree[1]
-  #  fri_proof = prove_low_degree(
-  #        l_evaluations,
-  #        params.G2,
-  #        steps * comp.get_degree(),
-  #        modulus,
-  #        exclude_multiples_of=extension_factor)
-
-  #  assert verify_low_degree_proof(
-  #      l_root,
-  #      params.G2,
-  #      fri_proof,
-  #      steps * comp.get_degree(),
-  #      modulus,
-  #      exclude_multiples_of=extension_factor)
+    stark = STARK(field, steps, modulus, extension_factor, width, step_polys)
+    proof = stark.mk_proof(witness, boundary)
+    assert isinstance(proof, list)
+    assert len(proof) == 4
+    result = stark.verify_proof(proof, witness, boundary)
+    assert result
 
   def test_varying_quintic_stark(self):
     """
@@ -556,12 +383,10 @@ class TestStark(unittest.TestCase):
     witness = comp.generate_witness()
     boundary = comp.generate_boundary_constraints()
 
-    params = STARK(field, steps, modulus, extension_factor, width, step_polys)
-    proof = mk_proof(witness, boundary, params)
+    stark = STARK(field, steps, modulus, extension_factor, width, step_polys)
+    proof = stark.mk_proof(witness, boundary)
     assert isinstance(proof, list)
     assert len(proof) == 4
     (m_root, l_root, branches, fri_proof) = proof
-    trace, output = get_computational_trace(
-        inp, steps, width, step_polys)
-    result = verify_proof(proof, witness, boundary, params)
+    result = stark.verify_proof(proof, witness, boundary)
     assert result
