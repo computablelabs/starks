@@ -12,12 +12,12 @@ from starks.numbertype import Poly
 from starks.fft import NonBinaryFFT
 
 class FRI(object):
-  """Implements Fast Reed Solomon Interactive Oracle Protocol"""
-  def __init__(self, field, root_of_unity):
+  """Implements Fast Reed Solomon Interactive Oracle Protocol
+  
+  # TODO(rbharath): Swap this to work with a FourierPolynomial instead of a regular polynomial. Will be more efficient. 
+  """
+  def __init__(self, field):
     self.field = field 
-    self.root_of_unity = root_of_unity
-    self.fft_solver = NonBinaryFFT(field, root_of_unity)
-        
 
   def generate_proximity_proof(self,
                                f: Poly,
@@ -37,7 +37,8 @@ class FRI(object):
     should be a n-th root of unity.
     """
     # Is this the right iteration?
-    values = self.fft_solver.fft(f)
+    fft_solver = NonBinaryFFT(self.field, root_of_unity)
+    values = fft_solver.fft(f)
     # If the degree we are checking for is less than or equal
     # to 32, use the polynomial directly as a proof
     # TODO(rbharath): Why does this make sense?
@@ -46,8 +47,7 @@ class FRI(object):
       return [[x.to_bytes() for x in values]]
 
     # Calculate the set of x coordinates
-    field = self.params.field
-    xs = get_power_cycle(root_of_unity, field)
+    xs = get_power_cycle(root_of_unity, self.field)
     
     assert len(values) == len(xs)
 
@@ -59,7 +59,7 @@ class FRI(object):
     # Select a pseudo-random x coordinate
     # This is the merkle-root of the polynomial.
     #special_x = int.from_bytes(m[1], 'big') % modulus
-    special_x = field(m[1])
+    special_x = self.field(m[1])
 
     # Calculate the "column" at that x coordinate (see
     # https://vitalik.ca/general/2017/11/22/starks_part_2.html)
@@ -67,7 +67,7 @@ class FRI(object):
     # row, and not directly from the polynomial, as this is more
     # efficient
     quarter_len = len(xs) // 4
-    x_polys = multi_interp_4(field,
+    x_polys = multi_interp_4(self.field,
         [[xs[i + quarter_len * j] for j in range(4)] for i in range(quarter_len)],
         [[values[i + quarter_len * j]
           for j in range(4)]
@@ -90,12 +90,13 @@ class FRI(object):
     o = [m2[1], branches]
 
     # Recurse...
-    column_poly = self.fft_solver.inv_fft(column)
+    # Swapping the root of unity to get new polynomial 
+    fft_solver = NonBinaryFFT(self.field, root_of_unity**4)
+    column_poly = fft_solver.inv_fft(column)
     return [o] + self.generate_proximity_proof(
         column_poly,
         root_of_unity**4,
         maxdeg_plus_1 // 4,
-        #field,
         exclude_multiples_of=exclude_multiples_of)
 
   def verify_proximity_proof(self,
@@ -103,7 +104,6 @@ class FRI(object):
                              root_of_unity: FieldElement,
                              proof: List[bytes],
                              maxdeg_plus_1: int,
-                             field: Field,
                              exclude_multiples_of:int = 0,
                              fri_spot_check_security_factor:int = 40) -> bool:
     """Verifies proximity of this function to this RS code."""
@@ -129,7 +129,7 @@ class FRI(object):
       print('Verifying degree <= %d' % maxdeg_plus_1)
 
       # Calculate the pseudo-random x coordinate
-      special_x = field(merkle_root)
+      special_x = self.field(merkle_root)
 
       # Calculate the pseudo-randomly sampled y indices
       ys = get_pseudorandom_indices(
@@ -162,7 +162,7 @@ class FRI(object):
       # points from the polynomial and the one point from the
       # column that are on that y coordinate are on the same deg
       # < 4 polynomial
-      polys = multi_interp_4(field, xcoords, rows)
+      polys = multi_interp_4(self.field, xcoords, rows)
 
       for p, c in zip(polys, columnvals):
         assert p(special_x) == c
@@ -184,13 +184,13 @@ class FRI(object):
 
     # Check the degree of the data
     #powers = get_power_cycle(root_of_unity, modulus)
-    powers = get_power_cycle(root_of_unity, field)
+    powers = get_power_cycle(root_of_unity, self.field)
     if exclude_multiples_of:
       pts = [x for x in range(len(data)) if x % exclude_multiples_of]
     else:
       pts = range(len(data))
 
-    poly = lagrange_interp(field,
+    poly = lagrange_interp(self.field,
             [powers[x] for x in pts[:maxdeg_plus_1]],
             [data[x] for x in pts[:maxdeg_plus_1]])
     for x in pts[maxdeg_plus_1:]:

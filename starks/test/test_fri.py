@@ -16,7 +16,7 @@ class TestFRI(unittest.TestCase):
     """Test proof on low degree implementation"""
     degree = 4
     modulus = 2**256 - 2**32 * 351 + 1
-    field = IntegersModP(31)
+    field = IntegersModP(modulus)
     polysOver = polynomials_over(field).factory
     # 1 + 2x + 3x^2 + 4 x^3 mod 31
     poly = polysOver([val for val in range(degree)])
@@ -30,28 +30,24 @@ class TestFRI(unittest.TestCase):
     fri = FRI(field, root_of_unity)
     proof = fri.generate_proximity_proof(poly, root_of_unity, degree, modulus)
     # The proof is a list of length one, whose first entry is just the evaluations converted to bytes
-    ########################################
-    print("len(proof[0])")
-    print(len(proof[0]))
-    ########################################
     assert len(proof[0]) == 8 
 
   def test_high_degree_prove(self):
     """Tests proof generation on high degree polynomials"""
-    steps = 512
+    steps = 512 
     modulus = 2**256 - 2**32 * 351 + 1
-    mod = IntegersModP(modulus)
+    field = IntegersModP(modulus)
+    polysOver = polynomials_over(field).factory
     # Some round constants borrowed from MiMC
-    poly = [[mod((i**7) ^ 42)] for i in range(steps)]
+    poly = polysOver([field((i**7) ^ 42) for i in range(steps)])
     # Root of unity such that x^steps=1
-    G = mod(7)**((modulus-1)//steps)
-    evaluations = fft(poly, modulus, G)
-    evaluations = [val[0] for val in evaluations]
+    root_of_unity = field(7)**((modulus-1)//steps)
     # We're trying to prove this is a (steps-1)-degree
     # polnomial
     # degree = (steps-1) + 1 = steps
+    fri = FRI(field)
     degree = steps
-    proof = prove_low_degree(evaluations, G, degree, modulus)
+    proof = fri.generate_proximity_proof(poly, root_of_unity, degree, modulus)
     # The proof recurses by dividing maxdeg_plus_1 by 4
     # So 512, 128, 32, 8. (The base case passes over to
     # special handler for degree 16 or less so these are all
