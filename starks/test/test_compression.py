@@ -2,11 +2,12 @@ import unittest
 from starks.compression import compress_fri 
 from starks.compression import decompress_fri 
 from starks.compression import bin_length
-from starks.fri import prove_low_degree
-from starks.fft import fft
+from starks.fri import FRI
 from starks.modp import IntegersModP
+from starks.stark import StarkParams 
+from starks.polynomial import polynomials_over
 
-class TestMiMC(unittest.TestCase):
+class TestCompression(unittest.TestCase):
   """
   Basic tests for compression/decompression of FRI proofs.
   """
@@ -16,21 +17,26 @@ class TestMiMC(unittest.TestCase):
     Basic tests of compression
     """
     degree = 4
-    modulus = 31 
-    mod = IntegersModP(modulus)
+    modulus = 2**256 - 2**32 * 351 + 1
+    field = IntegersModP(modulus)
+    polysOver = polynomials_over(field).factory
     # 1 + 2x + 3x^2 + 4 x^3 mod 31
-    poly = [[mod(val)] for val in list(range(degree))]
+    poly = polysOver([val for val in range(degree)])
     # TODO(rbharath): How does the choice of the n-th root of
     # unity make a difference in the fft?
 
     # A root of unity is a number such that z^n = 1
     # This provides us a 6-th root of unity (z^6 = 1)
-    root_of_unity = mod(3)**((modulus-1)//6)
-    evaluations = fft(poly, modulus, root_of_unity)
-    evaluations = [val[0] for val in evaluations]
-    assert len(evaluations) == 6
+    root_of_unity = field(3)**((modulus-1)//6)
+    #############################################
+    from starks.fft import NonBinaryFFT
+    fft_solver = NonBinaryFFT(field, root_of_unity)
+    evals = fft_solver.fft(poly)
+    assert 0 == 1
+    #############################################
     
-    proof = prove_low_degree(evaluations, root_of_unity, degree, modulus)
+    fri = FRI(field, root_of_unity)
+    proof = fri.generate_proximity_proof(poly, root_of_unity, degree, modulus)
     compressed = compress_fri(proof)
     length = bin_length(compressed)
     print(compressed)

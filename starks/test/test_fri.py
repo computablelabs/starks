@@ -1,6 +1,7 @@
 import unittest
-from starks.fri import prove_low_degree
-from starks.fri import verify_low_degree_proof
+from starks.fri import FRI
+#from starks.fri import prove_low_degree
+#from starks.fri import verify_low_degree_proof
 from starks.fft import fft
 from starks.merkle_tree import merkelize
 from starks.compression import bin_length

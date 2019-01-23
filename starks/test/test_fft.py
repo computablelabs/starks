@@ -1,7 +1,8 @@
 import unittest
-from starks.fft import fft
+from starks.fft import NonBinaryFFT
 from starks.fft import mul_polys
 from starks.modp import IntegersModP
+from starks.polynomial import polynomials_over
 
 class TestFFT(unittest.TestCase):
   """
@@ -10,87 +11,89 @@ class TestFFT(unittest.TestCase):
   def test_basic(self):
     """Basic test of fft."""
     modulus = 31 
-    mod31 = IntegersModP(31)
+    field = IntegersModP(31)
+    polysOver = polynomials_over(field).factory
     # 1 + 2x + 3x^2 + 4 x^3 mod 31
-    poly = [[mod31(val)] for val in range(4)] 
+    poly = polysOver([val for val in range(4)])
     # TODO(rbharath): How does the choice of the n-th root of
     # unity make a difference in the fft?
 
     # A root of unity is a number such that z^n = 1
     # This provides us a 6-th root of unity (z^6 = 1)
-    root_of_unity = mod31(3)**((modulus-1)//6)
-    evaluations = fft(poly, modulus, root_of_unity)
+    root_of_unity = field(3)**((modulus-1)//6)
+    fft_solver = NonBinaryFFT(field, root_of_unity)
+    evaluations = fft_solver.fft(poly)
+    assert len(evaluations) == 6
+
+  def test_large_modulus(self):
+    """Basic test of fft with large modulus."""
+    modulus = 2**256 - 2**32 * 351 + 1
+    field = IntegersModP(modulus)
+    polysOver = polynomials_over(field).factory
+    # 1 + 2x + 3x^2 + 4 x^3 mod 31
+    poly = polysOver([val for val in range(4)])
+    # TODO(rbharath): How does the choice of the n-th root of
+    # unity make a difference in the fft?
+
+    # A root of unity is a number such that z^n = 1
+    # This provides us a 6-th root of unity (z^6 = 1)
+    root_of_unity = field(3)**((modulus-1)//6)
+    fft_solver = NonBinaryFFT(field, root_of_unity)
+    evaluations = fft_solver.fft(poly)
     assert len(evaluations) == 6
 
   def test_fft_inv(self):
     """Test of Inverse FFT."""
     modulus = 31 
-    mod31 = IntegersModP(31)
+    field = IntegersModP(31)
     # 1 + 2x + 3x^2 + 4 x^3 mod 31
-    poly = [[mod31(val)] for val in range(4)] 
+    polysOver = polynomials_over(field).factory
+    poly = polysOver([val for val in range(4)])
     # TODO(rbharath): How does the choice of the n-th root of
     # unity make a difference in the fft?
 
     # A root of unity is a number such that z^n = 1
     # This provides us a 6-th root of unity (z^6 = 1)
-    root_of_unity = mod31(3)**((modulus-1)//6)
-    evaluations = fft(poly, modulus, root_of_unity)
-    inv = fft(evaluations, modulus, root_of_unity, inv=True, dims=1)
-    # We get two extra terms since we chose a 6th-root of unity
-    assert inv == [[0], [1], [2], [3], [0], [0]]
-
+    root_of_unity = field(3)**((modulus-1)//6)
+    fft_solver = NonBinaryFFT(field, root_of_unity)
+    evaluations = fft_solver.fft(poly)
+    inv = fft_solver.inv_fft(evaluations)
+    # Check we recover the original polynomial 
+    assert inv == poly 
 
   def test_fft_output_type(self):
     """The output of FFT should be in the field if input is in field."""
     modulus = 31 
-    mod31 = IntegersModP(31)
+    field = IntegersModP(31)
+    polysOver = polynomials_over(field).factory
     # 1 + 2x + 3x^2 + 4 x^3 mod 31
-    poly = [[mod31(val)] for val in range(4)] 
+    poly = polysOver([val for val in range(4)])
     # TODO(rbharath): How does the choice of the n-th root of
     # unity make a difference in the fft?
 
     # A root of unity is a number such that z^n = 1
     # This provides us a 6-th root of unity (z^6 = 1)
-    root_of_unity = mod31(3)**((modulus-1)//6)
-    evaluations = fft(poly, modulus, root_of_unity)
+    root_of_unity = field(3)**((modulus-1)//6)
+    fft_solver = NonBinaryFFT(field, root_of_unity)
+    evaluations = fft_solver.fft(poly)
     assert len(evaluations) == 6
     for val in evaluations:
-      assert isinstance(val[0], mod31)
+      assert isinstance(val, field)
 
-  def test_fft_multidim(self):
-    """Test FFT of multidimensional signal."""
-    steps = 512 
-    modulus = 2**256 - 2**32 * 351 + 1
-    mod = IntegersModP(modulus)
-    # [1 + 2x + 3x^2 + 4 x^3 mod 31,
-    #  1 + 2x + 3x^2 + 4 x^3 mod 31]
-    poly = [[mod(i), mod(i)] for i in range(4)]
-    # Root of unity such that x^512=1
-    G = mod(7)**((modulus - 1) // steps)
-    evaluations = fft(poly, modulus, G, dims=2)
-    assert len(evaluations) == steps
-    assert len(evaluations[0]) == 2
-
-  def test_constants(self):
-    """Test FFT handling of constants."""
-    steps = 256 
-    modulus = 2**256 - 2**32 * 351 + 1
-    mod = IntegersModP(modulus)
-    extension_factor = 8
-    # precision = 512
-    precision = steps * extension_factor
-    # Root of unity such that x^512=1
-    G2 = mod(7)**((modulus - 1) // precision)
-    # Root of unity such that x^64=1
-    G1 = G2**extension_factor
-    round_constants = [(i**7) ^ 42 for i in range(64)]
-    round_constants = [[mod(val)] for val in round_constants]
-    skips2 = steps // len(round_constants)
-    # Root of unity such that x^32 = 1
-    root_of_unity = G1**skips2
-    constants_mini_poly = fft(
-        round_constants, modulus, root_of_unity, inv=True)
-    assert len(constants_mini_poly) == len(round_constants)
+  # TODO(rbharath): Remove in future PR if confirmed not necessary
+  #def test_fft_multidim(self):
+  #  """Test FFT of multidimensional signal."""
+  #  steps = 512 
+  #  modulus = 2**256 - 2**32 * 351 + 1
+  #  mod = IntegersModP(modulus)
+  #  # [1 + 2x + 3x^2 + 4 x^3 mod 31,
+  #  #  1 + 2x + 3x^2 + 4 x^3 mod 31]
+  #  poly = [[mod(i), mod(i)] for i in range(4)]
+  #  # Root of unity such that x^512=1
+  #  G = mod(7)**((modulus - 1) // steps)
+  #  evaluations = fft(poly, modulus, G, dims=2)
+  #  assert len(evaluations) == steps
+  #  assert len(evaluations[0]) == 2
 
   def test_mul_polys(self):
     """Test multiplication of polynomials."""

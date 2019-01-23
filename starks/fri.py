@@ -13,10 +13,11 @@ from starks.fft import NonBinaryFFT
 
 class FRI(object):
   """Implements Fast Reed Solomon Interactive Oracle Protocol"""
-  def __init__(self, params):
-    self.params = params
-    self.fft_solver = NonBinaryFFT(params.field, params.G2,
-        params.width)
+  def __init__(self, field, root_of_unity):
+    self.field = field 
+    self.root_of_unity = root_of_unity
+    self.fft_solver = NonBinaryFFT(field, root_of_unity)
+        
 
   def generate_proximity_proof(self,
                                f: Poly,
@@ -36,7 +37,6 @@ class FRI(object):
     should be a n-th root of unity.
     """
     # Is this the right iteration?
-    #values = [f(x) for x in rs]
     values = self.fft_solver.fft(f)
     # If the degree we are checking for is less than or equal
     # to 32, use the polynomial directly as a proof
