@@ -74,13 +74,17 @@ class FRI(object):
         [[values[i + quarter_len * j]
           for j in range(4)]
         for i in range(quarter_len)])
-    #column = [f.eval_quartic(p, special_x) for p in x_polys]
     column = [p(special_x) for p in x_polys]
     m2 = merkelize(column)
 
     # Pseudo-randomly select y indices to sample
     ys = get_pseudorandom_indices(
         m2[1], len(column), fri_spot_check_security_factor, exclude_multiples_of=exclude_multiples_of)
+    ####################################################################
+    print("prover")
+    print("ys")
+    print(ys)
+    ####################################################################
 
     # Compute the Merkle branches for the values in the
     # polynomial and the column
@@ -158,6 +162,12 @@ class FRI(object):
             [(quartic_roots_of_unity[j] * x1) for j in range(4)])
 
         #############################################################
+        for j, prf in zip(range(4), branches[i][1:]):
+          print("roudeg")
+          print(roudeg)
+          print("y + (roudeg // 4) * j")
+          print(y + (roudeg // 4) * j)
+          verify_branch(merkle_root, y + (roudeg // 4) * j, prf, output_as_int=True)
         #############################################################
         # The values from the original polynomial
         row = [

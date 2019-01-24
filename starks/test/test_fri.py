@@ -149,7 +149,7 @@ class TestFRI(unittest.TestCase):
     Basic tests of FRI generation for quadratic stark with varying coefficients
     """
     width = 2
-    steps = 16
+    steps = 2
     modulus = 2**256 - 2**32 * 351 + 1
     extension_factor = 8
     field = IntegersModP(modulus)
@@ -197,7 +197,7 @@ class TestFRI(unittest.TestCase):
     ##############################################################
     print("comp.get_degree()")
     print(comp.get_degree())
-    scale_degree = 16 
+    scale_degree = 16
     print("steps, scale_degree")
     print(steps, scale_degree)
     print("steps*scale_degree")
