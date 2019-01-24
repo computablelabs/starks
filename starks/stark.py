@@ -265,7 +265,11 @@ class STARK(object):
     # proofs, and low-degree proofs of P and D
     o = [
         mtree[1], l_mtree[1], branches,
-        fri.generate_proximity_proof(l_poly, self.G2, self.steps*self.get_degree())
+        fri.generate_proximity_proof(
+          l_poly,
+          self.G2,
+          self.steps*self.get_degree(),
+          exclude_multiples_of=self.extension_factor)
     ]
     print("STARK computed in %.4f sec" % (time.time() - start_time))
     return o
