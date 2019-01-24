@@ -142,6 +142,19 @@ def compute_pseudorandom_linear_combination_1d(entropy: bytes, trace_polys: List
   # D, and prove the low-degreeness of that, instead of
   # proving the low-degreeness of P, B and D separately
   k1, k2, k3, k4 = get_pseudorandom_ks(entropy, 4)
+  ####################################################
+  print("1d func")
+  print("k1")
+  print(k1)
+  print("k2")
+  print(k2)
+  print("k3")
+  print(k3)
+  print("k4")
+  print(k4)
+  print("root_of_unity_degree")
+  print(root_of_unity_degree)
+  ####################################################
   # TODO(rbharath): This isn't general, but fix later
   #[p_evaluations, d_evaluations, b_evaluations] = polys
   #[trace_polys, reminder_polys, boundary_polys] = polys
@@ -149,11 +162,24 @@ def compute_pseudorandom_linear_combination_1d(entropy: bytes, trace_polys: List
   # calculating it in coefficient form; we just compute the
   # evaluations
   G2_to_the_steps = root_of_unity**steps
+  ####################################################
+  print("G2_to_the_steps")
+  print(G2_to_the_steps)
+  ####################################################
   powers = [1]
   for i in range(1, root_of_unity_degree):
     powers.append(powers[-1] * G2_to_the_steps)
 
   l_polys = []
+  # TODO(rbharath): Is this correct? i is the last value after
+  # the for loop...
+  ####################################################
+  print("i")
+  print(i)
+  print("powers[i]")
+  print(powers[i])
+  ####################################################
+
   for (trace_poly, remainder_poly, boundary_poly) in zip(trace_polys, remainder_polys, boundary_polys):
     l_poly = remainder_poly + trace_poly * k1 + trace_poly * k2 * powers[i] + boundary_poly * k3 + boundary_poly * k4 * powers[i]
     l_polys.append(l_poly)

@@ -205,7 +205,8 @@ class TestStark(unittest.TestCase):
     xs = get_power_cycle(G2, field)
     last_step_position = xs[(steps - 1) * extension_factor]
 
-    comp = Computation(field, width, inp, steps, step_polys, extension_factor)
+    comp = Computation(field, width, inp, steps, step_polys,
+        extension_factor)
     witness = comp.generate_witness()
     boundary = comp.generate_boundary_constraints()
 
@@ -217,41 +218,55 @@ class TestStark(unittest.TestCase):
         trace_polys, witness, boundary, field, last_step_position, width)
 
     fft_solver = NonBinaryFFT(field, G2)
-    trace_evals = []
-    for poly in trace_polys:
-      trace_eval = fft_solver.fft(poly)
-      trace_evals.append(trace_eval)
-    remainder_evals = []
-    for poly in remainder_polys:
-      remainder_eval = fft_solver.fft(poly)
-      remainder_evals.append(remainder_eval)
-    boundary_evals = []
-    for poly in boundary_polys:
-      boundary_eval = fft_solver.fft(poly)
-      boundary_evals.append(boundary_eval)
-    poly_evals = trace_evals + remainder_evals + boundary_evals
+    poly_evals = []
+    for poly in trace_polys + remainder_polys + boundary_polys:
+      poly_eval = fft_solver.fft(poly)
+      poly_evals.append(poly_eval)
     mtree = merkelize_polynomial_evaluations(width, poly_evals)
     
     entropy = mtree[1]
-    l_polys_per_dim = compute_pseudorandom_linear_combination_1d(
-        entropy, trace_polys, remainder_polys, boundary_polys, G2, steps, precision)
+    l_polys = compute_pseudorandom_linear_combination_1d(
+        entropy, trace_polys, remainder_polys, boundary_polys,
+        G2, steps, precision)
 
-    for dim in range(width):
+    # Leaf node from l[pos]
+    k1, k2, k3, k4 = get_pseudorandom_ks(mtree[1], 4)
+    ####################################################
+    print("test")
+    print("k1")
+    print(k1)
+    print("k2")
+    print(k2)
+    print("k3")
+    print(k3)
+    print("k4")
+    print(k4)
+    print("precision")
+    print(precision)
+    ####################################################
+    G2_to_the_steps = G2**steps
+    ####################################################
+    print("G2_to_the_steps")
+    print(G2_to_the_steps)
+    print("G2_to_the_steps**(precision-1)")
+    print(G2_to_the_steps**(precision-1))
+    ####################################################
+    powers_i = G2_to_the_steps**(precision-1)
+    for (trace_poly, remainder_poly, boundary_poly, l_poly) in zip(trace_polys, remainder_polys, boundary_polys, l_polys):
       for i, pos in enumerate(range(precision)):
-        p_of_x = trace_evals[dim][pos]
         next_pos = (pos + extension_factor) % precision
-        p_of_g1x = trace_evals[dim][next_pos]
-        d_of_x = remainder_evals[dim][pos]
-        b_of_x = boundary_evals[dim][pos]
 
-        x = G2**pos
-        x_to_the_steps = x**steps
+        #x = G2**pos
+        x = G2_to_the_steps**pos
+        #x_to_the_steps = x**steps
 
-        # Leaf node from l[pos]
-        k1, k2, k3, k4 = get_pseudorandom_ks(mtree[1], 4)
-        for dim in range(width):
-          l_of_x_dim = l_polys_per_dim[dim](x)
-          assert (l_of_x_dim - d_of_x - k1 * p_of_x - k2 * p_of_x * x_to_the_steps - k3 * b_of_x - k4 * b_of_x * x_to_the_steps) == 0
+        p_of_x = trace_poly(x)
+        d_of_x = remainder_poly(x)
+        b_of_x = boundary_poly(x)
+
+        l_of_x = l_poly(x)
+        #assert (l_of_x - d_of_x - p_of_x * k1 - p_of_x * k2 * x_to_the_steps - b_of_x * k3 - b_of_x * k4 * x_to_the_steps) == 0
+        assert (l_of_x - d_of_x - p_of_x * k1 - p_of_x * k2 * powers_i - b_of_x * k3 - b_of_x * k4 * powers_i) == 0
 
   # TODO(rbharath): This is broken!! Need to fix in future PR
   def test_higher_dim_proof_verification(self):
