@@ -151,7 +151,7 @@ class TestFRI(unittest.TestCase):
     width = 2
     steps = 2
     modulus = 2**256 - 2**32 * 351 + 1
-    extension_factor = 8
+    extension_factor = 8 
     field = IntegersModP(modulus)
     inp = [field(2), field(5)]
 
@@ -213,5 +213,5 @@ class TestFRI(unittest.TestCase):
     e_mtree = merkelize(evaluations)
     mroot = e_mtree[1]
     #verification = fri.verify_proximity_proof(proof, mroot, G2, steps*comp.get_degree())
-    verification = fri.verify_proximity_proof(proof, mroot, G2, steps*scale_degree)
+    verification = fri.verify_proximity_proof(proof, mroot, G2, steps*scale_degree, exclude_multiples_of=extension_factor)
     assert verification
