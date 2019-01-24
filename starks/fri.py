@@ -36,9 +36,7 @@ class FRI(object):
     Note that if values is a n-degree polynomial, root_of_unity
     should be a n-th root of unity.
     """
-    ###########################################################
     print("Generating proof. Degree %d" % maxdeg_plus_1)
-    ###########################################################
     fft_solver = NonBinaryFFT(self.field, root_of_unity)
     values = fft_solver.fft(f)
     # If the degree we are checking for is less than or equal
@@ -62,12 +60,6 @@ class FRI(object):
     # This is the merkle-root of the polynomial.
     #special_x = int.from_bytes(m[1], 'big') % modulus
     special_x = self.field(m[1])
-    ####################################################
-    print("type(special_x)")
-    print(type(special_x))
-    print("special_x")
-    print(special_x)
-    ####################################################
 
     # Calculate the "column" at that x coordinate (see
     # https://vitalik.ca/general/2017/11/22/starks_part_2.html)
@@ -82,24 +74,10 @@ class FRI(object):
         for i in range(quarter_len)])
     column = [p(special_x) for p in x_polys]
     m2 = merkelize(column)
-    ####################################################
-    print("m2[1]")
-    print(m2[1])
-    ####################################################
 
     # Pseudo-randomly select y indices to sample
     ys = get_pseudorandom_indices(
         m2[1], len(column), fri_spot_check_security_factor, exclude_multiples_of=exclude_multiples_of)
-    ####################################################################
-    print("ys")
-    print(ys)
-    print("len(column)")
-    print(len(column))
-    print("fri_spot_check_security_factor")
-    print(fri_spot_check_security_factor)
-    print("exclude_multiples_of")
-    print(exclude_multiples_of)
-    ####################################################################
 
     # Compute the Merkle branches for the values in the
     # polynomial and the column
@@ -135,11 +113,6 @@ class FRI(object):
     while testval != 1:
       roudeg *= 2
       testval = (testval * testval)
-    ####################################################
-    print("Entering verify proximity")
-    print("roudeg")
-    print(roudeg)
-    ####################################################
 
     # Powers of the given root of unity 1, p, p**2, p**3 such that p**4 = 1
     quartic_roots_of_unity = [
@@ -149,10 +122,6 @@ class FRI(object):
         root_of_unity**(roudeg * 3 // 4)
     ]
 
-    #############################################################
-    print("len(proof)")
-    print(len(proof))
-    #############################################################
     # Verify the recursive components of the proof
     for prf in proof[:-1]:
       root2, branches = prf
@@ -160,28 +129,10 @@ class FRI(object):
 
       # Calculate the pseudo-random x coordinate
       special_x = self.field(merkle_root)
-      ####################################################
-      print("type(special_x)")
-      print(type(special_x))
-      print("special_x")
-      print(special_x)
-      ####################################################
 
       # Calculate the pseudo-randomly sampled y indices
       ys = get_pseudorandom_indices(
           root2, roudeg // 4, fri_spot_check_security_factor, exclude_multiples_of=exclude_multiples_of)
-      #############################################################
-      print("root2")
-      print(root2)
-      print("ys")
-      print(ys)
-      print("roudeg // 4")
-      print(roudeg // 4)
-      print("fri_spot_check_security_factor")
-      print(fri_spot_check_security_factor)
-      print("exclude_multiples_of")
-      print(exclude_multiples_of)
-      #############################################################
 
       # For each y coordinate, get the x coordinates on the row,
       # the values on the row, and the value at that y from the
@@ -195,14 +146,6 @@ class FRI(object):
         xcoords.append(
             [(quartic_roots_of_unity[j] * x1) for j in range(4)])
 
-        #############################################################
-        for j, prf in zip(range(4), branches[i][1:]):
-          print("roudeg")
-          print(roudeg)
-          print("y + (roudeg // 4) * j")
-          print(y + (roudeg // 4) * j)
-          verify_branch(merkle_root, y + (roudeg // 4) * j, prf, output_as_int=True)
-        #############################################################
         # The values from the original polynomial
         row = [
             verify_branch(

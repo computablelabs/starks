@@ -231,41 +231,19 @@ class TestStark(unittest.TestCase):
 
     # Leaf node from l[pos]
     k1, k2, k3, k4 = get_pseudorandom_ks(mtree[1], 4)
-    ####################################################
-    print("test")
-    print("k1")
-    print(k1)
-    print("k2")
-    print(k2)
-    print("k3")
-    print(k3)
-    print("k4")
-    print(k4)
-    print("precision")
-    print(precision)
-    ####################################################
     G2_to_the_steps = G2**steps
-    ####################################################
-    print("G2_to_the_steps")
-    print(G2_to_the_steps)
-    print("G2_to_the_steps**(precision-1)")
-    print(G2_to_the_steps**(precision-1))
-    ####################################################
     powers_i = G2_to_the_steps**(precision-1)
     for (trace_poly, remainder_poly, boundary_poly, l_poly) in zip(trace_polys, remainder_polys, boundary_polys, l_polys):
       for i, pos in enumerate(range(precision)):
         next_pos = (pos + extension_factor) % precision
 
-        #x = G2**pos
         x = G2_to_the_steps**pos
-        #x_to_the_steps = x**steps
 
         p_of_x = trace_poly(x)
         d_of_x = remainder_poly(x)
         b_of_x = boundary_poly(x)
 
         l_of_x = l_poly(x)
-        #assert (l_of_x - d_of_x - p_of_x * k1 - p_of_x * k2 * x_to_the_steps - b_of_x * k3 - b_of_x * k4 * x_to_the_steps) == 0
         assert (l_of_x - d_of_x - p_of_x * k1 - p_of_x * k2 * powers_i - b_of_x * k3 - b_of_x * k4 * powers_i) == 0
 
   # TODO(rbharath): This is broken!! Need to fix in future PR

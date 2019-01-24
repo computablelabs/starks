@@ -86,13 +86,6 @@ class TestFRI(unittest.TestCase):
     poly = polysOver([field((i**7) ^ 42) for i in range(steps)])
     # Root of unity such that x^steps=1
     root_of_unity = field(7)**((modulus - 1) // steps)
-    #evaluations = fft(poly, modulus, G, dims=dims)
-    ## Unwrap the fft wrapping
-    #evaluations = [val[0] for val in evaluations]
-    #e_mtree = merkelize(evaluations)
-    # This is a low degree polynomial so we hit the special
-    # case of the handler.
-    #proof = prove_low_degree(evaluations, G, degree, modulus)
     fri = FRI(field)
     proof = fri.generate_proximity_proof(poly, root_of_unity, degree)
 
@@ -194,24 +187,13 @@ class TestFRI(unittest.TestCase):
     l_evaluations = fft_solver.fft(l_poly)
     l_mtree = merkelize(l_evaluations)
     l_root = l_mtree[1]
-    ##############################################################
-    print("comp.get_degree()")
-    print(comp.get_degree())
-    scale_degree = 16
-    print("steps, scale_degree")
-    print(steps, scale_degree)
-    print("steps*scale_degree")
-    print(steps*scale_degree)
-    ##############################################################
 
     fri = FRI(field)
-    #proof = fri.generate_proximity_proof(l_poly, G2, steps*comp.get_degree(), exclude_multiples_of=extension_factor)
-    proof = fri.generate_proximity_proof(l_poly, G2, steps*scale_degree, exclude_multiples_of=extension_factor)
+    proof = fri.generate_proximity_proof(l_poly, G2, steps*comp.get_degree(), exclude_multiples_of=extension_factor)
 
     fft_solver = NonBinaryFFT(field, G2)
     evaluations = fft_solver.fft(l_poly)
     e_mtree = merkelize(evaluations)
     mroot = e_mtree[1]
-    #verification = fri.verify_proximity_proof(proof, mroot, G2, steps*comp.get_degree())
-    verification = fri.verify_proximity_proof(proof, mroot, G2, steps*scale_degree, exclude_multiples_of=extension_factor)
+    verification = fri.verify_proximity_proof(proof, mroot, G2, steps*comp.get_degree(), exclude_multiples_of=extension_factor)
     assert verification
