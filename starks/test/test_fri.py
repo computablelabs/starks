@@ -1,6 +1,7 @@
 import unittest
 from starks.fri import FRI
 from starks.merkle_tree import merkelize
+from starks.merkle_tree import merkelize_polynomial_evaluations
 from starks.compression import bin_length
 from starks.compression import compress_fri
 from starks.modp import IntegersModP
@@ -9,6 +10,12 @@ from starks.fft import NonBinaryFFT
 from starks.poly_utils import multivariates_over
 from starks.air import Computation
 from starks.stark import get_power_cycle 
+from starks.stark import STARK
+from starks.stark import construct_trace_polynomials
+from starks.stark import construct_constraint_polynomials
+from starks.stark import construct_remainder_polynomials
+from starks.stark import construct_boundary_polynomials
+from starks.stark import compute_pseudorandom_linear_combination
 
 
 class TestFRI(unittest.TestCase):
@@ -142,7 +149,7 @@ class TestFRI(unittest.TestCase):
     Basic tests of FRI generation for quadratic stark with varying coefficients
     """
     width = 2
-    steps = 512
+    steps = 16
     modulus = 2**256 - 2**32 * 351 + 1
     extension_factor = 8
     field = IntegersModP(modulus)
@@ -187,27 +194,24 @@ class TestFRI(unittest.TestCase):
     l_evaluations = fft_solver.fft(l_poly)
     l_mtree = merkelize(l_evaluations)
     l_root = l_mtree[1]
+    ##############################################################
+    print("comp.get_degree()")
+    print(comp.get_degree())
+    scale_degree = 16 
+    print("steps, scale_degree")
+    print(steps, scale_degree)
+    print("steps*scale_degree")
+    print(steps*scale_degree)
+    ##############################################################
 
     fri = FRI(field)
-    proof = fri.generate_proximity_proof(l_poly, G2, steps*comp.get_degree(), exclude_multiples_of=extension_factor)
-    #fri_proof = prove_low_degree(
-    #      l_evaluations,
-    #      params.G2,
-    #      steps * comp.get_degree(),
-    #      modulus,
-    #      exclude_multiples_of=extension_factor)
+    #proof = fri.generate_proximity_proof(l_poly, G2, steps*comp.get_degree(), exclude_multiples_of=extension_factor)
+    proof = fri.generate_proximity_proof(l_poly, G2, steps*scale_degree, exclude_multiples_of=extension_factor)
 
-    fft_solver = NonBinaryFFT(field, root_of_unity)
-    evaluations = fft_solver.fft(poly)
+    fft_solver = NonBinaryFFT(field, G2)
+    evaluations = fft_solver.fft(l_poly)
     e_mtree = merkelize(evaluations)
     mroot = e_mtree[1]
-    verification = fri.verify_proximity_proof(proof, mroot, root_of_unity, degree)
+    #verification = fri.verify_proximity_proof(proof, mroot, G2, steps*comp.get_degree())
+    verification = fri.verify_proximity_proof(proof, mroot, G2, steps*scale_degree)
     assert verification
-    #assert verify_low_degree_proof(
-    #    l_root,
-    #    params.G2,
-    #    fri_proof,
-    #    steps * comp.get_degree(),
-    #    modulus,
-    #    exclude_multiples_of=extension_factor)
-

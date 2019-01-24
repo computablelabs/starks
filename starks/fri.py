@@ -36,7 +36,9 @@ class FRI(object):
     Note that if values is a n-degree polynomial, root_of_unity
     should be a n-th root of unity.
     """
-    # Is this the right iteration?
+    #############################################################
+    print("Generating proof. Degree %d" % maxdeg_plus_1)
+    #############################################################
     fft_solver = NonBinaryFFT(self.field, root_of_unity)
     values = fft_solver.fft(f)
     # If the degree we are checking for is less than or equal
@@ -123,6 +125,10 @@ class FRI(object):
         root_of_unity**(roudeg * 3 // 4)
     ]
 
+    #############################################################
+    print("len(proof)")
+    print(len(proof))
+    #############################################################
     # Verify the recursive components of the proof
     for prf in proof[:-1]:
       root2, branches = prf
@@ -134,6 +140,10 @@ class FRI(object):
       # Calculate the pseudo-randomly sampled y indices
       ys = get_pseudorandom_indices(
           root2, roudeg // 4, fri_spot_check_security_factor, exclude_multiples_of=exclude_multiples_of)
+      #############################################################
+      print("ys")
+      print(ys)
+      #############################################################
 
       # For each y coordinate, get the x coordinates on the row,
       # the values on the row, and the value at that y from the
@@ -147,6 +157,8 @@ class FRI(object):
         xcoords.append(
             [(quartic_roots_of_unity[j] * x1) for j in range(4)])
 
+        #############################################################
+        #############################################################
         # The values from the original polynomial
         row = [
             verify_branch(

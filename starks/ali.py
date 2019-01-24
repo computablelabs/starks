@@ -14,7 +14,8 @@ class ALIProver(object):
   def __init__(self, apr):
     """TODO(rbharath): Fill this out."""
     self.apr = apr
-    self.rs_f = ReedSolomonCode(apr.field, apr.L, max(apr.rho_js))
+    # TODO(rbharath): Uncomment
+    #self.rs_f = ReedSolomonCode(apr.field, apr.L, max(apr.rho_js))
     self.rs_g = ReedSolomonCode(apr.field, apr.Lcmp, apr.rho_cmp)
 
   def generate_proof(self):
