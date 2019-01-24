@@ -18,6 +18,40 @@ class TestFiniteField(unittest.TestCase):
     F35 = FiniteField(3, 5)
     y = F35([1, 1, 2])
 
+  def test_generator(self):
+    """Test the construction of a field generator."""
+    p = 2
+    m = 8
+    Zp = IntegersModP(p)
+    polysOver = polynomials_over(Zp)
+    field = FiniteField(p, m)
+    # X is a gen
+    X = field(polysOver([0, 1]))
+    order = 1
+    val = X
+    while val != 1:
+      val *= X
+      order += 1
+    assert order == p**m - 1
+
+  def test_large(self):
+    """Tests construction of large finite field."""
+    p = 2
+    m = 17 
+    Zp = IntegersModP(p)
+    polysOver = polynomials_over(Zp)
+    #field = FiniteField(p, m)
+    #x^17 + x^3 + 1 is primitive 
+    coefficients = [Zp(0)] * 18
+    coefficients[0] = Zp(1)
+    coefficients[3] = Zp(1)
+    coefficients[17] = Zp(1)
+    poly = polysOver(coefficients)
+    field = FiniteField(p, m, polynomialModulus=poly)
+    # The fact this field can be constructed means an error
+    # wasn't raised and that poly is primitive.
+
+
   def test_irreducibility(self):
     """Test the irreducibility algorithm"""
     def p(L, q):

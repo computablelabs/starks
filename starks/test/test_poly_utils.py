@@ -8,6 +8,7 @@ from starks.poly_utils import lagrange_interp_2
 from starks.poly_utils import lagrange_interp_4
 from starks.poly_utils import multi_interp_4 
 from starks.poly_utils import is_primitive
+from starks.poly_utils import is_monic
 from starks.poly_utils import is_irreducible
 from starks.poly_utils import generate_primitive_polynomial 
 from starks.polynomial import polynomials_over
@@ -201,6 +202,20 @@ class TestPolyUtils(unittest.TestCase):
     gen_poly = generate_primitive_polynomial(modulus, degree)
     assert is_irreducible(gen_poly, modulus)
     assert is_primitive(gen_poly, modulus, degree)
+
+  def test_is_monic(self):
+    """Tests the is_monic primitive."""
+    modulus = 3
+    degree = 2
+    mod = IntegersModP(modulus)
+    polysOver = polynomials_over(mod).factory
+    # x^2 + x + 1 is monic over Z/2
+    poly = polysOver([1, 1, 1])
+    assert is_monic(poly)
+
+    # 2x^2 + x + 1 is not monic over Z/2
+    poly = polysOver([1, 1, 2])
+    assert not is_monic(poly)
 
   def test_construct_multivariate_dirac_delta(self):
     """Tests the construct of the multivariate dirac delta."""

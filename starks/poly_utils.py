@@ -121,6 +121,10 @@ def generate_primitive_polynomial(modulus: int, degree: int) -> Poly:
     if is_primitive(irred_poly, modulus, degree):
       return irred_poly
 
+def is_monic(poly: Poly) -> bool:
+  """Tests whether a polynomial is monic."""
+  return poly.coefficients[-1] == 1
+
 def is_primitive(irred_poly: Poly, modulus: int, degree: int) -> bool:
   """Returns true if given polynomial is primitve.
   

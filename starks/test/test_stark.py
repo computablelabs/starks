@@ -17,6 +17,7 @@ from starks.stark import compute_pseudorandom_linear_combination
 from starks.stark import STARK 
 from starks.modp import IntegersModP
 from starks.poly_utils import multivariates_over
+from starks.finitefield import FiniteField
 
 
 class TestStark(unittest.TestCase):
@@ -37,8 +38,14 @@ class TestStark(unittest.TestCase):
   def test_binary_stark_init(self):
     """Test generation of stark parameters."""
     steps = 512
-    modulus = 2**256 - 2**32 * 351 + 1
-    field = IntegersModP(modulus)
+    # This finite field is of size 2^16
+    p = 2
+    m = 16
+    Zp = IntegersModP(p)
+    polysOver = polynomials_over(Zp)
+    field = FiniteField(p, m)
+    # X is a gen
+    X = field(polysOver([0, 1]))
     extension_factor = 8
     # Only tests that constructor works implicitly
     params = STARK(field, steps, modulus, extension_factor, width=1, step_polys=[])
