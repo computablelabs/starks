@@ -1,9 +1,11 @@
 import time
 from starks.merkle_tree import blake
-from starks.numbertype import FieldElement
 from starks.modp import IntegersModP
 from typing import Dict
 from typing import List
+from starks.numbertype import Field
+from starks.numbertype import FieldElement
+from starks.poly_utils import multivariates_over
 
 
 def plus_one(num: int) -> int:
@@ -25,22 +27,38 @@ def mimc(inp: int, steps: int, round_constants: List[int]):
   return inp
 
 
-# TODO(rbharath): The type-constructor style of IntegersModP makes type
-# signatures difficult...
-def get_power_cycle(r: FieldElement, modulus: int):
+def get_power_cycle(r: FieldElement, field: Field):
   """
   Get the set of powers of R, until but not including when the
   powers loop back to 1
   """
-  mod = IntegersModP(modulus)
-  o = [mod(1), r]
-  while o[-1] != 1:
-    #o.append((o[-1] * r) % modulus)
+  o = [field(1), r]
+  while o[-1] != field(1):
     o.append(o[-1] * r)
   return o[:-1]
 
+def generate_Xi_s(field: Field, width: int):
+  """
+  Constructs polynomials X_1,..,X_width
 
-def get_pseudorandom_indices(seed, modulus, count, exclude_multiples_of=0):
+  This helper method generates "index" polynomials. Using
+  these polynomials makes it easier to write more complex
+  polynomials programmatically.
+  """
+  polysOver = multivariates_over(field, width).factory
+  Xi_s = []
+  for i in range(width):
+    pre = (0,) * i
+    post = (0,) * (width - (i+1))
+    index = pre + (1,) + post
+    X_i = polysOver({index: field(1)})
+    Xi_s.append(X_i)
+  return Xi_s
+
+
+# TODO(rbharath): This function needs to be reworkd to be more general
+def get_pseudorandom_indices(entropy, modulus, count, exclude_multiples_of=0):
+#def get_pseudorandom_field_elements(entropy, field, count, exclude_multiples_of=0):
   """Extract pseudorandom indices from entropy
 
   Draws pseudorandom numbers from a given range while avoiding
@@ -49,7 +67,7 @@ def get_pseudorandom_indices(seed, modulus, count, exclude_multiples_of=0):
   avoiding indices that are multiples of 32.
   """
   assert modulus < 2**24
-  data = seed
+  data = entropy 
   # Note that we must have len(data) >= 4 * count. This code #
   # expands data to have necessary length. Think of this as an
   # entropy expansion step.
@@ -58,12 +76,15 @@ def get_pseudorandom_indices(seed, modulus, count, exclude_multiples_of=0):
   if exclude_multiples_of == 0:
     return [
         int.from_bytes(data[i:i + 4], 'big') % modulus
+        #field(data[i:i + 4])
         for i in range(0, count * 4, 4)
     ]
   else:
+    # TODO(rbharath): This is horribly ugly. Figure out how to generalize this...
     real_modulus = modulus * (exclude_multiples_of - 1) // exclude_multiples_of
     o = [
         int.from_bytes(data[i:i + 4], 'big') % real_modulus
+        #field(data[i:i + 4])
         for i in range(0, count * 4, 4)
     ]
     return [x + 1 + x // (exclude_multiples_of - 1) for x in o]

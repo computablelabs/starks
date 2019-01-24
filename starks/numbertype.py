@@ -131,3 +131,6 @@ Field = FieldElement
 class MultiVarPoly(DomainElement):
   pass
 
+# A type alias for a polynomial.
+class Poly(DomainElement):
+  pass

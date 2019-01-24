@@ -1,8 +1,43 @@
 from typing import List
+from starks.numbertype import Field
 from starks.numbertype import FieldElement
 from starks.numbertype import Vector
+from starks.numbertype import Poly
+from starks.polynomial import polynomials_over
 
-# TODO(rbharath): The type signatures here don't account for multidimensional inputs! Should this be List[Vector] instead?
+class FFT(object):
+  """Abstract class that specifies a FFT solver."""
+
+  def __init__(self):
+    raise NotImplementedError
+
+  def fft(self, poly: Poly) -> List[FieldElement]:
+    """The FFT efficiently evaluates a polynomial on many field elements."""
+    raise NotImplementedError
+
+  def inv_fft(self, values: List[FieldElement]) -> Poly:
+    """Converts a polynomial represented as evaluations on m points to coefficients."""
+    raise NotImplementedError
+
+
+class NonBinaryFFT(FFT):
+  """FFT that works for finite fields which don't have characteristic 2."""
+  def __init__(self, field, root_of_unity):
+    self.field = field
+    self.root_of_unity = root_of_unity
+    self.polysOver = polynomials_over(self.field).factory
+
+  def fft(self, poly: Poly) -> List[FieldElement]:
+    """Runs FFT algorithm."""
+    return fft_1d(self.field, poly.coefficients, self.field.p, self.root_of_unity,
+        inv=False)
+
+  def inv_fft(self, values: List[FieldElement]) -> Poly:
+    """Performs the inverse fft."""
+    coeffs = fft_1d(self.field, values, self.field.p, self.root_of_unity,
+        inv=True)
+    return self.polysOver(coeffs)
+
 def _simple_ft(vals: List[FieldElement], roots_of_unity: FieldElement) -> List[FieldElement]:
   """Efficient base case implementation.
   
@@ -32,24 +67,11 @@ def _fft(vals: List[FieldElement], roots_of_unity: FieldElement) -> List[FieldEl
     o[i + len(L)] = (x - y_times_root)
   return o
 
-def fft(vals: List[Vector], modulus: int, root_of_unity: FieldElement,
-    inv: bool =False, dims:int =1) -> List[Vector]:
-  """Computes FFT for potentially multidimensional sequences"""
-  fft_vals = []
-  for dim in range(dims):
-    vals_dim = [val[dim] for val in vals]
-    fft_dim = fft_1d(vals_dim, modulus, root_of_unity, inv=inv)
-    fft_vals.append(fft_dim)
-  # We get tuples without the explicit list cast
-  fft_joint = list([list(elt) for elt in zip(*fft_vals)])
-  return fft_joint
-
-
-def fft_1d(vals: List[FieldElement], modulus: int, root_of_unity: FieldElement, inv: bool = False) -> List[FieldElement]:
+def fft_1d(field: Field, vals: List[FieldElement], modulus: int, root_of_unity: FieldElement, inv: bool = False) -> List[FieldElement]:
   """Computes FFT for one dimensional inputs"""
   # Build up roots of unity
-  rootz = [1, root_of_unity]
-  while rootz[-1] != 1:
+  rootz = [field(1), root_of_unity]
+  while rootz[-1] != field(1):
     rootz.append((rootz[-1] * root_of_unity))
   # Fill in vals with zeroes if needed
   if len(rootz) > len(vals) + 1:

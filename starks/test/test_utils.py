@@ -25,7 +25,8 @@ class TestUtils(unittest.TestCase):
     # This provides us a 6-th root of unity (z^6 = 1)
     #root_of_unity = pow(3, (modulus-1)//6, modulus)
     root_of_unity = mod(3)**((modulus-1)//6)
-    cycle = get_power_cycle(root_of_unity, modulus)
+    #cycle = get_power_cycle(root_of_unity, modulus)
+    cycle = get_power_cycle(root_of_unity, mod)
     assert cycle == [1, 26, 25, 30, 5, 6]
 
   def test_plus_one(self):

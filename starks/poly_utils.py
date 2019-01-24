@@ -15,16 +15,54 @@ from starks.numbertype import FieldElement
 from starks.numbertype import MultiVarPoly 
 from starks.multivariate_polynomial import multivariates_over
 from starks.reedsolomon import AffineSpace
+from starks.numbertype import Field
+from starks.numbertype import Poly
+from starks.numbertype import MultiVarPoly
+from starks.numbertype import FieldElement
+
+def make_multivar(poly: Poly, i: int, field: Field, width: int) -> MultiVarPoly:
+  """Converts a univariate polynomial into multivariate.
+ 
+  Suppose poly = x^2 + 3
+
+  Suppose that width = 5, i = 2. Then returns
+
+  x_2^2 + 3
+  """
+  polysOver = multivariates_over(field, width).factory
+  pre = (0,) * i
+  post = (0,) * (width - (i+1))
+  index = pre + (1,) + post
+  X_i = polysOver({index: field(1)})
+  up_poly = 0
+  for degree, coeff in enumerate(poly.coefficients):
+    up_poly += coeff * X_i**degree
+  return up_poly
+
+def project_to_univariate(multivar_poly: MultiVarPoly, i: int, field: Field, width: int) -> Poly:
+  """Projects a multivariate polynomial to a univariate polynomial over one var."""
+  multivars = multivariates_over(field, width-1)
+  multiVarsOver = multivars.factory
+  polysOver = polynomials_over(multivars).factory
+  X = polysOver([0, 1])
+  out = 0 
+  for (term, coeff) in multivar_poly:
+    # Remove i-th variable 
+    term_minus_i = term[:i] + term[i+1:]
+    coeff = multiVarsOver({term_minus_i: coeff})
+    out += polysOver([coeff]) * X**term[i]
+  return out
 
 def draw_random_interpolant(degree, xs, ys):
   """Constructs a random interpolating polynomial of <= specified degree."""
   # TODO(rbharath): Need to implement this correctly
   return 0
 
-def construct_affine_vanishing_polynomial(aff: AffineSpace) -> Poly:
+def construct_affine_vanishing_polynomial(field: Field, aff: AffineSpace) -> Poly:
   """Constructs a polynomial which vanishes over a given affine space."""
   # TODO(rbharath): Need to implement this correctly.
-  return 0
+  aff_elts = [elt for elt in aff]
+  return zpoly(field, aff_elts)
 
 def is_irreducible(polynomial: Poly, p: int) -> bool:
   """is_irreducible: Polynomial, int -> bool
@@ -98,14 +136,11 @@ def is_primitive(irred_poly: Poly, modulus: int, degree: int) -> bool:
   prime_factors = [int(factor) for factor in prime_factors.keys()]
   Zp = IntegersModP(modulus)
   polysOver = polynomials_over(Zp)
-  # TODO(rbharath): This is x right?
   x = polysOver([0, 1])
   # This is 1 right?
   one = polysOver([1])
   for i, factor in enumerate(prime_factors):
     power = (modulus**degree - 1) // factor
-    # TODO(rbharath): This might need a smarter power implementation. In
-    # particular, might need to take the modulus at intermediate powers.
     l_x = (x**power) % irred_poly
     if l_x == one:
       return False
@@ -191,21 +226,20 @@ def multi_inv(field, values):
       inv = inv * values[i - 1]
   return outputs
 
-def zpoly(modulus, roots):
-  """Build a polynomial with the specified roots over Z/modulus.
+def zpoly(field, roots):
+  """Build a polynomial with the specified roots over the given field.
   
   TODO(rbharath): Find a reference for this implementation. 
   """
-  mod = IntegersModP(modulus)
-  polysOverMod = polynomials_over(mod).factory
-  root = [mod(1)]
+  polysOver = polynomials_over(field).factory
+  root = [field(1)]
   for x in roots:
-    root.insert(0, mod(0))
+    root.insert(0, field(0))
     for j in range(len(root) - 1):
       root[j] -= root[j + 1] * x
-  return polysOverMod(root)
+  return polysOver(root)
 
-def lagrange_interp(modulus, xs, ys):
+def lagrange_interp(field: Field, xs: List[FieldElement], ys: List[FieldElement]):
   """
   Given p+1 y values and x values with no errors, recovers the original
   p+1 degree polynomial. Lagrange interpolation works roughly in the following way.
@@ -216,18 +250,17 @@ def lagrange_interp(modulus, xs, ys):
   3. Add these polynomials together.
   """
   # Generate master numerator polynomial, eg. (x - x1) * (x - x2) * ... * (x - xn)
-  root = zpoly(modulus, xs)
-  mod = IntegersModP(modulus)
-  polysOverMod = polynomials_over(mod).factory
+  root = zpoly(field, xs)
+  polysOver = polynomials_over(field).factory
   assert len(root) == len(ys) + 1
-  # print(root)
   # Generate per-value numerator polynomials, eg. for x=x2,
   # (x - x1) * (x - x3) * ... * (x - xn), by dividing the master
   # polynomial back by each x coordinate
-  nums = [root / polysOverMod([-x, 1]) for x in xs]
+  nums = [root / polysOver([-x, 1]) for x in xs]
   # Generate denominators by evaluating numerator polys at each x
   denoms = [nums[i](xs[i]) for i in range(len(xs))]
-  invdenoms = multi_inv(mod, denoms)
+  #invdenoms = multi_inv(mod, denoms)
+  invdenoms = multi_inv(field, denoms)
   # Generate output polynomial, which is the sum of the per-value numerator
   # polynomials rescaled to have the right y values
   b = [0 for y in ys]
@@ -237,20 +270,17 @@ def lagrange_interp(modulus, xs, ys):
     for j in range(len(ys)):
       if num_coefficients[j] and ys[i]:
         b[j] += num_coefficients[j] * yslice
-  return polysOverMod(b)
+  return polysOver(b)
 
 # Optimized version of the above restricted to deg-4 polynomials
-#def lagrange_interp_4(self, xs, ys):
-def lagrange_interp_4(modulus, xs, ys):
-  mod = IntegersModP(modulus)
-  polysOverMod = polynomials_over(mod).factory
+def lagrange_interp_4(field, xs, ys):
+  polysOver = polynomials_over(field).factory
   x01, x02, x03, x12, x13, x23 = \
       xs[0] * xs[1], xs[0] * xs[2], xs[0] * xs[3], xs[1] * xs[2], xs[1] * xs[3], xs[2] * xs[3]
-  m = modulus
-  eq0 = polysOverMod([-x12 * xs[3], (x12 + x13 + x23), -xs[1] - xs[2] - xs[3], 1])
-  eq1 = polysOverMod([-x02 * xs[3], (x02 + x03 + x23), -xs[0] - xs[2] - xs[3], 1])
-  eq2 = polysOverMod([-x01 * xs[3], (x01 + x03 + x13), -xs[0] - xs[1] - xs[3], 1])
-  eq3 = polysOverMod([-x01 * xs[2], (x01 + x02 + x12), -xs[0] - xs[1] - xs[2], 1])
+  eq0 = polysOver([-x12 * xs[3], (x12 + x13 + x23), -xs[1] - xs[2] - xs[3], 1])
+  eq1 = polysOver([-x02 * xs[3], (x02 + x03 + x23), -xs[0] - xs[2] - xs[3], 1])
+  eq2 = polysOver([-x01 * xs[3], (x01 + x03 + x13), -xs[0] - xs[1] - xs[3], 1])
+  eq3 = polysOver([-x01 * xs[2], (x01 + x02 + x12), -xs[0] - xs[1] - xs[2], 1])
   e0 = eq0(xs[0])
   e1 = eq1(xs[1])
   e2 = eq2(xs[2])
@@ -262,61 +292,47 @@ def lagrange_interp_4(modulus, xs, ys):
   inv_y1 = ys[1] * invall * e0 * e23 
   inv_y2 = ys[2] * invall * e01 * e3
   inv_y3 = ys[3] * invall * e01 * e2
-  return polysOverMod([
+  return polysOver([
       (eq0.coefficients[i] * inv_y0 + eq1.coefficients[i] * inv_y1 + eq2.coefficients[i] * inv_y2 + eq3.coefficients[i] * inv_y3)
       for i in range(4)
   ])
 
 
-# TODO(rbharath): Does this make a noticeable speed difference? If so add back in later.
-## Optimized poly evaluation for degree 4
-#def eval_quartic(self, p, x):
-#  xsq = x * x % self.modulus
-#  xcb = xsq * x
-#  return (p[0] + p[1] * x + p[2] * xsq + p[3] * xcb) % self.modulus
-
 # Optimized version of the above restricted to deg-2 polynomials
-#def lagrange_interp_2(self, xs, ys):
-def lagrange_interp_2(modulus, xs, ys):
-  mod = IntegersModP(modulus)
-  polysOverMod = polynomials_over(mod).factory
-  ###############################################
+def lagrange_interp_2(field, xs, ys):
+  polysOver = polynomials_over(field).factory
   if not isinstance(xs, list):
     xs = xs.coefficients
   if not isinstance(ys, list):
     ys = ys.coefficients
-  ###############################################
-  m = modulus
-  eq0 = polysOverMod([-xs[1], 1])
-  eq1 = polysOverMod([-xs[0], 1])
+  eq0 = polysOver([-xs[1], 1])
+  eq1 = polysOver([-xs[0], 1])
   e0 = eq0(xs[0])
   e1 = eq1(xs[1])
   invall = 1/(e0 * e1)
   inv_y0 = ys[0] * invall * e1
   inv_y1 = ys[1] * invall * e0
-  return polysOverMod([(eq0.coefficients[i] * inv_y0 + eq1.coefficients[i] * inv_y1) for i in range(2)])
+  return polysOver([(eq0.coefficients[i] * inv_y0 + eq1.coefficients[i] * inv_y1) for i in range(2)])
 
-def multi_interp_4(modulus, xsets, ysets):
+def multi_interp_4(field, xsets, ysets):
   """Optimized version of the above restricted to deg-4 polynomials"""
-  mod = IntegersModP(modulus)
-  polysOverMod = polynomials_over(mod).factory
+  polysOver = polynomials_over(field).factory
   data = []
   invtargets = []
   for xs, ys in zip(xsets, ysets):
     x01, x02, x03, x12, x13, x23 = \
         xs[0] * xs[1], xs[0] * xs[2], xs[0] * xs[3], xs[1] * xs[2], xs[1] * xs[3], xs[2] * xs[3]
-    m = modulus
-    eq0 = polysOverMod([-x12 * xs[3], (x12 + x13 + x23), -xs[1] - xs[2] - xs[3], 1])
-    eq1 = polysOverMod([-x02 * xs[3], (x02 + x03 + x23), -xs[0] - xs[2] - xs[3], 1])
-    eq2 = polysOverMod([-x01 * xs[3], (x01 + x03 + x13), -xs[0] - xs[1] - xs[3], 1])
-    eq3 = polysOverMod([-x01 * xs[2], (x01 + x02 + x12), -xs[0] - xs[1] - xs[2], 1])
+    eq0 = polysOver([-x12 * xs[3], (x12 + x13 + x23), -xs[1] - xs[2] - xs[3], 1])
+    eq1 = polysOver([-x02 * xs[3], (x02 + x03 + x23), -xs[0] - xs[2] - xs[3], 1])
+    eq2 = polysOver([-x01 * xs[3], (x01 + x03 + x13), -xs[0] - xs[1] - xs[3], 1])
+    eq3 = polysOver([-x01 * xs[2], (x01 + x02 + x12), -xs[0] - xs[1] - xs[2], 1])
     e0 = eq0(xs[0])
     e1 = eq1(xs[1])
     e2 = eq2(xs[2])
     e3 = eq3(xs[3])
     data.append([ys, eq0, eq1, eq2, eq3])
     invtargets.extend([e0, e1, e2, e3])
-  invalls = multi_inv(mod, invtargets)
+  invalls = multi_inv(field, invtargets)
   o = []
   for (i, (ys, eq0, eq1, eq2, eq3)) in enumerate(data):
     invallz = invalls[i * 4:i * 4 + 4]
@@ -324,6 +340,6 @@ def multi_interp_4(modulus, xsets, ysets):
     inv_y1 = ys[1] * invallz[1]
     inv_y2 = ys[2] * invallz[2]
     inv_y3 = ys[3] * invallz[3]
-    o.append(polysOverMod([(eq0.coefficients[i] * inv_y0 + eq1.coefficients[i] * inv_y1 + eq2.coefficients[i] * inv_y2 +
+    o.append(polysOver([(eq0.coefficients[i] * inv_y0 + eq1.coefficients[i] * inv_y1 + eq2.coefficients[i] * inv_y2 +
                eq3.coefficients[i] * inv_y3) for i in range(4)]))
   return o

@@ -2,6 +2,17 @@
 from typing import List
 from starks.numbertype import Field
 from starks.numbertype import FieldElement
+from starks.numbertype import Poly
+
+class SmoothMultiplicativeGroup(object):
+  """Defines a smooth multiplicative group.
+
+  A smooth multiplicative group is a group of order 2^n which
+  is a multiplicative subgroup of some finite field.
+  """
+
+  def __init__(self):
+    pass
 
 class AffineSpace(object):
   """Defines an affine space (of polynomials typically)."""
@@ -20,6 +31,18 @@ class AffineSpace(object):
     basis_len = int(len(self.basis))
     length = field_size**basis_len
     return length
+
+  def __iter__(self):
+    """Iterates over the elements of the affine space."""
+    field_iterators = []
+    for _ in range(len(self.basis)):
+      field_iterators.append(self.field.__iter__())
+    for basis_vals in itertools.product(*field_iterators):
+      elt = self.shift
+      for val, basis_elt in zip(basis_vals, self.basis):
+        elt += val * basis_elt
+      yield elt
+
 
 class ReedSolomonCode(object):
   """Defines a Reed Solomon Code.
@@ -60,8 +83,4 @@ class ReedSolomonCode(object):
 
   def draw_random_sample(self):
     """Draws a random sample from this RS code."""
-    raise NotImplementedError
-
-  def verify_proximity(self, f) -> bool:
-    """Verifies proximity of this function this RS code."""
     raise NotImplementedError

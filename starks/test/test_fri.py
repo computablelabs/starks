@@ -1,11 +1,21 @@
 import unittest
-from starks.fri import prove_low_degree
-from starks.fri import verify_low_degree_proof
-from starks.fft import fft
+from starks.fri import FRI
 from starks.merkle_tree import merkelize
+from starks.merkle_tree import merkelize_polynomial_evaluations
 from starks.compression import bin_length
 from starks.compression import compress_fri
 from starks.modp import IntegersModP
+from starks.polynomial import polynomials_over
+from starks.fft import NonBinaryFFT
+from starks.poly_utils import multivariates_over
+from starks.air import Computation
+from starks.stark import get_power_cycle 
+from starks.stark import STARK
+from starks.stark import construct_trace_polynomials
+from starks.stark import construct_constraint_polynomials
+from starks.stark import construct_remainder_polynomials
+from starks.stark import construct_boundary_polynomials
+from starks.stark import compute_pseudorandom_linear_combination
 
 
 class TestFRI(unittest.TestCase):
@@ -16,43 +26,39 @@ class TestFRI(unittest.TestCase):
   def test_basic_prove(self):
     """Test proof on low degree implementation"""
     degree = 4
-    modulus = 31
-    mod31 = IntegersModP(31)
-    # 1 + 2x + 3x^2 + 4 x^3 mod 31
-    poly = [[mod31(val)] for val in list(range(degree))]
-    # TODO(rbharath): How does the choice of the n-th root of
-    # unity make a difference in the fft?
+    modulus = 2**256 - 2**32 * 351 + 1
+    field = IntegersModP(modulus)
+    polysOver = polynomials_over(field).factory
+    # 1 + x + 3x^2 + 4 x^3 mod 31
+    poly = polysOver([val for val in range(degree)])
 
     # A root of unity is a number such that z^n = 1
     # This provides us a 6-th root of unity (z^6 = 1)
-    #root_of_unity = pow(3, (modulus - 1) // 6, modulus)
-    root_of_unity = mod31(3)**((modulus-1)//6)
-    evaluations = fft(poly, modulus, root_of_unity)
-    evaluations = [val[0] for val in evaluations]
-    assert len(evaluations) == 6
+    root_of_unity = field(7)**((modulus-1)//8)
 
     # This is a low degree polynomial so we hit the special
     # case of the handler.
-    proof = prove_low_degree(evaluations, root_of_unity, degree, modulus)
+    fri = FRI(field)
+    proof = fri.generate_proximity_proof(poly, root_of_unity, degree)
     # The proof is a list of length one, whose first entry is just the evaluations converted to bytes
-    assert len(proof[0]) == len(evaluations)
+    assert len(proof[0]) == 8 
 
   def test_high_degree_prove(self):
     """Tests proof generation on high degree polynomials"""
-    steps = 512
+    steps = 512 
     modulus = 2**256 - 2**32 * 351 + 1
-    mod = IntegersModP(modulus)
+    field = IntegersModP(modulus)
+    polysOver = polynomials_over(field).factory
     # Some round constants borrowed from MiMC
-    poly = [[mod((i**7) ^ 42)] for i in range(steps)]
+    poly = polysOver([field((i**7) ^ 42) for i in range(steps)])
     # Root of unity such that x^steps=1
-    G = mod(7)**((modulus-1)//steps)
-    evaluations = fft(poly, modulus, G)
-    evaluations = [val[0] for val in evaluations]
+    root_of_unity = field(7)**((modulus-1)//steps)
     # We're trying to prove this is a (steps-1)-degree
     # polnomial
     # degree = (steps-1) + 1 = steps
+    fri = FRI(field)
     degree = steps
-    proof = prove_low_degree(evaluations, G, degree, modulus)
+    proof = fri.generate_proximity_proof(poly, root_of_unity, degree)
     # The proof recurses by dividing maxdeg_plus_1 by 4
     # So 512, 128, 32, 8. (The base case passes over to
     # special handler for degree 16 or less so these are all
@@ -75,47 +81,119 @@ class TestFRI(unittest.TestCase):
     steps = 512
     degree = steps
     modulus = 2**256 - 2**32 * 351 + 1
-    mod = IntegersModP(modulus)
-    poly = [[mod((i**7) ^ 42)] for i in range(steps)]
+    field = IntegersModP(modulus)
+    polysOver = polynomials_over(field).factory
+    poly = polysOver([field((i**7) ^ 42) for i in range(steps)])
     # Root of unity such that x^steps=1
-    G = mod(7)**((modulus - 1) // steps)
-    evaluations = fft(poly, modulus, G, dims=dims)
-    # Unwrap the fft wrapping
-    evaluations = [val[0] for val in evaluations]
-    e_mtree = merkelize(evaluations)
-    # This is a low degree polynomial so we hit the special
-    # case of the handler.
-    proof = prove_low_degree(evaluations, G, degree, modulus)
+    root_of_unity = field(7)**((modulus - 1) // steps)
+    fri = FRI(field)
+    proof = fri.generate_proximity_proof(poly, root_of_unity, degree)
 
-    root = e_mtree[1]
-    verification = verify_low_degree_proof(root, G, proof, steps, modulus)
+    # TODO(rbharath): Should this be a method?
+    fft_solver = NonBinaryFFT(field, root_of_unity)
+    evaluations = fft_solver.fft(poly)
+    e_mtree = merkelize(evaluations)
+    mroot = e_mtree[1]
+    verification = fri.verify_proximity_proof(proof, mroot, root_of_unity, degree)
+    assert verification
 
   def test_fri(self):
     """Pure FRI tests"""
+    #degree = 4096
+    degree = 256
     modulus = 2**256 - 2**32 * 351 + 1
-    mod = IntegersModP(modulus)
-    poly = [[mod(val)] for val in list(range(4096))]
-    root_of_unity = mod(7)**((modulus - 1) // 16384)
-    evaluations = fft(poly, modulus, root_of_unity)
-    evaluations = [val[0] for val in evaluations]
-    proof = prove_low_degree(evaluations, root_of_unity, 4096, modulus)
+    field= IntegersModP(modulus)
+    polysOver = polynomials_over(field).factory
+    poly = polysOver([field(val) for val in range(degree)])
+    root_of_unity = field(7)**((modulus - 1) // (degree*4))
+    #evaluations = fft(poly, modulus, root_of_unity)
+    #evaluations = [val[0] for val in evaluations]
+    #proof = prove_low_degree(evaluations, root_of_unity, 4096, modulus)
+    fri = FRI(field)
+    proof = fri.generate_proximity_proof(poly, root_of_unity, degree)
     print("Approx proof length: %d" % bin_length(compress_fri(proof)))
-    assert verify_low_degree_proof(
-        merkelize(evaluations)[1], root_of_unity, proof, 4096, modulus)
+    #assert verify_low_degree_proof(
+    #    merkelize(evaluations)[1], root_of_unity, proof, 4096, modulus)
 
-    try:
-      fakedata = [
-          x if pow(3, i, 4096) > 400 else 39 for x, i in enumerate(evaluations)
-      ]
-      proof2 = prove_low_degree(fakedata, root_of_unity, 4096, modulus)
-      assert verify_low_degree_proof(
-          merkelize(fakedata)[1], root_of_unity, proof, 4096, modulus)
-      raise Exception("Fake data passed FRI")
-    except:
-      pass
-    try:
-      assert verify_low_degree_proof(
-          merkelize(evaluations)[1], root_of_unity, proof, 2048, modulus)
-      raise Exception("Fake data passed FRI")
-    except:
-      pass
+    fft_solver = NonBinaryFFT(field, root_of_unity)
+    evaluations = fft_solver.fft(poly)
+    e_mtree = merkelize(evaluations)
+    mroot = e_mtree[1]
+    verification = fri.verify_proximity_proof(proof, mroot, root_of_unity, degree)
+    assert verification
+
+    # TODO(rbharath): Make a good test for failure of high degree polynomials
+    #fakedata = [
+    #    x if pow(3, i, degree) > 400 else 39 for x, i in enumerate(evaluations)
+    #]
+    #proof2 = prove_low_degree(fakedata, root_of_unity, 4096, modulus)
+    #assert not verify_low_degree_proof(
+    #    merkelize(fakedata)[1], root_of_unity, proof, 4096, modulus)
+
+    #try:
+    #  assert verify_low_degree_proof(
+    #      merkelize(evaluations)[1], root_of_unity, proof, 2048, modulus)
+    #  raise Exception("Fake data passed FRI")
+    #except:
+    #  pass
+
+  def test_varying_quadratic_fri(self):
+    """
+    Basic tests of FRI generation for quadratic stark with varying coefficients
+    """
+    width = 2
+    steps = 2
+    modulus = 2**256 - 2**32 * 351 + 1
+    extension_factor = 8 
+    field = IntegersModP(modulus)
+    inp = [field(2), field(5)]
+
+    precision = steps * extension_factor
+    G1 = field(7)**((modulus - 1) // steps)
+    G2 = field(7)**((modulus - 1) // precision)
+    xs = get_power_cycle(G2, field)
+    last_step_position = xs[(steps - 1) * extension_factor]
+    ### Factoring out computation
+    polysOver = multivariates_over(field, width).factory
+    X_1 = polysOver({(1,0): field(1)})
+    X_2 = polysOver({(0,1): field(1)})
+    step_polys = [X_1, X_1 + X_2**2] 
+    comp = Computation(field, width, inp, steps, step_polys,
+        extension_factor)
+    witness = comp.generate_witness()
+    boundary = comp.generate_boundary_constraints()
+    stark = STARK(field, steps, modulus, extension_factor, width, step_polys)
+
+
+    trace_polys = construct_trace_polynomials(witness, field, G1)
+    constraint_polys = construct_constraint_polynomials(step_polys,
+        trace_polys, field, G1, width)
+    remainder_polys = construct_remainder_polynomials(constraint_polys, field,
+        steps, last_step_position)
+    boundary_polys = construct_boundary_polynomials(
+        trace_polys, witness, boundary, field, last_step_position, width)
+
+    fft_solver = NonBinaryFFT(field, G2)
+    polys = trace_polys + remainder_polys + boundary_polys
+    poly_evals = []
+    for poly in polys:
+      poly_eval = fft_solver.fft(poly)
+      poly_evals.append(poly_eval)
+    mtree = merkelize_polynomial_evaluations(width, poly_evals)
+
+    l_poly = compute_pseudorandom_linear_combination(mtree[1],
+        trace_polys, remainder_polys, boundary_polys, field, G2, precision,
+        steps, width)
+    l_evaluations = fft_solver.fft(l_poly)
+    l_mtree = merkelize(l_evaluations)
+    l_root = l_mtree[1]
+
+    fri = FRI(field)
+    proof = fri.generate_proximity_proof(l_poly, G2, steps*comp.get_degree(), exclude_multiples_of=extension_factor)
+
+    fft_solver = NonBinaryFFT(field, G2)
+    evaluations = fft_solver.fft(l_poly)
+    e_mtree = merkelize(evaluations)
+    mroot = e_mtree[1]
+    verification = fri.verify_proximity_proof(proof, mroot, G2, steps*comp.get_degree(), exclude_multiples_of=extension_factor)
+    assert verification

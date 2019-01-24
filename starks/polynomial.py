@@ -4,9 +4,10 @@ except ImportError:
   from itertools import izip_longest as zip_longest
 import fractions
 
-from starks.numbertype import DomainElement
 from starks.numbertype import memoize
 from starks.numbertype import typecheck
+from starks.numbertype import DomainElement
+from starks.numbertype import Poly
 
 
 def strip(L, elt):
@@ -18,9 +19,6 @@ def strip(L, elt):
     i -= 1
 
   return L[:i + 1]
-
-class Poly(DomainElement):
-  pass
 
 @memoize
 def polynomials_over(field=fractions.Fraction):
@@ -38,7 +36,17 @@ def polynomials_over(field=fractions.Fraction):
       return Polynomial([cls.field(x) for x in L])
 
     def __init__(self, c):
-      if type(c) is Polynomial:
+      if isinstance(c, bytes):
+        if len(c) % 32 != 0:
+          raise ValueError("Bytelength must be multiple of 32")
+        n_bytes = len(c) // 32
+        coefficients = []
+        for i in range(n_bytes):
+          raw = c[32*i:32*(i+1)]
+          coefficients.append(field(raw))
+        self.coefficients = coefficients
+
+      elif type(c) is Polynomial:
         self.coefficients = c.coefficients
       elif isinstance(c, field):
         self.coefficients = [c]
@@ -154,6 +162,9 @@ def polynomials_over(field=fractions.Fraction):
         y += power_of_x * a 
         power_of_x = (power_of_x * x)
       return y
+
+    def to_bytes(self):
+      coeff_bytes = [coeff.to_bytes(32, 'big') for coeff in self.coefficients]
 
 
   def Zero():

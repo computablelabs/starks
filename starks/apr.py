@@ -83,15 +83,15 @@ class APR(object):
     self.H1 = AffineSpace(self.field, [g**k for k in range(self.t-1)], g**(self.t-1))
     self.L = self.construct_L(g) 
     self.Lcmp = self.construct_L_cmp(g) 
-    self.Z_boundaries = self.construct_Z_boundaries(comp.B)
+    #self.Z_boundaries = self.construct_Z_boundaries(comp.B)
     self.Eps_boundaries = self.construct_Eps_boundaries(comp.B)
-    self.rho_js = self.compute_rho_js(self.Z_boundaries, self.L)
+    #self.rho_js = self.compute_rho_js(self.Z_boundaries, self.L)
     self.rho_cmp = self.compute_rho_cmp(self.Lcmp)
 
     # X_loc + {X_N}_{n in Nbrs}
     num_Phi_vars = 1 + len(self.Nbrs)
     PhiPolys = multivariates_over(self.field, num_Phi_vars).factory
-    self.Phi = self.construct_Phi_polynomials(comp, PhiPolys, g, self.zeta)
+    #self.Phi = self.construct_Phi_polynomials(comp, PhiPolys, g, self.zeta)
 
   def tilde_expansion(indices, neighbor):
     """Performs the Tilde expansion of a neighbor.
@@ -148,7 +148,7 @@ class APR(object):
       Phi_P_1 = 1/Z_H0 * P(Tilde{(1,...,w, n^{id})}, Tilde{(1,...,w, n_1^cyc)})
     """
     Phis = []
-    Z_H0 = construct_affine_vanishing_polynomial(self.H0)
+    Z_H0 = construct_affine_vanishing_polynomial(self.field, self.H0)
     # Define X_loc
     X_loc = PhiPolys({(1,) + (0,)*len(self.Nbrs): 1})
     # n_id(x) = x
@@ -173,6 +173,7 @@ class APR(object):
     return Phis
 
 
+  # TODO(rbharath): This is broken. Fix!!
   def construct_Z_boundaries(self, B):
     """Constructs Z_{B,j}(x) boundary constraint polynomials
 
@@ -207,7 +208,7 @@ class APR(object):
       xs = [(g**i) % self.zeta for (i, _, _) in B]
       ys = [alpha for (_, _, alpha) in B]
       # TODO(rbharath): This interpolation call is broken!
-      interp = lagrange_interp(self.field.p, xs, ys)
+      interp = lagrange_interp(self.field, xs, ys)
       accums.append(interp)
     return accums
 
@@ -224,6 +225,9 @@ class APR(object):
       neighbors.extend([(tau, n_id), (tau, n_cyc_1), (tau, n_cyc_0)])
     return neighbors
 
+  def get_boundary_conditions(self):
+    """Retrieves boundary conditions B."""
+    raise NotImplementedError
 
   def generate_witness(self):
     """A witness w^hat is in (L^F)^T. That is, it's a set of functions indexed

@@ -49,4 +49,5 @@ class TestAPR(unittest.TestCase):
     comp = Computation(field, width, inp, steps, step_polys,
         extension_factor)
     apr = APR(comp)
-    witness = apr.generate_witness()
+    # TODO(rbharath): Uncomment this and reactivate it
+    #witness = apr.generate_witness()

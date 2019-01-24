@@ -1,8 +1,9 @@
 import unittest
 from starks.modp import IntegersModP
 from starks.multivariate_polynomial import multivariates_over
+from starks.utils import generate_Xi_s
 
-class TestMultiVariatePolynomial(unittest.TestCase):
+class TestMultivariate(unittest.TestCase):
   """"
   Basic tests for finite field multivariate polynomial construction.
   """
@@ -182,3 +183,20 @@ class TestMultiVariatePolynomial(unittest.TestCase):
     sq_x_y_poly = multi({(2, 0, 0): mod7(1), (1, 1, 0): mod7(2), (0, 2, 0): mod7(1)})
     # Evaluate with x=1, y=1, z=1. This should equal 4 
     assert sq_x_y_poly((1, 1, 1)) == 4
+
+  def test_composition(self):
+    """Test that multivariate polynomials can compose properly."""
+    modulus = 2**256 - 2**32 * 351 + 1
+    field = IntegersModP(modulus)
+    width = 2
+    multi = multivariates_over(field, width).factory
+    [X_1, X_2] = generate_Xi_s(field, width)
+    step_polys = [X_2, X_1 + 2*X_2**2] 
+
+    # This should equal y + 1
+    state_polys = [X_1, X_2]
+    for step_poly in step_polys:
+      next_step = step_poly(state_polys)
+      # Since we start from the original polynomials the "next step" poly is
+      # just the transition poly.
+      assert next_step == step_poly
