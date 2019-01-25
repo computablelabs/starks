@@ -30,6 +30,12 @@ class FRI(object):
                              security_factor:int = 40) -> bool:
     raise NotImplementedError
 
+class AffineSubspaceFRI(object):
+  """Implements Fast Reed Solomon IOPP for affine spaces."""
+  def __init__(self, field, affine_space: AffineSpace):
+    self.field = field 
+    self.affine_space = affine_space
+
 class SmoothSubgroupFRI(object):
   """Implements Fast Reed Solomon Interactive Oracle Protocol
 
