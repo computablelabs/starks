@@ -37,7 +37,7 @@ class TestStark(unittest.TestCase):
   def test_binary_stark_init(self):
     """Test generation of stark parameters."""
     steps = 512
-    # This finite field is of size 2^16
+    # This finite field is of size 2^17
     p = 2
     m = 17
     Zp = IntegersModP(p)

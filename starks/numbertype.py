@@ -134,3 +134,10 @@ class MultiVarPoly(DomainElement):
 # A type alias for a polynomial.
 class Poly(DomainElement):
   pass
+
+# A type alias for a space. Either an affine subspace or a
+# multiplicative group.
+# TODO(rbharath): The type hierarchy here is really wonky...
+
+class Space(DomainElement):
+  pass

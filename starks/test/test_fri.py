@@ -43,6 +43,33 @@ class TestFRI(unittest.TestCase):
     # The proof is a list of length one, whose first entry is just the evaluations converted to bytes
     assert len(proof[0]) == 8 
 
+  def test_binary_fri_proof(self):
+    """Test proof on low degree implementation"""
+    # This finite field is of size 2^17
+    p = 2
+    m = 17
+    Zp = IntegersModP(p)
+    polysOver = polynomials_over(Zp)
+    field = FiniteField(p, m)
+    #field = FiniteField(p, m)
+    #x^17 + x^3 + 1 is primitive 
+    coefficients = [Zp(0)] * 18
+    coefficients[0] = Zp(1)
+    coefficients[3] = Zp(1)
+    coefficients[17] = Zp(1)
+    poly = polysOver(coefficients)
+    field = FiniteField(p, m, polynomialModulus=poly)
+    polysOver = polynomials_over(field).factory
+    # 1 + x + 3x^2 + 4 x^3 mod 31
+    poly = polysOver([val for val in range(degree)])
+
+    # This is a low degree polynomial so we hit the special
+    # case of the handler.
+    fri = FRI(field)
+    proof = fri.generate_proximity_proof(poly, root_of_unity, degree)
+    # The proof is a list of length one, whose first entry is just the evaluations converted to bytes
+    assert len(proof[0]) == 8 
+
   def test_high_degree_prove(self):
     """Tests proof generation on high degree polynomials"""
     steps = 512 
