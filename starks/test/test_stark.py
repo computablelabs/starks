@@ -1,4 +1,3 @@
-import unittest
 from starks.merkle_tree import merkelize
 from starks.merkle_tree import merkelize_polynomial_evaluations
 from starks.air import Computation
@@ -40,15 +39,24 @@ class TestStark(unittest.TestCase):
     steps = 512
     # This finite field is of size 2^16
     p = 2
-    m = 16
+    m = 17
     Zp = IntegersModP(p)
     polysOver = polynomials_over(Zp)
     field = FiniteField(p, m)
+    #field = FiniteField(p, m)
+    #x^17 + x^3 + 1 is primitive 
+    coefficients = [Zp(0)] * 18
+    coefficients[0] = Zp(1)
+    coefficients[3] = Zp(1)
+    coefficients[17] = Zp(1)
+    poly = polysOver(coefficients)
+    field = FiniteField(p, m, polynomialModulus=poly)
+
     # X is a gen
     X = field(polysOver([0, 1]))
     extension_factor = 8
     # Only tests that constructor works implicitly
-    params = STARK(field, steps, modulus, extension_factor, width=1, step_polys=[])
+    params = STARK(field, steps, extension_factor, width=1, step_polys=[])
 
 
   def test_trace_polynomials(self):

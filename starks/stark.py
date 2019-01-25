@@ -182,7 +182,7 @@ class STARK(object):
   TODO(rbharath): This should perhaps be split into STARKProver and
   STARKVerifier for sanitation in a future PR.
   """
-  def __init__(self, field, steps: int, modulus: FieldElement,
+  def __init__(self, field, steps: int,
       extension_factor: int, width: int, step_polys: List[Poly], spot_check_security_factor: int =80):
     """
     TODO(rbharath): I believe what this class is doing is
@@ -195,8 +195,6 @@ class STARK(object):
       The Field in which computation is permored
     steps: int 
       The number of steps in Computation 
-    modulus: Int
-      A prime p that defines finite field Z/p
     extension_factor: Int
       A power of two which is the degree to which the trace is expanded
       when  constructing polynomials. For example, a trace of length 512
@@ -204,7 +202,6 @@ class STARK(object):
       on a 4096 elements.
     """
     self.field = field
-    #self.modulus = modulus
     self.width = width
     self.steps = steps
     self.step_polys = step_polys
@@ -213,6 +210,7 @@ class STARK(object):
     self.spot_check_security_factor = spot_check_security_factor
 
     if self.field.p != 2:
+      modulus = self.field.p
       # TODO(rbharath): Perhaps these should be roots of the primitive
       # polynomials in the full-fledged starks.
       # Root of unity such that x^precision=1
