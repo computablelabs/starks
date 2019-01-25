@@ -204,7 +204,7 @@ class STARK(object):
       on a 4096 elements.
     """
     self.field = field
-    self.modulus = modulus
+    #self.modulus = modulus
     self.width = width
     self.steps = steps
     self.step_polys = step_polys
@@ -212,17 +212,22 @@ class STARK(object):
     self.precision = steps * extension_factor
     self.spot_check_security_factor = spot_check_security_factor
 
-    # TODO(rbharath): Perhaps these should be roots of the primitive
-    # polynomials in the full-fledged starks.
-    # Root of unity such that x^precision=1
-    self.G2 = field(7)**((modulus - 1) // self.precision)
+    if self.field.p != 2:
+      # TODO(rbharath): Perhaps these should be roots of the primitive
+      # polynomials in the full-fledged starks.
+      # Root of unity such that x^precision=1
+      self.G2 = field(7)**((modulus - 1) // self.precision)
 
-    # Root of unity such that x^steps=1
-    self.G1 = self.G2**extension_factor
+      # Root of unity such that x^steps=1
+      self.G1 = self.G2**extension_factor
 
-    ## Powers of the higher-order root of unity
-    self.xs = get_power_cycle(self.G2, self.field)
-    self.last_step_position = self.xs[(steps - 1) * extension_factor]
+      ## Powers of the higher-order root of unity
+      self.xs = get_power_cycle(self.G2, self.field)
+      self.last_step_position = self.xs[(steps - 1) * extension_factor]
+      self.fft_solver = NonBinaryFFT(self.field, self.G2)
+    else:
+      # We are in the case of a binary field
+      self.fft_solver = BinaryFFT(self.field)
 
   def get_degree(self):
     return max([poly.degree() for poly in self.step_polys])
@@ -231,7 +236,6 @@ class STARK(object):
     """Generate a STARK for a MIMC calculation"""
     start_time = time.time()
 
-    fft_solver = NonBinaryFFT(self.field, self.G2)
     # list of length |width|
     trace_polys = construct_trace_polynomials(witness, self.field, self.G1)
     constraint_polys = construct_constraint_polynomials(self.step_polys,
@@ -250,14 +254,14 @@ class STARK(object):
     # what's happening now.
     poly_evals = []
     for poly in polys:
-      poly_eval = fft_solver.fft(poly)
+      poly_eval = self.fft_solver.fft(poly)
       poly_evals.append(poly_eval)
     mtree = merkelize_polynomial_evaluations(self.width, poly_evals)
 
     l_poly = compute_pseudorandom_linear_combination(
         mtree[1], trace_polys, remainder_polys, boundary_polys, self.field,
         self.G2, self.precision, self.steps, self.width)
-    l_evaluations = fft_solver.fft(l_poly)
+    l_evaluations = self.fft_solver.fft(l_poly)
     l_mtree = merkelize(l_evaluations)
 
     branches = self.compute_merkle_spot_checks(mtree, l_mtree)

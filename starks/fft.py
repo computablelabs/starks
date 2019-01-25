@@ -38,6 +38,19 @@ class NonBinaryFFT(FFT):
         inv=True)
     return self.polysOver(coeffs)
 
+class BinaryFFT(FFT):
+  """FFT that works for finite fields of characteristic 2.
+
+  Implements basis and algorithm from https://arxiv.org/pdf/1404.3458.pdf"""
+
+  def fft(self, poly: Poly) -> List[FieldElement]:
+    """Runs FFT algorithm."""
+    raise NotImplementedError
+
+  def inv_fft(self, values: List[FieldElement]) -> Poly:
+    """Performs the inverse fft."""
+    raise NotImplementedError
+
 def _simple_ft(vals: List[FieldElement], roots_of_unity: FieldElement) -> List[FieldElement]:
   """Efficient base case implementation.
   
