@@ -1,5 +1,6 @@
 import unittest
-from starks.fri import FRI
+from starks.fri import AffineSubspaceFRI
+from starks.fri import SmoothSubgroupFRI
 from starks.merkle_tree import merkelize
 from starks.merkle_tree import merkelize_polynomial_evaluations
 from starks.compression import bin_length
@@ -65,7 +66,7 @@ class TestFRI(unittest.TestCase):
 
     # This is a low degree polynomial so we hit the special
     # case of the handler.
-    fri = FRI(field)
+    fri = AffineSubspaceFRI(field)
     proof = fri.generate_proximity_proof(poly, root_of_unity, degree)
     # The proof is a list of length one, whose first entry is just the evaluations converted to bytes
     assert len(proof[0]) == 8 

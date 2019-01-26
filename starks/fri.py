@@ -36,6 +36,19 @@ class AffineSubspaceFRI(object):
     self.field = field 
     self.affine_space = affine_space
 
+  def generate_proximity_proof(self,
+                               f: Poly,
+                               S: AffineSpace,
+                               security_factor:int = 40) -> List[bytes]:
+    raise NotImplementedError
+
+  def verify_proximity_proof(self,
+                             proof: List[bytes],
+                             merkle_root: bytes,
+                             S: AffineSpace,
+                             security_factor:int = 40) -> bool:
+    raise NotImplementedError
+
 class SmoothSubgroupFRI(object):
   """Implements Fast Reed Solomon Interactive Oracle Protocol
 

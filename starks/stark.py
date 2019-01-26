@@ -383,8 +383,10 @@ class STARK(object):
 
   # TODO(rbharath): This method is poorly structured since it
   # computes spot checks for both the mtree and the ltree
-  # simultaneously. This makes refactoring challenging. Break up
-  # and separate in future PR.
+  # simultaneously. This makes refactoring challenging. Break
+  # up and separate in future PR.
+  # TODO(rbharath): Was the goal of this to reduce the number
+  # of merkle branches needed? Is this implemented correctly?
   def compute_merkle_spot_checks(self, mtree, l_mtree, samples=80):
     """Computes pseudorandom spot checks of Merkle tree."""
     # Do some spot checks of the Merkle tree at pseudo-random
