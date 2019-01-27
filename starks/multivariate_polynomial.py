@@ -38,17 +38,17 @@ def sum_power_tuple(a: Tuple) -> Any:
 
 # TODO(rbharath): How does the memoization code actually work?
 @memoize
-def multivariates_over(field: Field, num_vars: int) -> MultiVarPoly:
+def multivariates_over(ring: Field, num_vars: int) -> MultiVarPoly:
   """Create a multivariate polynomial.
 
-  Let F be the field and n = num_vars. Then the polynomial ring we're
-  constructing here is F[X_1,...,X_n].
+  Let R be the ring and n = num_vars. Then the polynomial ring we're
+  constructing here is R[X_1,...,X_n].
   """
 
   class MultivariatePolynomial(MultiVarPoly):
     operatorPrecedence = 2
 
-    # TODO(rbharath): Using Any here isn't optimal. cls is meant to be a field type. 
+    # TODO(rbharath): Using Any here isn't optimal. cls is meant to be a ring type. 
     @classmethod
     def factory(cls: Any, coefficients: Dict = None,
                 step_fn: Callable = None) -> MultivariatePolynomial:
@@ -62,13 +62,13 @@ def multivariates_over(field: Field, num_vars: int) -> MultiVarPoly:
     def __init__(self, c):
       if type(c) is MultivariatePolynomial:
         self.coefficients = c.coefficients
-      elif isinstance(c, field):
+      elif isinstance(c, ring):
         self.coefficients = {(0,)*num_vars: c}
       elif isinstance(c, dict):
         coefficients = remove_zero_coefficients(c)
         self.coefficients = c
       elif isinstance(c, int):
-        self.coefficients = {(0,)*num_vars: field(c)}
+        self.coefficients = {(0,)*num_vars: ring(c)}
       else:
         raise ValueError
       self.coefficients = remove_zero_coefficients(self.coefficients)
@@ -124,7 +124,7 @@ def multivariates_over(field: Field, num_vars: int) -> MultiVarPoly:
       if power_tup in self.coefficients:
         return self.coefficients[power_tup]
       else:
-        return field(0)
+        return ring(0)
 
     @typecheck
     def __add__(self, other):
@@ -146,7 +146,7 @@ def multivariates_over(field: Field, num_vars: int) -> MultiVarPoly:
           prod = add_power_tuples(a, b)
           coeff = a_coeff * b_coeff 
           if prod not in new_coeffs:
-            new_coeffs[prod] = field(0)
+            new_coeffs[prod] = ring(0)
           new_coeffs[prod] += coeff 
 
       return MultivariatePolynomial(new_coeffs)
@@ -161,20 +161,36 @@ def multivariates_over(field: Field, num_vars: int) -> MultiVarPoly:
 
     # TODO(rbharath): Possibly type-check this.
     def __call__(self, vals):
+      ######################################
+      print("vals")
+      print(vals)
+      ######################################
       assert len(vals) == num_vars
-      y = field(0)
+      y = ring(0)
       power_of_x = 1
       for _, (a, a_coeff) in enumerate(self):
-        prod = field(1)
+        ######################################
+        print("a")
+        print(a)
+        print("a_coeff")
+        print(a_coeff)
+        ######################################
+        prod = ring(1)
         for i, power in enumerate(a):
-          ####################################
-          #print("type(prod)")
-          #print(type(prod))
-          #print("type(vals[i])")
-          #print(type(vals[i]))
-          #print("type(power)")
-          #print(type(power))
-          ####################################
+          ######################################
+          print("i, power")
+          print(i, power)
+          term = vals[i]**power
+          print("prod")
+          print(prod)
+          print("term")
+          print(term)
+          print("type(prod), type(term)")
+          print(type(prod), type(term))
+          print("prod * term")
+          print(prod * term)
+          assert 0 == 1
+          ######################################
           prod *= vals[i]**power
         y += a_coeff * prod
       return y
@@ -182,7 +198,7 @@ def multivariates_over(field: Field, num_vars: int) -> MultiVarPoly:
   def Zero():
     return MultivariatePolynomial({})
 
-  MultivariatePolynomial.field = field
+  MultivariatePolynomial.ring = ring 
   MultivariatePolynomial.num_vars = num_vars
   MultivariatePolynomial.__name__ = "".join(["(%s)" % field.__name__, "[", ",".join(["X_%d" % (i+1) for i in range(num_vars)]), "]"])
   return MultivariatePolynomial

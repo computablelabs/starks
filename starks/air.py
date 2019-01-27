@@ -155,23 +155,6 @@ class AIR(object):
     constraints = []
     for i in range(self.width):
       step_poly = self.step_polys[i]
-      ###################################
-      print("step_poly")
-      print(step_poly)
-      print("len(Xs)")
-      print(len(Xs))
-      print("len(Ys)")
-      print(len(Ys))
-      print("*Xs")
-      print(*Xs)
-      print("Xs")
-      print(Xs)
-      out = step_poly(Xs)
-      print("out")
-      print(out)
-      print("type(out)")
-      print(type(out))
-      ###################################
       Y_i = Ys[i]
       # The constraint_poly
       poly = Y_i - step_poly(Xs)
