@@ -32,6 +32,18 @@ def typecheck(f):
 
     if type(self) is not type(other):
       try:
+        ########################################################
+        print("self.__class__")
+        print(self.__class__)
+        print("other.__class__")
+        print(other.__class__)
+        if hasattr(self.__class__, 'operatorPrecedence'):
+          print("self.__class__.operatorPrecedence")
+          print(self.__class__.operatorPrecedence)
+        if hasattr(other.__class__, 'operatorPrecedence'):
+          print("other.__class__.operatorPrecedence")
+          print(other.__class__.operatorPrecedence)
+        ########################################################
         other = self.__class__(other)
       except TypeError:
         message = 'Not able to typecast %s of type %s to type %s in function %s'

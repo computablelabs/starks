@@ -228,3 +228,4 @@ class TestMultivariate(unittest.TestCase):
     [X_1, X_2] = generate_Xi_s(field, width)
     step_poly = X_2
     poly = step_poly([X_1, X_2])
+    assert poly == X_2

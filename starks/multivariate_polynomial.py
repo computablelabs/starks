@@ -46,7 +46,10 @@ def multivariates_over(ring: Field, num_vars: int) -> MultiVarPoly:
   """
 
   class MultivariatePolynomial(MultiVarPoly):
-    operatorPrecedence = 2
+    # TODO(rbharath): This operator precedence bit is black magic. This needs
+    # to be handled more systematically.
+    #operatorPrecedence = 2
+    operatorPrecedence = 4
 
     # TODO(rbharath): Using Any here isn't optimal. cls is meant to be a ring type. 
     @classmethod
@@ -187,9 +190,13 @@ def multivariates_over(ring: Field, num_vars: int) -> MultiVarPoly:
           print(term)
           print("type(prod), type(term)")
           print(type(prod), type(term))
+          print("prod.__class__.operatorPrecedence")
+          print(prod.__class__.operatorPrecedence)
+          print("term.__class__.operatorPrecedence")
+          print(term.__class__.operatorPrecedence)
           print("prod * term")
           print(prod * term)
-          assert 0 == 1
+          #assert 0 == 1
           ######################################
           prod *= vals[i]**power
         y += a_coeff * prod
@@ -200,5 +207,5 @@ def multivariates_over(ring: Field, num_vars: int) -> MultiVarPoly:
 
   MultivariatePolynomial.ring = ring 
   MultivariatePolynomial.num_vars = num_vars
-  MultivariatePolynomial.__name__ = "".join(["(%s)" % field.__name__, "[", ",".join(["X_%d" % (i+1) for i in range(num_vars)]), "]"])
+  MultivariatePolynomial.__name__ = "".join(["(%s)" % ring.__name__, "[", ",".join(["X_%d" % (i+1) for i in range(num_vars)]), "]"])
   return MultivariatePolynomial
