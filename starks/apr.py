@@ -2,6 +2,8 @@
 and routing (APR) reduction. This reduction is a crucial step on the way to
 zero-knowledge support since the prover applies randomness during the APR
 reduction to achieve a perturbed version of the original AIR representation.
+
+This file transforms the trace into a path (?) in an affine graph. Here, an affine graph has elements of finite field F (recall these correspond to "words" in a processor architecture) and the affine graph is a directed graph with vertices F and specified edges.
 """
 
 import math
@@ -84,6 +86,9 @@ class APR(object):
     self.L = self.construct_L(g) 
     self.Lcmp = self.construct_L_cmp(g) 
     self.Z_boundaries = self.construct_Z_boundaries(air.B)
+    ######################################
+    assert 0 == 1
+    ######################################
     self.Eps_boundaries = self.construct_Eps_boundaries(air.B)
     self.rho_js = self.compute_rho_js(self.Z_boundaries, self.L)
     self.rho_cmp = self.compute_rho_cmp(self.Lcmp)
