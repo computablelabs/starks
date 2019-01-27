@@ -72,9 +72,9 @@ def is_irreducible(polynomial: Poly, p: int) -> bool:
   Algorithm 4.69 in the Handbook of Applied Cryptography
   """
   ZmodP = IntegersModP(p)
-  if polynomial.field is not ZmodP:
+  if polynomial.ring is not ZmodP:
     raise TypeError("Given a polynomial that's not over %s, but instead %r" %
-                    (ZmodP.__name__, polynomial.field.__name__))
+                    (ZmodP.__name__, polynomial.ring.__name__))
 
   poly = polynomials_over(ZmodP).factory
   x = poly([0, 1])

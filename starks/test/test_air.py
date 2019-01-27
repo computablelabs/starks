@@ -57,29 +57,3 @@ class TestAIR(unittest.TestCase):
       for dim in range(width):
         assert isinstance(state[dim], field)
 
-  def test_binary_air(self):
-    """Test construction of a binary AIR object."""
-    steps = 512
-    # This finite field is of size 2^17
-    p = 2
-    m = 17
-    # TODO(rbharath): Extension factor shouldn't be an
-    # argument.
-    extension_factor = 8
-    Zp = IntegersModP(p)
-    polysOver = polynomials_over(Zp)
-    #field = FiniteField(p, m)
-    #x^17 + x^3 + 1 is primitive 
-    coefficients = [Zp(0)] * 18
-    coefficients[0] = Zp(1)
-    coefficients[3] = Zp(1)
-    coefficients[17] = Zp(1)
-    poly = polysOver(coefficients)
-    field = FiniteField(p, m, polynomialModulus=poly)
-    width = 2
-    inp = [field(0), field(1)]
-    polysOver = multivariates_over(field, width).factory
-    [X_1, X_2] = generate_Xi_s(field, width)
-    step_polys = [X_2, X_1 + X_2] 
-    air = AIR(field, width, inp, steps, step_polys,
-               extension_factor)

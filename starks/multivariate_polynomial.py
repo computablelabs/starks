@@ -167,6 +167,14 @@ def multivariates_over(field: Field, num_vars: int) -> MultiVarPoly:
       for _, (a, a_coeff) in enumerate(self):
         prod = field(1)
         for i, power in enumerate(a):
+          ####################################
+          #print("type(prod)")
+          #print(type(prod))
+          #print("type(vals[i])")
+          #print(type(vals[i]))
+          #print("type(power)")
+          #print(type(power))
+          ####################################
           prod *= vals[i]**power
         y += a_coeff * prod
       return y

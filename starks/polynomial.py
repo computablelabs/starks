@@ -21,8 +21,8 @@ def strip(L, elt):
   return L[:i + 1]
 
 @memoize
-def polynomials_over(field=fractions.Fraction):
-  """Create a polynomial with coefficients in a field
+def polynomials_over(ring=fractions.Fraction):
+  """Create a polynomial with coefficients in a ring 
   
   Coefficients are in increasing order of monomial degree so that, for example,
   [1,2,3] corresponds to 1 + 2x + 3x^2.
@@ -33,7 +33,7 @@ def polynomials_over(field=fractions.Fraction):
 
     @classmethod
     def factory(cls, L):
-      return Polynomial([cls.field(x) for x in L])
+      return Polynomial([cls.ring(x) for x in L])
 
     def __init__(self, c):
       if isinstance(c, bytes):
@@ -43,19 +43,19 @@ def polynomials_over(field=fractions.Fraction):
         coefficients = []
         for i in range(n_bytes):
           raw = c[32*i:32*(i+1)]
-          coefficients.append(field(raw))
+          coefficients.append(ring(raw))
         self.coefficients = coefficients
 
       elif type(c) is Polynomial:
         self.coefficients = c.coefficients
-      elif isinstance(c, field):
+      elif isinstance(c, ring):
         self.coefficients = [c]
       elif not hasattr(c, '__iter__') and not hasattr(c, 'iter'):
-        self.coefficients = [field(c)]
+        self.coefficients = [ring(c)]
       else:
         self.coefficients = c
 
-      self.coefficients = strip(self.coefficients, field(0))
+      self.coefficients = strip(self.coefficients, ring(0))
 
     def is_zero(self):
       return self.coefficients == []
@@ -108,7 +108,7 @@ def polynomials_over(field=fractions.Fraction):
     @typecheck
     def __add__(self, other):
       new_coefficients = [
-          sum(x) for x in zip_longest(self, other, fillvalue=self.field(0))
+          sum(x) for x in zip_longest(self, other, fillvalue=self.ring(0))
       ]
       return Polynomial(new_coefficients)
 
@@ -117,7 +117,7 @@ def polynomials_over(field=fractions.Fraction):
       if self.is_zero() or other.is_zero():
         return Zero()
 
-      newCoeffs = [self.field(0) for _ in range(len(self) + len(other) - 1)]
+      newCoeffs = [self.ring(0) for _ in range(len(self) + len(other) - 1)]
 
       for i, a in enumerate(self):
         for j, b in enumerate(other):
@@ -133,7 +133,7 @@ def polynomials_over(field=fractions.Fraction):
 
       while remainder.degree() >= divisorDeg:
         monomialExponent = remainder.degree() - divisorDeg
-        monomialZeros = [self.field(0) for _ in range(monomialExponent)]
+        monomialZeros = [self.ring(0) for _ in range(monomialExponent)]
         monomialDivisor = Polynomial(
             monomialZeros + [remainder.leading_coefficient() / divisorLC])
 
@@ -156,7 +156,7 @@ def polynomials_over(field=fractions.Fraction):
 
     # TODO(rbharath): Possibly type-check this.
     def __call__(self, x):
-      y = self.field(0)
+      y = self.ring(0)
       power_of_x = 1
       for i, a in enumerate(self):
         y += power_of_x * a 
@@ -170,7 +170,7 @@ def polynomials_over(field=fractions.Fraction):
   def Zero():
     return Polynomial([])
 
-  Polynomial.field = field
-  Polynomial.__name__ = '(%s)[x]' % field.__name__
-  Polynomial.englishName = 'Polynomials in one variable over %s' % field.__name__
+  Polynomial.ring = ring 
+  Polynomial.__name__ = '(%s)[x]' % ring.__name__
+  Polynomial.englishName = 'Polynomials in one variable over %s' % ring.__name__
   return Polynomial
