@@ -164,40 +164,12 @@ def multivariates_over(ring: Field, num_vars: int) -> MultiVarPoly:
 
     # TODO(rbharath): Possibly type-check this.
     def __call__(self, vals):
-      ######################################
-      print("vals")
-      print(vals)
-      ######################################
       assert len(vals) == num_vars
       y = ring(0)
       power_of_x = 1
       for _, (a, a_coeff) in enumerate(self):
-        ######################################
-        print("a")
-        print(a)
-        print("a_coeff")
-        print(a_coeff)
-        ######################################
         prod = ring(1)
         for i, power in enumerate(a):
-          ######################################
-          print("i, power")
-          print(i, power)
-          term = vals[i]**power
-          print("prod")
-          print(prod)
-          print("term")
-          print(term)
-          print("type(prod), type(term)")
-          print(type(prod), type(term))
-          print("prod.__class__.operatorPrecedence")
-          print(prod.__class__.operatorPrecedence)
-          print("term.__class__.operatorPrecedence")
-          print(term.__class__.operatorPrecedence)
-          print("prod * term")
-          print(prod * term)
-          #assert 0 == 1
-          ######################################
           prod *= vals[i]**power
         y += a_coeff * prod
       return y

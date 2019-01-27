@@ -205,13 +205,9 @@ class TestMultivariate(unittest.TestCase):
 
   def test_finitefield(self):
     """Test multivariates over finite fields."""
-    steps = 512
     # This finite field is of size 2^17
     p = 2
     m = 17
-    # TODO(rbharath): Extension factor shouldn't be an
-    # argument.
-    extension_factor = 8
     Zp = IntegersModP(p)
     polysOver = polynomials_over(Zp)
     #field = FiniteField(p, m)

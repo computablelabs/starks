@@ -112,7 +112,6 @@ class AIR(object):
     self.F = field
     self.T = steps
     self.w = width 
-    self.witness = self.generate_witness()
     self.Polys = self.generate_constraint_polynomials()
     self.C = self.generate_monotone_circuit(self.Polys)
     self.B = self.generate_boundary_constraints()

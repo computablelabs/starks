@@ -28,13 +28,6 @@ def IntegersModP(p):
         if isinstance(n, bytes):
           self.n = int.from_bytes(n, 'big')
         else:
-          ##############################################################
-          try:
-            a = int(n)
-          except Exception:
-            print("n")
-            print(n)
-          ##############################################################
           self.n = int(n) % IntegerModP.p
       except:
         raise TypeError("Can't cast type %s to %s in __init__" %
