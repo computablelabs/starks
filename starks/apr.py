@@ -48,6 +48,9 @@ class APR(object):
     Implements the AIR->APR transform from the STARKs paper.
     """
     self.air = air 
+    ########################################
+    assert 0 == 1
+    ########################################
     modulus = air.field.p
     self.width = air.width
     # field = (Z/2[g]/h(g))

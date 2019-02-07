@@ -14,11 +14,20 @@ class TestAPR(unittest.TestCase):
     """Test that the APR class can be initialized."""
     width = 2
     # Set the field small in tests since primitive polynomial generation is slow.
-    p = 7 
-    m = 4
+    p = 2
+    m = 17 
+    Zp = IntegersModP(p)
+    polysOver = polynomials_over(Zp)
+    #field = FiniteField(p, m)
+    #x^17 + x^3 + 1 is primitive 
+    coefficients = [Zp(0)] * 18
+    coefficients[0] = Zp(1)
+    coefficients[3] = Zp(1)
+    coefficients[17] = Zp(1)
+    poly = polysOver(coefficients)
+    field = FiniteField(p, m, polynomialModulus=poly)
     steps = 8
     extension_factor = 8
-    field = FiniteField(p, m)
     inp = [field(0), field(1)]
     polysOver = multivariates_over(field, width).factory
     X_1 = polysOver({(1,0): field(1)})
@@ -27,6 +36,7 @@ class TestAPR(unittest.TestCase):
     air = AIR(field, width, inp, steps, step_polys,
         extension_factor)
     apr = APR(air)
+    assert 0 == 1
 
 
   def test_get_witness(self):
