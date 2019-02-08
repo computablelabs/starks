@@ -37,5 +37,6 @@ class TestAffineSpace(unittest.TestCase):
     #########################################
     print("elts")
     print(elts)
+    #assert len(elts) == (p)**t
+    assert len(elts) == 4 
     #########################################
-    assert 0 == 1

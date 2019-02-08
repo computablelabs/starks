@@ -269,14 +269,26 @@ class TestPolyUtils(unittest.TestCase):
   def test_construct_affine_vanishing_poly(self):
     """Tests the construction of an affine vanishing poly."""
     p = 2
-    m = 1
+    m = 2
     # Degree of space we construct
-    t = 3
+    t = 2
     Zp = IntegersModP(p)
     basePolys = polynomials_over(Zp)
     # g
     g = basePolys([0, 1])
     field = FiniteField(p, m)
+    ################################################
+    print("field")
+    print(field)
+    print("field.__name__")
+    print(field.__name__)
+    ################################################
     H0 = AffineSpace(Zp, [g**k for k in range(t-1)])
+    ################################################
+    print("field")
+    print(field)
+    ################################################
     Z_H0 = construct_affine_vanishing_polynomial(field, H0)
 
+    # TODO(rbharath): Add more tests here that Z_H0 is
+    # correctly constructed.

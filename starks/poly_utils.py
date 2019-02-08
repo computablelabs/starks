@@ -61,11 +61,15 @@ def draw_random_interpolant(degree, xs, ys):
 def construct_affine_vanishing_polynomial(field: Field, aff: AffineSpace) -> Poly:
   """Constructs a polynomial which vanishes over a given affine space."""
   # TODO(rbharath): Need to implement this correctly.
-  aff_elts = [elt for elt in aff]
+  aff_elts = [field(elt) for elt in aff]
   ##############################################
-  # TODO(rbharath): This is buggy!!!!
+  # TODO(rbharath): This doesn't work for arbitrary finite fields! 
+  print("field")
+  print(field)
   print("aff_elts")
   print(aff_elts)
+  print("[type(aff) for aff in aff_elts]")
+  print([type(aff) for aff in aff_elts])
   # Ok the error here is that aff_elts are not being interpreted as finite field elements? How to fix?
   ##############################################
   return zpoly(field, aff_elts)
