@@ -85,13 +85,7 @@ class APR(object):
     self.H1 = AffineSpace(self.field, [g**k for k in range(self.t-1)], g**(self.t-1))
     self.L = self.construct_L(g) 
     self.Lcmp = self.construct_L_cmp(g) 
-    ########################################
-    assert 0 == 1
-    ########################################
     self.Z_boundaries = self.construct_Z_boundaries(air.B)
-    ######################################
-    assert 0 == 1
-    ######################################
     self.Eps_boundaries = self.construct_Eps_boundaries(air.B)
     self.rho_js = self.compute_rho_js(self.Z_boundaries, self.L)
     self.rho_cmp = self.compute_rho_cmp(self.Lcmp)
@@ -99,7 +93,10 @@ class APR(object):
     # X_loc + {X_N}_{n in Nbrs}
     num_Phi_vars = 1 + len(self.Nbrs)
     PhiPolys = multivariates_over(self.field, num_Phi_vars).factory
-    self.Phi = self.construct_Phi_polynomials(comp, PhiPolys, g, self.zeta)
+    ######################################
+    assert 0 == 1
+    ######################################
+    self.Phi = self.construct_Phi_polynomials(air, PhiPolys, g, self.zeta)
 
   def tilde_expansion(indices, neighbor):
     """Performs the Tilde expansion of a neighbor.
@@ -189,13 +186,26 @@ class APR(object):
 
     Z_{B,j}(x) = \prod_{(i, j, alpha) \in B}
     """
+    ##########################################
+    print("B")
+    print(B)
+    ##########################################
     accums = []
     x = self.polysOver([0, 1])
     g = self.basePolys([0, 1])
+    ##########################################
+    print("self.width")
+    print(self.width)
+    print("self.zeta")
+    print(self.zeta)
+    print("(g**2) % self.zeta")
+    print((g**2) % self.zeta)
+    ##########################################
     for w in range(self.width):
-      accum = self.basePolys(1)
+      accum = self.polysOver([self.basePolys(1)])
       for (i, j, alpha) in B:
-        term = x - ((g**i) % self.zeta)
+        # x - g**i % zeta
+        term = x - self.polysOver([((g**i) % self.zeta)])
         accum = accum * term
       accums.append(accum)
     return accums
