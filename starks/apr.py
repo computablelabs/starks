@@ -48,9 +48,6 @@ class APR(object):
     Implements the AIR->APR transform from the STARKs paper.
     """
     self.air = air 
-    ########################################
-    assert 0 == 1
-    ########################################
     modulus = air.field.p
     self.width = air.width
     # field = (Z/2[g]/h(g))
@@ -88,6 +85,9 @@ class APR(object):
     self.H1 = AffineSpace(self.field, [g**k for k in range(self.t-1)], g**(self.t-1))
     self.L = self.construct_L(g) 
     self.Lcmp = self.construct_L_cmp(g) 
+    ########################################
+    assert 0 == 1
+    ########################################
     self.Z_boundaries = self.construct_Z_boundaries(air.B)
     ######################################
     assert 0 == 1
