@@ -62,6 +62,12 @@ def construct_affine_vanishing_polynomial(field: Field, aff: AffineSpace) -> Pol
   """Constructs a polynomial which vanishes over a given affine space."""
   # TODO(rbharath): Need to implement this correctly.
   aff_elts = [elt for elt in aff]
+  ##############################################
+  # TODO(rbharath): This is buggy!!!!
+  print("aff_elts")
+  print(aff_elts)
+  # Ok the error here is that aff_elts are not being interpreted as finite field elements? How to fix?
+  ##############################################
   return zpoly(field, aff_elts)
 
 def is_irreducible(polynomial: Poly, p: int) -> bool:
@@ -241,6 +247,10 @@ def zpoly(field, roots):
     root.insert(0, field(0))
     for j in range(len(root) - 1):
       root[j] -= root[j + 1] * x
+  ###########################################
+  print("root")
+  print(root)
+  ###########################################
   return polysOver(root)
 
 def lagrange_interp(field: Field, xs: List[FieldElement], ys: List[FieldElement]):

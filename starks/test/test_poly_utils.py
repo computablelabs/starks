@@ -271,7 +271,7 @@ class TestPolyUtils(unittest.TestCase):
     p = 2
     m = 1
     # Degree of space we construct
-    t = 9
+    t = 3
     Zp = IntegersModP(p)
     basePolys = polynomials_over(Zp)
     # g
