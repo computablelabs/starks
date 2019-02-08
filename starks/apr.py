@@ -93,9 +93,6 @@ class APR(object):
     # X_loc + {X_N}_{n in Nbrs}
     num_Phi_vars = 1 + len(self.Nbrs)
     PhiPolys = multivariates_over(self.field, num_Phi_vars).factory
-    ######################################
-    assert 0 == 1
-    ######################################
     self.Phi = self.construct_Phi_polynomials(air, PhiPolys, g, self.zeta)
 
   def tilde_expansion(indices, neighbor):

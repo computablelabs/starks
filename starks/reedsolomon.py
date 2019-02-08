@@ -1,4 +1,5 @@
 """This file holds classes necessary to implement Reed-Solomon codes"""
+import itertools
 from typing import List
 from starks.numbertype import Field
 from starks.numbertype import FieldElement
@@ -38,9 +39,13 @@ class AffineSpace(object):
     for _ in range(len(self.basis)):
       field_iterators.append(self.field.__iter__())
     for basis_vals in itertools.product(*field_iterators):
+      print("basis_vals")
+      print(basis_vals)
       elt = self.shift
       for val, basis_elt in zip(basis_vals, self.basis):
         elt += val * basis_elt
+      print("elt")
+      print(elt)
       yield elt
 
 

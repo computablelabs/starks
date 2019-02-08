@@ -15,8 +15,10 @@ from starks.polynomial import polynomials_over
 from starks.poly_utils import construct_multivariate_dirac_delta
 from starks.poly_utils import construct_multivariate_coefficients
 from starks.poly_utils import project_to_univariate
+from starks.poly_utils import construct_affine_vanishing_polynomial
 from starks.utils import get_power_cycle
 from starks.finitefield import FiniteField
+from starks.reedsolomon import AffineSpace
 
 class TestPolyUtils(unittest.TestCase):
   """
@@ -263,4 +265,18 @@ class TestPolyUtils(unittest.TestCase):
     # This should equal x + 1 
     x_plus_one_poly = multi({(0, 0, 0): mod7(1), (1, 0, 0): mod7(1)})
     assert poly == x_plus_one_poly
+
+  def test_construct_affine_vanishing_poly(self):
+    """Tests the construction of an affine vanishing poly."""
+    p = 2
+    m = 1
+    # Degree of space we construct
+    t = 9
+    Zp = IntegersModP(p)
+    basePolys = polynomials_over(Zp)
+    # g
+    g = basePolys([0, 1])
+    field = FiniteField(p, m)
+    H0 = AffineSpace(Zp, [g**k for k in range(t-1)])
+    Z_H0 = construct_affine_vanishing_polynomial(field, H0)
 
