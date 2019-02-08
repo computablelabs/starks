@@ -80,9 +80,9 @@ class APR(object):
     self.Nbrs = self.construct_neighbors(self.Tau, self.zeta, g, self.polysOver)
 
     # Define the affine spaces (TODO(rbharath): Fill out stub)
-    self.H = AffineSpace(self.field, [g**k for k in range(self.t)])
-    self.H0 = AffineSpace(self.field, [g**k for k in range(self.t-1)])
-    self.H1 = AffineSpace(self.field, [g**k for k in range(self.t-1)], g**(self.t-1))
+    self.H = AffineSpace(base_field, [g**k for k in range(self.t)])
+    self.H0 = AffineSpace(base_field, [g**k for k in range(self.t-1)])
+    self.H1 = AffineSpace(base_field, [g**k for k in range(self.t-1)], g**(self.t-1))
     self.L = self.construct_L(g) 
     self.Lcmp = self.construct_L_cmp(g) 
     self.Z_boundaries = self.construct_Z_boundaries(air.B)

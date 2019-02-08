@@ -15,17 +15,18 @@ class TestAPR(unittest.TestCase):
     width = 2
     # Set the field small in tests since primitive polynomial generation is slow.
     p = 2
-    m = 17 
+    m = 2
     Zp = IntegersModP(p)
     polysOver = polynomials_over(Zp)
-    #field = FiniteField(p, m)
-    #x^17 + x^3 + 1 is primitive 
-    coefficients = [Zp(0)] * 18
-    coefficients[0] = Zp(1)
-    coefficients[3] = Zp(1)
-    coefficients[17] = Zp(1)
-    poly = polysOver(coefficients)
-    field = FiniteField(p, m, polynomialModulus=poly)
+    field = FiniteField(p, m)
+    #m = 17
+    ##x^17 + x^3 + 1 is primitive 
+    #coefficients = [Zp(0)] * 18
+    #coefficients[0] = Zp(1)
+    #coefficients[3] = Zp(1)
+    #coefficients[17] = Zp(1)
+    #poly = polysOver(coefficients)
+    #field = FiniteField(p, m, polynomialModulus=poly)
     steps = 8
     extension_factor = 8
     inp = [field(0), field(1)]
