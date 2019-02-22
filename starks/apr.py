@@ -2,10 +2,12 @@
 and routing (APR) reduction. This reduction is a crucial step on the way to
 zero-knowledge support since the prover applies randomness during the APR
 reduction to achieve a perturbed version of the original AIR representation.
+
+This file transforms the trace into a path (?) in an affine graph. Here, an affine graph has elements of finite field F (recall these correspond to "words" in a processor architecture) and the affine graph is a directed graph with vertices F and specified edges.
 """
 
 import math
-from starks.air import Computation
+from starks.air import AIR 
 from starks.reedsolomon import AffineSpace
 from starks.polynomial import polynomials_over
 from starks.poly_utils import generate_primitive_polynomial
@@ -40,16 +42,16 @@ class APR(object):
   TODO(rbharath): The low-degree extension (additive FFT) is used in this
   class! Where are the specific incantions?
   """
-  def __init__(self, comp: Computation, zero_knowledge_expansion=5):
-    """Initiates the APR object using an AIR Computation object.
+  def __init__(self, air: AIR, zero_knowledge_expansion=5):
+    """Initiates the APR object using an AIR object.
 
     Implements the AIR->APR transform from the STARKs paper.
     """
-    self.comp = comp
-    modulus = comp.field.p
-    self.width = comp.width
+    self.air = air 
+    modulus = air.field.p
+    self.width = air.width
     # field = (Z/2[g]/h(g))
-    self.field = comp.field
+    self.field = air.field
     # base_field = Z/2
     base_field = self.field.base_field
     self.basePolys = polynomials_over(base_field)
@@ -59,7 +61,7 @@ class APR(object):
     g = self.basePolys([0, 1])
 
     # Some constants
-    T = comp.steps
+    T = air.steps
     self.t = int(math.log(T, 2))
     # chosen so deg(C) <= 2^d
     # Setting to arbitrary value for now.
@@ -78,20 +80,20 @@ class APR(object):
     self.Nbrs = self.construct_neighbors(self.Tau, self.zeta, g, self.polysOver)
 
     # Define the affine spaces (TODO(rbharath): Fill out stub)
-    self.H = AffineSpace(self.field, [g**k for k in range(self.t)])
-    self.H0 = AffineSpace(self.field, [g**k for k in range(self.t-1)])
-    self.H1 = AffineSpace(self.field, [g**k for k in range(self.t-1)], g**(self.t-1))
+    self.H = AffineSpace(base_field, [g**k for k in range(self.t)])
+    self.H0 = AffineSpace(base_field, [g**k for k in range(self.t-1)])
+    self.H1 = AffineSpace(base_field, [g**k for k in range(self.t-1)], g**(self.t-1))
     self.L = self.construct_L(g) 
     self.Lcmp = self.construct_L_cmp(g) 
-    #self.Z_boundaries = self.construct_Z_boundaries(comp.B)
-    self.Eps_boundaries = self.construct_Eps_boundaries(comp.B)
-    #self.rho_js = self.compute_rho_js(self.Z_boundaries, self.L)
+    self.Z_boundaries = self.construct_Z_boundaries(air.B)
+    self.Eps_boundaries = self.construct_Eps_boundaries(air.B)
+    self.rho_js = self.compute_rho_js(self.Z_boundaries, self.L)
     self.rho_cmp = self.compute_rho_cmp(self.Lcmp)
 
     # X_loc + {X_N}_{n in Nbrs}
     num_Phi_vars = 1 + len(self.Nbrs)
     PhiPolys = multivariates_over(self.field, num_Phi_vars).factory
-    #self.Phi = self.construct_Phi_polynomials(comp, PhiPolys, g, self.zeta)
+    self.Phi = self.construct_Phi_polynomials(air, PhiPolys, g, self.zeta)
 
   def tilde_expansion(indices, neighbor):
     """Performs the Tilde expansion of a neighbor.
@@ -181,13 +183,26 @@ class APR(object):
 
     Z_{B,j}(x) = \prod_{(i, j, alpha) \in B}
     """
+    ##########################################
+    print("B")
+    print(B)
+    ##########################################
     accums = []
     x = self.polysOver([0, 1])
     g = self.basePolys([0, 1])
+    ##########################################
+    print("self.width")
+    print(self.width)
+    print("self.zeta")
+    print(self.zeta)
+    print("(g**2) % self.zeta")
+    print((g**2) % self.zeta)
+    ##########################################
     for w in range(self.width):
-      accum = self.basePolys(1)
+      accum = self.polysOver([self.basePolys(1)])
       for (i, j, alpha) in B:
-        term = x - ((g**i) % self.zeta)
+        # x - g**i % zeta
+        term = x - self.polysOver([((g**i) % self.zeta)])
         accum = accum * term
       accums.append(accum)
     return accums

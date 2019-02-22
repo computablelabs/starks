@@ -8,14 +8,17 @@ from starks.poly_utils import lagrange_interp_2
 from starks.poly_utils import lagrange_interp_4
 from starks.poly_utils import multi_interp_4 
 from starks.poly_utils import is_primitive
+from starks.poly_utils import is_monic
 from starks.poly_utils import is_irreducible
 from starks.poly_utils import generate_primitive_polynomial 
 from starks.polynomial import polynomials_over
 from starks.poly_utils import construct_multivariate_dirac_delta
 from starks.poly_utils import construct_multivariate_coefficients
 from starks.poly_utils import project_to_univariate
+from starks.poly_utils import construct_affine_vanishing_polynomial
 from starks.utils import get_power_cycle
 from starks.finitefield import FiniteField
+from starks.reedsolomon import AffineSpace
 
 class TestPolyUtils(unittest.TestCase):
   """
@@ -202,6 +205,20 @@ class TestPolyUtils(unittest.TestCase):
     assert is_irreducible(gen_poly, modulus)
     assert is_primitive(gen_poly, modulus, degree)
 
+  def test_is_monic(self):
+    """Tests the is_monic primitive."""
+    modulus = 3
+    degree = 2
+    mod = IntegersModP(modulus)
+    polysOver = polynomials_over(mod).factory
+    # x^2 + x + 1 is monic over Z/2
+    poly = polysOver([1, 1, 1])
+    assert is_monic(poly)
+
+    # 2x^2 + x + 1 is not monic over Z/2
+    poly = polysOver([1, 1, 2])
+    assert not is_monic(poly)
+
   def test_construct_multivariate_dirac_delta(self):
     """Tests the construct of the multivariate dirac delta."""
     modulus = 3
@@ -249,3 +266,29 @@ class TestPolyUtils(unittest.TestCase):
     x_plus_one_poly = multi({(0, 0, 0): mod7(1), (1, 0, 0): mod7(1)})
     assert poly == x_plus_one_poly
 
+  def test_construct_affine_vanishing_poly(self):
+    """Tests the construction of an affine vanishing poly."""
+    p = 2
+    m = 2
+    # Degree of space we construct
+    t = 2
+    Zp = IntegersModP(p)
+    basePolys = polynomials_over(Zp)
+    # g
+    g = basePolys([0, 1])
+    field = FiniteField(p, m)
+    ################################################
+    print("field")
+    print(field)
+    print("field.__name__")
+    print(field.__name__)
+    ################################################
+    H0 = AffineSpace(Zp, [g**k for k in range(t-1)])
+    ################################################
+    print("field")
+    print(field)
+    ################################################
+    Z_H0 = construct_affine_vanishing_polynomial(field, H0)
+
+    # TODO(rbharath): Add more tests here that Z_H0 is
+    # correctly constructed.

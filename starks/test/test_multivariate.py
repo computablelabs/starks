@@ -2,6 +2,8 @@ import unittest
 from starks.modp import IntegersModP
 from starks.multivariate_polynomial import multivariates_over
 from starks.utils import generate_Xi_s
+from starks.polynomial import polynomials_over
+from starks.finitefield import FiniteField
 
 class TestMultivariate(unittest.TestCase):
   """"
@@ -200,3 +202,26 @@ class TestMultivariate(unittest.TestCase):
       # Since we start from the original polynomials the "next step" poly is
       # just the transition poly.
       assert next_step == step_poly
+
+  def test_finitefield(self):
+    """Test multivariates over finite fields."""
+    # This finite field is of size 2^17
+    p = 2
+    m = 17
+    Zp = IntegersModP(p)
+    polysOver = polynomials_over(Zp)
+    #field = FiniteField(p, m)
+    #x^17 + x^3 + 1 is primitive 
+    coefficients = [Zp(0)] * 18
+    coefficients[0] = Zp(1)
+    coefficients[3] = Zp(1)
+    coefficients[17] = Zp(1)
+    poly = polysOver(coefficients)
+    field = FiniteField(p, m, polynomialModulus=poly)
+    width = 2
+    inp = [field(0), field(1)]
+    polysOver = multivariates_over(field, width).factory
+    [X_1, X_2] = generate_Xi_s(field, width)
+    step_poly = X_2
+    poly = step_poly([X_1, X_2])
+    assert poly == X_2

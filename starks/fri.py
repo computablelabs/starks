@@ -12,7 +12,50 @@ from starks.numbertype import Poly
 from starks.fft import NonBinaryFFT
 
 class FRI(object):
+  """Abstract superclass for FRI implementations."""
+
+  def __init__(self):
+    raise NotImplementedError
+
+  def generate_proximity_proof(self,
+                               f: Poly,
+                               S: Space,
+                               security_factor:int = 40) -> List[bytes]:
+    raise NotImplementedError
+
+  def verify_proximity_proof(self,
+                             proof: List[bytes],
+                             merkle_root: bytes,
+                             S: Space,
+                             security_factor:int = 40) -> bool:
+    raise NotImplementedError
+
+class AffineSubspaceFRI(object):
+  """Implements Fast Reed Solomon IOPP for affine spaces."""
+  def __init__(self, field, affine_space: AffineSpace):
+    self.field = field 
+    self.affine_space = affine_space
+
+  def generate_proximity_proof(self,
+                               f: Poly,
+                               S: AffineSpace,
+                               security_factor:int = 40) -> List[bytes]:
+    raise NotImplementedError
+
+  def verify_proximity_proof(self,
+                             proof: List[bytes],
+                             merkle_root: bytes,
+                             S: AffineSpace,
+                             security_factor:int = 40) -> bool:
+    raise NotImplementedError
+
+class SmoothSubgroupFRI(object):
   """Implements Fast Reed Solomon Interactive Oracle Protocol
+
+  This class implements the FRI for a smooth multiplicative
+  subgroup of a finite field. Recall that such a subgroup is
+  of size 2^n and is a subgroup of the cyclic group of nonzero
+  elements of the finite field.
   
   # TODO(rbharath): Swap this to work with a FourierPolynomial instead of a regular polynomial. Will be more efficient. 
   """

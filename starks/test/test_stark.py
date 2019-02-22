@@ -1,4 +1,3 @@
-import unittest
 from starks.merkle_tree import merkelize
 from starks.merkle_tree import merkelize_polynomial_evaluations
 from starks.air import Computation
@@ -17,12 +16,48 @@ from starks.stark import compute_pseudorandom_linear_combination
 from starks.stark import STARK 
 from starks.modp import IntegersModP
 from starks.poly_utils import multivariates_over
+from starks.finitefield import FiniteField
 
 
 class TestStark(unittest.TestCase):
   """
   Basic tests for Stark construction implementation. 
   """
+
+
+  def test_stark_init(self):
+    """Test generation of stark parameters."""
+    steps = 512
+    modulus = 2**256 - 2**32 * 351 + 1
+    field = IntegersModP(modulus)
+    extension_factor = 8
+    # Only tests that constructor works implicitly
+    params = STARK(field, steps, modulus, extension_factor, width=1, step_polys=[])
+
+  def test_binary_stark_init(self):
+    """Test generation of stark parameters."""
+    steps = 512
+    # This finite field is of size 2^17
+    p = 2
+    m = 17
+    Zp = IntegersModP(p)
+    polysOver = polynomials_over(Zp)
+    field = FiniteField(p, m)
+    #field = FiniteField(p, m)
+    #x^17 + x^3 + 1 is primitive 
+    coefficients = [Zp(0)] * 18
+    coefficients[0] = Zp(1)
+    coefficients[3] = Zp(1)
+    coefficients[17] = Zp(1)
+    poly = polysOver(coefficients)
+    field = FiniteField(p, m, polynomialModulus=poly)
+
+    # X is a gen
+    X = field(polysOver([0, 1]))
+    extension_factor = 8
+    # Only tests that constructor works implicitly
+    params = STARK(field, steps, extension_factor, width=1, step_polys=[])
+
 
   def test_trace_polynomials(self):
     """
@@ -126,15 +161,6 @@ class TestStark(unittest.TestCase):
     ## Each spot check returns 3 branches, m[pos], m[pos+extension_factor], l[pos] 
     #assert len(branches) == 3*spot_check_security_factor
 
-  def test_stark_init(self):
-    """Test generation of stark parameters."""
-    steps = 512
-    modulus = 2**256 - 2**32 * 351 + 1
-    field = IntegersModP(modulus)
-    extension_factor = 8
-    # Only tests that constructor works implicitly
-    params = STARK(field, steps, modulus, extension_factor, width=1, step_polys=[])
-
   def test_get_pseudorandom_indices(self):
     """
     Tests that pseudorandom elements are computed correctly.
@@ -185,68 +211,6 @@ class TestStark(unittest.TestCase):
         exclude_multiples_of=extension_factor)
     assert len(indices) == spot_check_security_factor
 
-  def test_verify_pseudorandom_combination(self):
-    """
-    Tests compute pseudorandom linear combination for 1-dimension
-    """
-    width = 3
-    steps = 8
-    modulus = 2**256 - 2**32 * 351 + 1
-    extension_factor = 8
-    field = IntegersModP(modulus)
-    # state = [c_0, c_1, value]
-    inp = [field(2), field(2), field(5)]
-    ## Factoring out computation
-    [X_1, X_2, X_3] = generate_Xi_s(field, width)
-    step_polys = [X_1, X_2, X_1 + X_2*X_3**2] 
-    precision = steps * extension_factor
-    G1 = field(7)**((modulus - 1) // steps)
-    G2 = field(7)**((modulus - 1) // precision)
-    xs = get_power_cycle(G2, field)
-    last_step_position = xs[(steps - 1) * extension_factor]
-
-    comp = Computation(field, width, inp, steps, step_polys,
-        extension_factor)
-    witness = comp.generate_witness()
-    boundary = comp.generate_boundary_constraints()
-
-    trace_polys = construct_trace_polynomials(witness, field, G1)
-    constraint_polys = construct_constraint_polynomials(step_polys, trace_polys, field, G1, width)
-    remainder_polys = construct_remainder_polynomials(constraint_polys, field,
-        steps, last_step_position)
-    boundary_polys = construct_boundary_polynomials(
-        trace_polys, witness, boundary, field, last_step_position, width)
-
-    fft_solver = NonBinaryFFT(field, G2)
-    poly_evals = []
-    for poly in trace_polys + remainder_polys + boundary_polys:
-      poly_eval = fft_solver.fft(poly)
-      poly_evals.append(poly_eval)
-    mtree = merkelize_polynomial_evaluations(width, poly_evals)
-    
-    entropy = mtree[1]
-    l_polys = compute_pseudorandom_linear_combination_1d(
-        entropy, trace_polys, remainder_polys, boundary_polys,
-        G2, steps, precision)
-
-    # Leaf node from l[pos]
-    k1, k2, k3, k4 = get_pseudorandom_ks(mtree[1], 4)
-    G2_to_the_steps = G2**steps
-    powers_i = G2_to_the_steps**(precision-1)
-    for (trace_poly, remainder_poly, boundary_poly, l_poly) in zip(trace_polys, remainder_polys, boundary_polys, l_polys):
-      for i, pos in enumerate(range(precision)):
-        next_pos = (pos + extension_factor) % precision
-
-        x = G2_to_the_steps**pos
-
-        p_of_x = trace_poly(x)
-        d_of_x = remainder_poly(x)
-        b_of_x = boundary_poly(x)
-
-        l_of_x = l_poly(x)
-        assert (l_of_x - d_of_x - p_of_x * k1 - p_of_x * k2 * powers_i - b_of_x * k3 - b_of_x * k4 * powers_i) == 0
-
-  # TODO(rbharath): This is broken!! Need to fix in future PR
   def test_higher_dim_proof_verification(self):
     """
     Tests proof generation and verification for multidimensional state.

@@ -1,26 +1,31 @@
-"""This file holds the classes necessary to provide the "algebraic intermediate
-representation" (AIR) of the computation. Informally, the key step needed here is the
-"arithmetization" of the computation. That is, the computation must be
-configured to work within a given finite field. That is, the states of the
-computation will be vectors each of whose elements are members of a given
-finite field.
+"""This file holds the classes necessary to provide the
+"algebraic intermediate representation" (AIR) of the
+computation. Informally, the key step needed here is the
+"arithmetization" of the computation. That is, the computation
+must be configured to work within a given finite field. That
+is, the states of the computation will be vectors each of
+whose elements are members of a given finite field.
 
-In addition, the "transition relation" of how a step of the computation
-transforms a given state vector to the next state vector must be represented as
-a polynomial relation P such that if x_n and x_{n+1} are two states P(x_n,
-x_{n+1}) == 0 if and only if the transition is valid. In addition, boundary
-constraint B encode constraints placed on the input and output of the
-computation and are also polynomials.
+In addition, the "transition relation" of how a step of the
+computation transforms a given state vector to the next state
+vector must be represented as a polynomial relation P such
+that if x_n and x_{n+1} are two states P(x_n, x_{n+1}) == 0 if
+and only if the transition is valid. In addition, boundary
+constraint B encode constraints placed on the input and output
+of the computation and are also polynomials.
 
-A witness for an AIR is a valid execution trace for the computation. This is a
-sequence of states (each of which is a vector of field elements). Note that for
-a computation of length T with a state of size w, the trace is O(wT) which
+A witness for an AIR is a valid execution trace for the
+computation. This is a sequence of states (each of which is a
+vector of field elements). Note that for a computation of
+length T with a state of size w, the trace is O(wT) which
 could possibly be very large.
 """
 
 from typing import List
 from typing import Tuple
 from starks.utils import is_a_power_of_2
+from starks.utils import generate_Xi_s
+from starks.poly_utils import multivariates_over
 
 def get_computational_trace(inp, steps, width, step_polys):
   """Get the computational trace for the algebraic intermediate representation.
@@ -45,8 +50,8 @@ def get_computational_trace(inp, steps, width, step_polys):
   print('Done generating computational trace')
   return computational_trace, output
 
-class Computation(object):
-  """A simple class defining a computation.
+class AIR(object):
+  """A simple class defining the algebraic intermediate representation of a computation.
   
   More formally, this class holds an instance of the AIR problem. Recall that
   an instance of the AIR problem is a tuple.
@@ -107,7 +112,7 @@ class Computation(object):
     self.F = field
     self.T = steps
     self.w = width 
-    self.Polys = self.generate_constraint_polynomials(step_polys)
+    self.Polys = self.generate_constraint_polynomials()
     self.C = self.generate_monotone_circuit(self.Polys)
     self.B = self.generate_boundary_constraints()
   
@@ -128,17 +133,29 @@ class Computation(object):
     pass
 
   def get_degree(self):
-    return sum([poly.degree() for poly in self.step_polys])
+    return max([poly.degree() for poly in self.step_polys])
 
-  def generate_constraint_polynomials(self, step_fn):
+  def generate_constraint_polynomials(self):
     """Constructs the constraint polynomials for this AIR instance.
 
-    A constraint polynomial is in F[X_1,..,X_w, Y_1,.., Y_w]. An AIR instance
-    can hold a set of constraint polynomials each of which enforces a
-    transition constraint. Intuitively, X_1,...,X_1 is the vector of current
-    states and Y_1,...,Y_w is the vector of the next state. It can be useful at
-    times to have more than one constraint for enforcing various transition
-    properties.
+    A constraint polynomial is in F[X_1,..,X_w, Y_1,.., Y_w].
+    An AIR instance can hold a set of constraint polynomials
+    each of which enforces a transition constraint.
+    Intuitively, X_1,...,X_1 is the vector of current states
+    and Y_1,...,Y_w is the vector of the next state. It can be
+    useful at times to have more than one constraint for
+    enforcing various transition properties.
     """
-    # TODO(rbharath): Implement this correctly.
-    return []
+    # Let's make polynomials in F[x_1,..,x_w,y_1,...,y_w]]
+    multi = multivariates_over(self.field, 2*self.width).factory
+    multivars = generate_Xi_s(self.field, 2*self.width)
+    Xs = multivars[:self.width]
+    Ys = multivars[self.width:]
+    constraints = []
+    for i in range(self.width):
+      step_poly = self.step_polys[i]
+      Y_i = Ys[i]
+      # The constraint_poly
+      poly = Y_i - step_poly(Xs)
+      constraints.append(poly)
+    return constraints 

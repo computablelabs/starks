@@ -8,7 +8,12 @@ from starks.numbertype import FieldElement
 from starks.numbertype import memoize
 from starks.numbertype import typecheck
 
-#from starks.numbertype import *
+def iterate_modp(p: int):
+  def iterator():
+    Zp = IntegersModP(p)
+    for i in range(p):
+      yield Zp(i)
+  return iterator
 
 
 # so all IntegersModP are instances of the same base class
@@ -96,4 +101,6 @@ def IntegersModP(p):
   IntegerModP.__name__ = 'Z/%d' % (p)
   IntegerModP.englishName = 'IntegersMod%d' % (p)
   IntegerModP.field_size = p
+  IntegerModP.__iter__ = iterate_modp(p)
+
   return IntegerModP

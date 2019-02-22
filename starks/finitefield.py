@@ -3,23 +3,28 @@ from starks.euclidean import gcd
 from starks.euclidean import extended_euclidean_algorithm
 from starks.polynomial import polynomials_over
 from starks.poly_utils import generate_irreducible_polynomial
+from starks.poly_utils import generate_primitive_polynomial
 from starks.modp import IntegersModP
 from starks.numbertype import FieldElement
 from starks.numbertype import DomainElement
 from starks.numbertype import memoize
 from starks.numbertype import typecheck
+from starks.poly_utils import is_primitive
 
 
 @memoize
 def FiniteField(p, m, polynomialModulus=None):
   """Create a type constructor for the finite field of order p^m for p prime, m >= 1"""
+  if polynomialModulus is not None:
+    if not is_primitive(polynomialModulus, p, m):
+      raise ValueError("Must provide a primitive polynomial as modulus.")
   Zp = IntegersModP(p)
   if m == 1:
     return Zp
 
   Polynomial = polynomials_over(Zp)
   if polynomialModulus is None:
-    polynomialModulus = generate_irreducible_polynomial(modulus=p, degree=m)
+    polynomialModulus = generate_primitive_polynomial(modulus=p, degree=m)
 
   class Fq(FieldElement):
     field_size = int(p**m)

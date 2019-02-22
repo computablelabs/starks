@@ -61,7 +61,17 @@ def draw_random_interpolant(degree, xs, ys):
 def construct_affine_vanishing_polynomial(field: Field, aff: AffineSpace) -> Poly:
   """Constructs a polynomial which vanishes over a given affine space."""
   # TODO(rbharath): Need to implement this correctly.
-  aff_elts = [elt for elt in aff]
+  aff_elts = [field(elt) for elt in aff]
+  ##############################################
+  # TODO(rbharath): This doesn't work for arbitrary finite fields! 
+  print("field")
+  print(field)
+  print("aff_elts")
+  print(aff_elts)
+  print("[type(aff) for aff in aff_elts]")
+  print([type(aff) for aff in aff_elts])
+  # Ok the error here is that aff_elts are not being interpreted as finite field elements? How to fix?
+  ##############################################
   return zpoly(field, aff_elts)
 
 def is_irreducible(polynomial: Poly, p: int) -> bool:
@@ -72,9 +82,9 @@ def is_irreducible(polynomial: Poly, p: int) -> bool:
   Algorithm 4.69 in the Handbook of Applied Cryptography
   """
   ZmodP = IntegersModP(p)
-  if polynomial.field is not ZmodP:
+  if polynomial.ring is not ZmodP:
     raise TypeError("Given a polynomial that's not over %s, but instead %r" %
-                    (ZmodP.__name__, polynomial.field.__name__))
+                    (ZmodP.__name__, polynomial.ring.__name__))
 
   poly = polynomials_over(ZmodP).factory
   x = poly([0, 1])
@@ -120,6 +130,10 @@ def generate_primitive_polynomial(modulus: int, degree: int) -> Poly:
     irred_poly = generate_irreducible_polynomial(modulus, degree)
     if is_primitive(irred_poly, modulus, degree):
       return irred_poly
+
+def is_monic(poly: Poly) -> bool:
+  """Tests whether a polynomial is monic."""
+  return poly.coefficients[-1] == 1
 
 def is_primitive(irred_poly: Poly, modulus: int, degree: int) -> bool:
   """Returns true if given polynomial is primitve.
@@ -237,6 +251,10 @@ def zpoly(field, roots):
     root.insert(0, field(0))
     for j in range(len(root) - 1):
       root[j] -= root[j + 1] * x
+  ###########################################
+  print("root")
+  print(root)
+  ###########################################
   return polysOver(root)
 
 def lagrange_interp(field: Field, xs: List[FieldElement], ys: List[FieldElement]):
