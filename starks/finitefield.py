@@ -9,15 +9,15 @@ from starks.numbertype import FieldElement
 from starks.numbertype import DomainElement
 from starks.numbertype import memoize
 from starks.numbertype import typecheck
-from starks.poly_utils import is_primitive
+from starks.poly_utils import is_irreducible
 
 
 @memoize
 def FiniteField(p, m, polynomialModulus=None):
   """Create a type constructor for the finite field of order p^m for p prime, m >= 1"""
   if polynomialModulus is not None:
-    if not is_primitive(polynomialModulus, p, m):
-      raise ValueError("Must provide a primitive polynomial as modulus.")
+    if not is_irreducible(polynomialModulus, p):
+      raise ValueError("Must provide an irreducible polynomial as modulus.")
   Zp = IntegersModP(p)
   if m == 1:
     return Zp
