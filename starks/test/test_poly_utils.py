@@ -7,7 +7,7 @@ from starks.poly_utils import lagrange_interp
 from starks.poly_utils import lagrange_interp_2
 from starks.poly_utils import lagrange_interp_4
 from starks.poly_utils import multi_interp_4 
-from starks.poly_utils import is_primitive
+#from starks.poly_utils import is_primitive
 from starks.poly_utils import is_monic
 from starks.poly_utils import is_irreducible
 from starks.poly_utils import generate_primitive_polynomial 
@@ -167,43 +167,43 @@ class TestPolyUtils(unittest.TestCase):
     assert interp[0] == polysOverMod([0, 1])
     assert interp[1] == polysOverMod([0, 1])
 
-  def test_is_primitive(self):
-    """Tests whether the primitivity check is correctly implemented."""
-    modulus = 2
-    degree = 2
-    mod = IntegersModP(modulus)
-    polysOver = polynomials_over(mod).factory
+#  def test_is_primitive(self):
+#    """Tests whether the primitivity check is correctly implemented."""
+#    modulus = 2
+#    degree = 2
+#    mod = IntegersModP(modulus)
+#    polysOver = polynomials_over(mod).factory
+#
+#    # From table 4.6 in
+#    # http://math.fau.edu/bkhadka/Syllabi/A%20handbook%20of%20applied%20cryptography.pdf
+#    # x^2 + x + 1 is primitive over Z/2
+#    prim_poly = polysOver([1, 1, 1])
+#    assert is_primitive(prim_poly, modulus, degree)
+#
+#    # x^2 is not primitive over Z/2 
+#    x_square = polysOver([0, 0, 1])
+#    assert not is_primitive(x_square, modulus, degree)
+#
+#    # x^9 + x + 1 is primitive over Z/2
+#    coeffs = [0] * 10
+#    coeffs[0] = 1
+#    coeffs[1] = 1
+#    coeffs[-1] = 1
+#    prim_poly = polysOver(coeffs)
+#    assert is_primitive(prim_poly, modulus, degree)
 
-    # From table 4.6 in
-    # http://math.fau.edu/bkhadka/Syllabi/A%20handbook%20of%20applied%20cryptography.pdf
-    # x^2 + x + 1 is primitive over Z/2
-    prim_poly = polysOver([1, 1, 1])
-    assert is_primitive(prim_poly, modulus, degree)
-
-    # x^2 is not primitive over Z/2 
-    x_square = polysOver([0, 0, 1])
-    assert not is_primitive(x_square, modulus, degree)
-
-    # x^9 + x + 1 is primitive over Z/2
-    coeffs = [0] * 10
-    coeffs[0] = 1
-    coeffs[1] = 1
-    coeffs[-1] = 1
-    prim_poly = polysOver(coeffs)
-    assert is_primitive(prim_poly, modulus, degree)
-
-  def test_generate_primitive_poly(self):
-    """Tests the generation of primitive polynomials."""
-    modulus = 2
-    degree = 2
-    gen_poly = generate_primitive_polynomial(modulus, degree)
-    assert is_irreducible(gen_poly, modulus)
-    assert is_primitive(gen_poly, modulus, degree)
-
-    degree = 5
-    gen_poly = generate_primitive_polynomial(modulus, degree)
-    assert is_irreducible(gen_poly, modulus)
-    assert is_primitive(gen_poly, modulus, degree)
+#  def test_generate_primitive_poly(self):
+#    """Tests the generation of primitive polynomials."""
+#    modulus = 2
+#    degree = 2
+#    gen_poly = generate_primitive_polynomial(modulus, degree)
+#    assert is_irreducible(gen_poly, modulus)
+#    assert is_primitive(gen_poly, modulus, degree)
+#
+#    degree = 5
+#    gen_poly = generate_primitive_polynomial(modulus, degree)
+#    assert is_irreducible(gen_poly, modulus)
+#    assert is_primitive(gen_poly, modulus, degree)
 
   def test_is_monic(self):
     """Tests the is_monic primitive."""
