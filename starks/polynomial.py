@@ -53,7 +53,7 @@ def polynomials_over(ring=fractions.Fraction):
       elif not hasattr(c, '__iter__') and not hasattr(c, 'iter'):
         self.coefficients = [ring(c)]
       else:
-        self.coefficients = c
+        self.coefficients = [ring(coeff) for coeff in c]
 
       self.coefficients = strip(self.coefficients, ring(0))
 
