@@ -21,17 +21,7 @@ Then to enter this environment from the command-line, you run
 source activate starks
 ```
 
-This will ensure that you use the packages installed within this local environment. At present, the `starks` package has minimal installation requirements. The one nonstandard package requirement is `primefac`, a python module for factoring large integers. You can install `primefac` with `pip`
-
-```
-conda install pip
-pip install git+git://github.com/elliptic-shiho/primefac-fork@master
-```
-
-Note it's important to call `conda install pip` since otherwise `pip` won't
-install in your local Anaconda environment.
-
-The next step you'll need to take is to install the `starks` package. For this, you will need to clone the `starks` repo from github:
+This will ensure that you use the packages installed within this local environment. At present, the `starks` package has minimal installation requirements. The next step you'll need to take is to install the `starks` package. For this, you will need to clone the `starks` repo from github:
 
 ```
 git clone https://github.com/computablelabs/starks.git
