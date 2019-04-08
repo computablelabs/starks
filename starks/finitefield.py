@@ -101,6 +101,69 @@ def FiniteField(p, m, polynomialModulus=None):
         )
 
       return Fq(x) * Fq(d.coefficients[0].inverse())
+    
+    def num_to_poly(n):
+      if x == 0: return zero()
+      if x == 1: return Fq([1])
+      if x == 2: return Fq([0,1])
+
+      one = Fq([1])
+      two = Fq([0,1])
+   
+      num = Fq(Zero())
+
+      if n%2 == 1:
+        num = num + one
+
+      n = n // 2
+      count = 1
+      while n > 0:
+        two = two ** count
+        count = count + 1
+        if n%2 == 1:
+          num = num + two
+        n = n // 2
+
+      return num
+
+    def division(v_a, p_a, z_a, s_a, v_b, p_b, z_b, s_b):
+      z_c = z_a | z_b
+
+      s_c = s_a ^ s_b
+
+      if z_c == 1:
+        v_c = Fq(Zero())
+      else:
+        v_c = v_a / v_b
+
+      if z_c == 1:
+        p_c = Fq(Zero())
+      else:
+        p_c = p_a - p_b - num_to_poly((p_a.poly).degree - (p_b.poly).degree - (Fq.m - 1))
+
+      return v_c, p_c, z_c, s_c
+
+
+    def multiplication(v_a, p_a, z_a, s_a, v_b, p_b, z_b, s_b):
+      z_c = z_a | z_b
+
+      s_c = s_a ^ s_b
+
+      if z_c == 1:
+        v_c = Fq(Zero())
+      else:
+        v_c = v_a * v_b
+
+      if z_c == 1:
+        p_c = Fq(Zero())
+      else:
+        p_c = p_a + p_b + num_to_poly((p_a.poly).degree + (p_b.poly).degree - (Fq.m - 1)) 
+
+      return v_c, p_c, z_c, s_c
+
+    # TODO(rbharath): This function is broken!!
+    def to_bytes(self):
+      return self.poly.to_bytes()
 
     # TODO(rbharath): This function is broken!!
     def to_bytes(self):
