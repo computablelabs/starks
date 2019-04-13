@@ -11,6 +11,25 @@ from starks.numbertype import memoize
 from starks.numbertype import typecheck
 from starks.poly_utils import is_irreducible
 
+def num_to_binary_list_pow(index):
+  output_list = []
+
+  for i in range(index):
+    output_list.append(0)
+  output_list.append(1)
+
+  return output_list 
+
+
+def num_to_binary_list(index):
+  output_list = []
+
+  while index > 0:
+    output_list.append(index%2)
+    index = index // 2  
+
+  return output_list
+
 
 @memoize
 def FiniteField(p, m, polynomialModulus=None):
@@ -102,64 +121,131 @@ def FiniteField(p, m, polynomialModulus=None):
 
       return Fq(x) * Fq(d.coefficients[0].inverse())
     
-    def num_to_poly(n):
-      if x == 0: return zero()
-      if x == 1: return Fq([1])
-      if x == 2: return Fq([0,1])
+    # less than or equal operation
+    def LQ(self, other):
+      if self.poly.degree() > other.poly.degree():
+        return 0
+      elif other.poly.degree() > self.poly.degree():
+        return 1
 
-      one = Fq([1])
-      two = Fq([0,1])
-   
-      num = Fq(Zero())
+      xor_o = self + other
 
-      if n%2 == 1:
-        num = num + one
+      if xor_o == Fq(0):
+        return 1
+      
+      
+      if str(self.poly.coefficients[xor_o.poly.degree()])[0] > str(other.poly.coefficients[xor_o.poly.degree()])[0]:
+        return 0
+      else:
+        return 1
 
-      n = n // 2
-      count = 1
-      while n > 0:
-        two = two ** count
-        count = count + 1
-        if n%2 == 1:
-          num = num + two
-        n = n // 2
-
+    # two pow self operation
+    def pow(self):
+      num = Fq([1])
+    
+      for i in range(self.poly.degree()+1):
+        if str(self.poly.coefficients[i])[0] == '1':
+          l = num_to_binary_list_pow(i+1)
+          num = num * Fq(l)
+      
       return num
 
-    def division(v_a, p_a, z_a, s_a, v_b, p_b, z_b, s_b):
+    # addition floating point operation
+    def addition(self, v_a, p_a, z_a, s_a, v_b, p_b, z_b, s_b):
+      if z_a == 0:
+        v_c = v_b
+        p_c = p_b
+        z_c = z_b
+        s_c = s_b
+        return v_c, p_c, z_c, s_c
+
+      if z_b == 0:
+        v_c = v_a
+        p_c = p_a
+        z_c = z_a
+        s_c = s_a
+        return v_c, p_c, z_c, s_c
+
+      a = LQ(v_a.poly, v_b.poly)
+      b = LQ(p_a.poly, p_b.poly)
+
+      if p_a == p_b:
+        if a == 1:
+          v_min = v_a
+          v_max = v_b
+          s_c = s_b
+        else:
+          v_min = v_b
+          v_max = v_a
+          s_c = s_a
+      else:
+        if b == 1:
+          v_min = v_a
+          v_max = v_b
+          s_c = s_b
+        else:
+          v_min = v_b
+          v_max = v_a
+          s_c = s_a
+
+      Delta = p_max - p_min
+
+      c = LQ(Delta.poly, num_to_binary_list(Fq.m))
+
+      if c == 0:
+        v_c = v_max
+        p_c = p_max
+      else:
+        v_c = v_max * Delta.pow()
+        v_c = v_c + v_min
+        p_c = p_min
+
+      if v_c == Fq(0):
+        z_c = 1
+      else:
+        z_c = 0
+
+      return v_c, p_c, z_c, s_c
+
+    # division floating point operatin
+    def division(self, v_a, p_a, z_a, s_a, v_b, p_b, z_b, s_b):
       z_c = z_a | z_b
 
       s_c = s_a ^ s_b
 
       if z_c == 1:
-        v_c = Fq(Zero())
+        v_c = Fq(0)
       else:
         v_c = v_a / v_b
 
       if z_c == 1:
-        p_c = Fq(Zero())
+        p_c = Fq(0)
       else:
-        p_c = p_a - p_b - num_to_poly((p_a.poly).degree - (p_b.poly).degree - (Fq.m - 1))
+        p_c = p_a - p_b
+        p_c = p_c + num_to_binary_list(p_a.poly.degree() + p_b.inverse().poly.degree() - (Fq.m - 1))
 
       return v_c, p_c, z_c, s_c
 
 
-    def multiplication(v_a, p_a, z_a, s_a, v_b, p_b, z_b, s_b):
+    # multiplication floating point operation
+    def multiplication(self, v_a, p_a, z_a, s_a, v_b, p_b, z_b, s_b):
       z_c = z_a | z_b
 
       s_c = s_a ^ s_b
 
       if z_c == 1:
-        v_c = Fq(Zero())
+        v_c = Fq(0)
       else:
         v_c = v_a * v_b
 
       if z_c == 1:
-        p_c = Fq(Zero())
+        p_c = Fq(0)
       else:
-        p_c = p_a + p_b + num_to_poly((p_a.poly).degree + (p_b.poly).degree - (Fq.m - 1)) 
+        p_c = p_a + p_b
+        p_c = p_c + num_to_binary_list(p_a.poly.degree() + p_b.poly.degree() - (Fq.m - 1))
 
       return v_c, p_c, z_c, s_c
+
 
     # TODO(rbharath): This function is broken!!
     def to_bytes(self):
