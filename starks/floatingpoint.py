@@ -35,30 +35,30 @@ def num_to_binary_list(index):
 
 
 #less than and equality operations between numbers in binary finite field representation
-def LQ(self, other):
-  if self.poly.degree() > other.poly.degree():
+def LQ(x, y):
+  if x.poly.degree() > y.poly.degree():
     return 0
-  elif other.poly.degree() > self.poly.degree():
+  elif y.poly.degree() > s.poly.degree():
     return 1
 
-  xor_o = self + other
+  xor_o = x + y
 
   if xor_o == Fq(0):
     return 1
       
       
-  if str(self.poly.coefficients[xor_o.poly.degree()])[0] > str(other.poly.coefficients[xor_o.poly.degree()])[0]:
+  if str(x.poly.coefficients[xor_o.poly.degree()])[0] > str(y.poly.coefficients[xor_o.poly.degree()])[0]:
     return 0
   else:
     return 1
 
 
-#this function computes 2^self where self is a number in binary finite field representation and output is in in binary finite field representation
-def pow(self):
+#this function computes 2^x where x is a number in binary finite field representation and output is in in binary finite field representation
+def pow(x):
   num = Fq([1])
     
-  for i in range(self.poly.degree()+1):
-    if str(self.poly.coefficients[i])[0] == '1':
+  for i in range(x.poly.degree()+1):
+    if str(x.poly.coefficients[i])[0] == '1':
       l = num_to_binary_list_pow(i+1)
       num = num * Fq(l)
       
