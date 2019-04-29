@@ -12,6 +12,40 @@ from starks.numbertype import typecheck
 from starks.poly_utils import is_irreducible
 
 
+#this function generates a binary list of 2^index
+def num_to_binary_list_pow(index):
+  output_list = []
+
+  for i in range(index):
+    output_list.append(0)
+  output_list.append(1)
+
+  return output_list 
+
+#binary addition of two binary strings from geeksforgeeks
+def add_binary_nums(x, y): 
+  max_len = max(len(x), len(y)) 
+  
+  x = x.zfill(max_len) 
+  y = y.zfill(max_len)  
+          
+  # initialize the carry 
+  carry = 0
+  
+  output_list = []
+
+  # Traverse the string 
+  for i in range(max_len - 1, -1, -1): 
+    r = carry 
+    r += 1 if x[i] == '1' else 0
+    r += 1 if y[i] == '1' else 0
+    output_list.append(1) if r % 2 == 1 else output_list.append(0)
+    carry = 0 if r < 2 else 1     # Compute the carry. 
+          
+  if carry !=0 : output_list.append(1)
+  
+  return output_list
+
 @memoize
 def FiniteField(p, m, polynomialModulus=None):
   """Create a type constructor for the finite field of order p^m for p prime, m >= 1"""
@@ -106,6 +140,53 @@ def FiniteField(p, m, polynomialModulus=None):
     # TODO(rbharath): This function is broken!!
     def to_bytes(self):
       return self.poly.to_bytes()
+
+    #this function computes 2^x where x is a number in binary finite field representation and output is in in binary finite field representation
+    def two_pow(self):
+      num = Fq([1])
+    
+      for i in range(self.poly.degree()+1):
+        if str(self.poly.coefficients[i])[0] == '1':
+          l = num_to_binary_list_pow(i+1)
+          num = num * Fq(l)
+      
+      return num
+
+
+
+    #less than and equality operations between numbers in binary finite field representation
+    def LT(self, other):
+      if self.poly.degree() > other.poly.degree():
+        return 0
+      elif other.poly.degree() > self.poly.degree():
+        return 1
+
+      xor_o = self + other
+
+      if xor_o == Fq(0):
+        return 1
+      
+      
+      if str(self.poly.coefficients[xor_o.poly.degree()])[0] > str(other.poly.coefficients[xor_o.poly.degree()])[0]:
+        return 0
+      else:
+        return 1
+
+
+    #this function computes regular binary addition
+    def Regular_Binary_Addition(self, other):
+      x = ''
+      y = ''
+
+      for i in range(self.poly.degree()+1):
+        x += str(self.poly.coefficients[i])[0]
+
+      for i in range(other.poly.degree()+1):
+        y += str(other.poly.coefficients[i])[0]
+
+      list = add_binary_nums(x, y)
+
+      return Fq(list)
 
 
   Fq.__name__ = 'F_{%d^%d}' % (p, m)
