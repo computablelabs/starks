@@ -11,6 +11,8 @@ from starks.numbertype import memoize
 from starks.numbertype import typecheck
 from starks.poly_utils import is_irreducible
 
+
+#this function generates a binary list of 2^index
 def num_to_binary_list_pow(index):
   output_list = []
 
@@ -20,16 +22,37 @@ def num_to_binary_list_pow(index):
 
   return output_list 
 
+#binary addition of two binary strings from geeksforgeeks
+def add_binary_nums(x, y): 
+  max_len = max(len(x), len(y)) 
+  
+  x = x.zfill(max_len) 
+  y = y.zfill(max_len) 
+          
+  # initialize the result 
+  result = '' 
+          
+  # initialize the carry 
+  carry = 0
+  
+  # Traverse the string 
+  for i in range(max_len - 1, -1, -1): 
+    r = carry 
+    r += 1 if x[i] == '1' else 0
+    r += 1 if y[i] == '1' else 0
+    result = ('1' if r % 2 == 1 else '0') + result 
+    carry = 0 if r < 2 else 1     # Compute the carry. 
+          
+  if carry !=0 : result = '1' + result 
+  
+  result = result.zfill(max_len)
+  result = result[::-1] 
 
-def num_to_binary_list(index):
   output_list = []
-
-  while index > 0:
-    output_list.append(index%2)
-    index = index // 2  
-
+  for i in range(len(result)):
+    output_list.append(result[i])
+  
   return output_list
-
 
 @memoize
 def FiniteField(p, m, polynomialModulus=None):
@@ -43,7 +66,8 @@ def FiniteField(p, m, polynomialModulus=None):
 
   Polynomial = polynomials_over(Zp)
   if polynomialModulus is None:
-    polynomialModulus = generate_primitive_polynomial(modulus=p, degree=m)
+    polynomialModulus = generate_primitive_polynomial(modulus=p, degree=m) 
+
 
   class Fq(FieldElement):
     field_size = int(p**m)
@@ -120,9 +144,26 @@ def FiniteField(p, m, polynomialModulus=None):
         )
 
       return Fq(x) * Fq(d.coefficients[0].inverse())
+
+    # TODO(rbharath): This function is broken!!
+    def to_bytes(self):
+      return self.poly.to_bytes()
+
+    #this function computes 2^x where x is a number in binary finite field representation and output is in in binary finite field representation
+    def two_pow(self):
+      num = Fq([1])
     
-    # less than or equal operation
-    def LQ(self, other):
+      for i in range(self.poly.degree()+1):
+        if str(self.poly.coefficients[i])[0] == '1':
+          l = num_to_binary_list_pow(i+1)
+          num = num * Fq(l)
+      
+      return num
+
+
+
+    #less than and equality operations between numbers in binary finite field representation
+    def LT(self, other):
       if self.poly.degree() > other.poly.degree():
         return 0
       elif other.poly.degree() > self.poly.degree():
@@ -139,121 +180,22 @@ def FiniteField(p, m, polynomialModulus=None):
       else:
         return 1
 
-    # two pow self operation
-    def pow(self):
-      num = Fq([1])
-    
+
+    #this function computes regular binary addition
+    def Regular_Binary_Addition(self, other):
+      x = ''
+      y = ''
+
       for i in range(self.poly.degree()+1):
-        if str(self.poly.coefficients[i])[0] == '1':
-          l = num_to_binary_list_pow(i+1)
-          num = num * Fq(l)
-      
-      return num
+        x = str(self.poly.coefficients[i])[0] + x
 
-    # addition floating point operation
-    def addition(self, v_a, p_a, z_a, s_a, v_b, p_b, z_b, s_b):
-      if z_a == 0:
-        v_c = v_b
-        p_c = p_b
-        z_c = z_b
-        s_c = s_b
-        return v_c, p_c, z_c, s_c
+      for i in range(other.poly.degree()+1):
+        y = str(other.poly.coefficients[i])[0] + y
 
-      if z_b == 0:
-        v_c = v_a
-        p_c = p_a
-        z_c = z_a
-        s_c = s_a
-        return v_c, p_c, z_c, s_c
+      list = add_binary_nums(x, y)
 
-      a = LQ(v_a.poly, v_b.poly)
-      b = LQ(p_a.poly, p_b.poly)
+      return Fq(list)
 
-      if p_a == p_b:
-        if a == 1:
-          v_min = v_a
-          v_max = v_b
-          s_c = s_b
-        else:
-          v_min = v_b
-          v_max = v_a
-          s_c = s_a
-      else:
-        if b == 1:
-          v_min = v_a
-          v_max = v_b
-          s_c = s_b
-        else:
-          v_min = v_b
-          v_max = v_a
-          s_c = s_a
-
-      Delta = p_max - p_min
-
-      c = LQ(Delta.poly, num_to_binary_list(Fq.m))
-
-      if c == 0:
-        v_c = v_max
-        p_c = p_max
-      else:
-        v_c = v_max * Delta.pow()
-        v_c = v_c + v_min
-        p_c = p_min
-
-      if v_c == Fq(0):
-        z_c = 1
-      else:
-        z_c = 0
-
-      return v_c, p_c, z_c, s_c
-
-    # division floating point operatin
-    def division(self, v_a, p_a, z_a, s_a, v_b, p_b, z_b, s_b):
-      z_c = z_a | z_b
-
-      s_c = s_a ^ s_b
-
-      if z_c == 1:
-        v_c = Fq(0)
-      else:
-        v_c = v_a / v_b
-
-      if z_c == 1:
-        p_c = Fq(0)
-      else:
-        p_c = p_a - p_b
-        p_c = p_c + num_to_binary_list(p_a.poly.degree() + p_b.inverse().poly.degree() - (Fq.m - 1))
-
-      return v_c, p_c, z_c, s_c
-
-
-    # multiplication floating point operation
-    def multiplication(self, v_a, p_a, z_a, s_a, v_b, p_b, z_b, s_b):
-      z_c = z_a | z_b
-
-      s_c = s_a ^ s_b
-
-      if z_c == 1:
-        v_c = Fq(0)
-      else:
-        v_c = v_a * v_b
-
-      if z_c == 1:
-        p_c = Fq(0)
-      else:
-        p_c = p_a + p_b
-        p_c = p_c + num_to_binary_list(p_a.poly.degree() + p_b.poly.degree() - (Fq.m - 1))
-
-      return v_c, p_c, z_c, s_c
-
-
-    # TODO(rbharath): This function is broken!!
-    def to_bytes(self):
-      return self.poly.to_bytes()
-
-    # TODO(rbharath): This function is broken!!
-    def to_bytes(self):
-      return self.poly.to_bytes()
 
   Fq.__name__ = 'F_{%d^%d}' % (p, m)
   Fq.p = p
