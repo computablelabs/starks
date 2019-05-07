@@ -27,22 +27,30 @@ def add_binary_nums(x, y):
   max_len = max(len(x), len(y)) 
   
   x = x.zfill(max_len) 
-  y = y.zfill(max_len)  
+  y = y.zfill(max_len) 
+          
+  # initialize the result 
+  result = '' 
           
   # initialize the carry 
   carry = 0
   
-  output_list = []
-
   # Traverse the string 
   for i in range(max_len - 1, -1, -1): 
     r = carry 
     r += 1 if x[i] == '1' else 0
     r += 1 if y[i] == '1' else 0
-    output_list.append(1) if r % 2 == 1 else output_list.append(0)
+    result = ('1' if r % 2 == 1 else '0') + result 
     carry = 0 if r < 2 else 1     # Compute the carry. 
           
-  if carry !=0 : output_list.append(1)
+  if carry !=0 : result = '1' + result 
+  
+  result = result.zfill(max_len)
+  result = result[::-1] 
+
+  output_list = []
+  for i in range(len(result)):
+    output_list.append(result[i])
   
   return output_list
 
@@ -179,10 +187,10 @@ def FiniteField(p, m, polynomialModulus=None):
       y = ''
 
       for i in range(self.poly.degree()+1):
-        x += str(self.poly.coefficients[i])[0]
+        x = str(self.poly.coefficients[i])[0] + x
 
       for i in range(other.poly.degree()+1):
-        y += str(other.poly.coefficients[i])[0]
+        y = str(other.poly.coefficients[i])[0] + y
 
       list = add_binary_nums(x, y)
 
