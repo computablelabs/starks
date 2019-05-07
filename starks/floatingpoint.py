@@ -114,6 +114,11 @@ def FloatingPoint(field):
     #this is division operation of two floating point numbers in binary finite field representation
     @typecheck
     def __truediv__(self, other):
+      if other.z == 1:
+        raise ZeroDivisionError
+      if other.v == field(polysOver([0])):
+        raise ZeroDivisionError
+
       polysOver = polynomials_over(IntegersModP(field.p))
 
       z_c = self.z | other.z
@@ -129,7 +134,7 @@ def FloatingPoint(field):
         p_c = field(polysOver([0]))
       else:
         p_c = self.p - other.p
-        p_c = p_c + num_to_binary_list(self.p.poly.degree() + other.p.inverse().poly.degree() - (self.v.m - 1))
+        p_c = p_c + num_to_binary_list(self.v.poly.degree() + other.v.inverse().poly.degree() - (self.v.m - 1))
 
       output = Fp(v_c, p_c, z_c, s_c)
       return output
@@ -152,7 +157,7 @@ def FloatingPoint(field):
         p_c = field(polysOver([0]))
       else:
         p_c = self.p + other.p
-        p_c = p_c + num_to_binary_list(self.p.poly.degree() + self.p.poly.degree() - (self.v.m - 1))
+        p_c = p_c + num_to_binary_list(self.v.poly.degree() + self.v.poly.degree() - (self.v.m - 1))
  
       output = Fp(v_c, p_c, z_c, s_c)
       return output
