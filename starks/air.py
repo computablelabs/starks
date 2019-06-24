@@ -65,7 +65,7 @@ class AIR(object):
   - w is the width of the computation (the dimensionality of the state space)
   - Polys is a list of polynomial constraints. Each polynomial is an element of
     F[X_1,..,X_w,Y_1,...,Y_w] and represents a transition constraint. There are s constraints in Polys
-  - C is a monotone boolean circuit. (TODO(rbharath): What does this circuit mean and where is it used?). This encodes valid transition conditions among polynomials. For now, this is simply the AND function, requiring that all constraints in Polys must be met.
+  - C is a monotone boolean circuit. This encodes valid transition conditions among polynomials. For now, this is simply the AND function, requiring that all constraints in Polys must be met.
   - B is a list of boundary constraints. Each boundary constraint is a tuple
     (i, j, alpha), where i \in [T], j \in [w], alpha \in F.
 
@@ -87,16 +87,15 @@ class AIR(object):
     TODO(rbharath): Can this be removed?
   """
   def __init__(self, field, width, inp, steps, step_polys, extension_factor):
-    # TODO(rbharath): Is it necessary to store field explicitly
     self.field = field
     self.width = width
     # Handle 1-d case
     if isinstance(inp, int):
       inp = [inp]
 
-    # TODO(rbharath): Can this be removed?
     # Some constraints to make our job easier
-    assert steps <= 2**32 // extension_factor
+    self.t = 32 # this is only a sample value, we need to change it based on a computation
+    assert steps == 2**self.t - 1
     assert is_a_power_of_2(steps)
 
     self.inp = inp
@@ -114,6 +113,8 @@ class AIR(object):
     self.w = width 
     self.Polys = self.generate_constraint_polynomials()
     self.C = self.generate_monotone_circuit(self.Polys)
+    self.d = 10 # this is only a sample value, we need to change it based on a computation
+    assert self.C_degree(self.Polys) <= 2**self.d
     self.B = self.generate_boundary_constraints()
   
   def generate_witness(self):
@@ -121,7 +122,6 @@ class AIR(object):
     return [[self.computational_trace[i][j] for i in range(self.steps)] for j in range(self.w)]
 
   def generate_boundary_constraints(self) -> List[Tuple]:
-    # TODO(rbharath): Fix this up
     boundary_constraints = []
     for ind in range(self.w):
       # (i, j, alpha) = (0, ind, inp[ind])
@@ -130,7 +130,36 @@ class AIR(object):
     return boundary_constraints
 
   def generate_monotone_circuit(self, Polys):
-    pass
+    W = self.generate_witness()
+    output_eval = []
+
+    for i in in range(steps - 1):
+      Xs = W[i]
+      temp = []
+      for j in range(self.width):
+        Ys = Polys[j](Xs) - W[i+1][j]
+        if !Ys.is_zero():
+          temp.append(False)
+        else:
+          temp.append(True)
+      output_eval.append(temp)
+
+    output = []
+    for i in in range(steps - 1):
+      temp_bool = output_eval[i][-1]
+      for j in range(self.width-1):
+        temp_bool = temp_bool and output_eval[i][j] 
+      output.append(temp_bool)
+
+    for i in in range(steps - 1):
+      if output[i] == False:
+        return False
+
+    return True
+
+  def C_degree(self, Polys):
+    return max([Polys[j].degree() j in range(self.width)])
+
 
   def get_degree(self):
     return max([poly.degree() for poly in self.step_polys])
