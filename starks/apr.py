@@ -30,9 +30,9 @@ class APR(object):
   - N is a subset of Tau x Aff_1(F). Recall Aff_1(F) is the set of linear polynomials over F.
   - Phi is  subset of (F x F^N)->F. That is, it's a set of functions over the
     variables {X_loc, X_n}_{n in N}.
-  - L is an F_2 affine subspace of F (TODO(rbharath): represented how?)
-  - Lcmp is another F_2 affine subspace of F (TODO(rbharath): represented how?)
-  - phovec in (0, 1)^Tau is a list of rates between 0 and 1
+  - L is an F_2 affine subspace of F.
+  - Lcmp is another F_2 affine subspace of F 
+  - phovec in (0, 1)^Tau is a list of rates between 0 and 1.
   - phocmp in (0, 1) is a rate between 0 and 1.
 
   TODO(rbharath): This class has a lot of really gnarly methods that should be
@@ -65,8 +65,7 @@ class APR(object):
     self.t = int(math.log(T, 2))
     # chosen so deg(C) <= 2^d
     # Setting to arbitrary value for now.
-    # TODO(rbharath): What is the right value of this?
-    self.d = 10
+    self.d = int(math.log(self.air.c_degree(), 2))+1 
     # TODO(rbharath): How should this constant be set correctly?
     self.R = 5
     # This is the zero-knowledge expansion
@@ -79,7 +78,7 @@ class APR(object):
     # Neighbors
     self.Nbrs = self.construct_neighbors(self.Tau, self.zeta, g, self.polysOver)
 
-    # Define the affine spaces (TODO(rbharath): Fill out stub)
+    # Define the affine spaces
     self.H = AffineSpace(base_field, [g**k for k in range(self.t)])
     self.H0 = AffineSpace(base_field, [g**k for k in range(self.t-1)])
     self.H1 = AffineSpace(base_field, [g**k for k in range(self.t-1)], g**(self.t-1))
@@ -95,7 +94,10 @@ class APR(object):
     PhiPolys = multivariates_over(self.field, num_Phi_vars).factory
     self.Phi = self.construct_Phi_polynomials(air, PhiPolys, g, self.zeta)
 
-  def tilde_expansion(indices, neighbor):
+    # Witness reductio
+    self.w = self.generate_witness()
+
+  def tilde_expansion(self, indices, neighbor, X_loc):
     """Performs the Tilde expansion of a neighbor.
 
     The STARKs paper defines a "tilde" expansion as follows:
@@ -106,7 +108,14 @@ class APR(object):
 
     Tilde{(tau_1,...,tau_n, N)} = Tilde{(tau_1, N)},...,Tilde{(tau_n, N)}
     """
-    # TODO(rbharath): Fill this out.
+    
+    N_X_loc = neighbor(X_loc)
+    Z_boundaries = self.Z_boundaries
+    Eps_boundaries = self.Eps_boundaries
+    Z_N = Z_boundaries(N_X_loc)
+    Eps_N = Eps_boundaries(N_X_loc)
+
+
     return []
 
   def construct_L(self, g):
@@ -165,11 +174,11 @@ class APR(object):
       # TODO(rbharath): Does evaluation on other polynomials work out of the box?
       TODO = 1
       Phi_P_0 = ((X_loc * (X_loc - 1))/Z_H0) * P(
-        self.tilde_expansion(range(self.width), n_id),
-        self.tilde_expansion(range(self.width), n_0_cyc))
+        self.tilde_expansion(range(self.width), n_id, X_loc),
+        self.tilde_expansion(range(self.width), n_0_cyc, X_loc))
       Phi_P_1 = 1/Z_H0 * P(
-        self.tilde_expansion(range(self.width), n_id),
-        self.tilde_expansion(range(self.width), n_1_cyc))
+        self.tilde_expansion(range(self.width), n_id, X_loc),
+        self.tilde_expansion(range(self.width), n_1_cyc, X_loc))
       Phis.append(Phi_P_0)
       Phis.append(Phi_P_1)
     return Phis
