@@ -5,6 +5,95 @@ from starks.numbertype import Vector
 from starks.numbertype import Poly
 from starks.polynomial import polynomials_over
 
+class Additive_FFT(object):
+  def __init__(self):
+    raise NotImplementedError
+
+  def Taylor_Expansion(self, Polys, degree):
+    if degree <= 2:
+      return Polys
+
+    for x in range(degree):
+      if 2**(x+1) < degree and 2**(x+2) >= degree:
+        k = x
+
+    polysOver = polynomials_over(IntegersModP(2))
+    list_f0 = []
+      for i in range(2**(k+1)):
+        list_f0.append(Polys.coefficients[i])
+
+    list_f1 = []
+    for i in range(2**(k)):
+        list_f0.append(Polys.coefficients[2**(k+1)+i])
+
+    list_f2 = []
+    for i in range(2**k):
+        list_f0.append(Polys.coefficients[2**(k+1)+2**k+i])
+
+    f0 = field(polysOver(list_f0))
+    f1 = field(polysOver(list_f1))
+    f2 = field(polysOver(list_f2))
+
+    h = f1+f2
+    twoK = []
+    for i in range(2**(k)):
+      twoK.append(0)
+      twoK.append(1)
+      f_twoK = field(polysOver(twoK))
+
+    g0 = f0+f_twoK*h
+    g1 = h+f_twoK*f2
+
+    V1 = Taylor_Expansion(g0, degree/2)
+    V2 = Taylor_Expansion(g1, degree/2)
+
+    return V1, V2
+
+
+
+  def adfft(self, Polys, m, affine_beta, shift):
+    if m == 1:
+      return Polys(shift), Polys(shift+affine_beta[0])
+
+    polysOver = polynomials_over(IntegersModP(2))
+    list_g = []
+    for i in range(Polys.degree()+1):
+        list_g.append((affine_beta[m-1]**i*Polys.coefficients[i])%2)
+
+      g = field(polysOver(list_g))
+
+      g0, g1 = Taylor_Expansion(g, g.degree())
+
+      gamma = []
+      for i in range(m-1):
+        gamma.append(affine_beta[i] * affine_beta[m-1]).inverse();
+
+      delta = []
+      for i in range(m-1):
+        delta.append(gamma[i]**2-gamma[i])
+
+      S_G = shift * affine_beta[m-1].inverse()
+      S_D = S_G**2-S_G
+
+      G = []
+      G.append(S_G)
+      for i in range(m-1):
+        G.append(gamma[i])
+
+      D = delta
+
+      u = Additive_FFT(g0, m-1, D, S_D)
+      v = Additive_FFT(g1, m-1, D, S_D)
+
+      w1 = []
+      for i in range(2**(m-1)):
+        w1.append(u[i]+G[i]*u[i])
+        w2.append(w[i]+v[i])
+
+      w = w1 + w2
+      return w
+
+
 class FFT(object):
   """Abstract class that specifies a FFT solver."""
 
