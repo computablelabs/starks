@@ -8,6 +8,35 @@ class TestFFT(unittest.TestCase):
   """
   Basic tests for fft implementation. 
   """
+  def test_Taylor_Expansion(self):
+    polysOver = polynomials_over(IntegersModP(2))
+    # 1 + x + x^3
+    f = field(polysOver([1, 1, 0, 1]))
+    V1, V2 = Taylor_Expansion(f, f.degree())
+
+    print(f)
+    print(V1)
+    print(V2)
+
+
+  def test_adfft(self):
+    polysOver = polynomials_over(IntegersModP(2))
+    # 1 + x + x^3 + x^7
+    f = field(polysOver([1, 1, 0, 1, 0, 0, 0, 1]))
+    m = 3
+    beta = []
+    beta.append(field(polysOver([1, 0, 0, 1, 1])))
+    beta.append(field(polysOver([1, 1, 0, 1])))
+    beta.append(field(polysOver([1, 0, 1, 1])))
+    shift = field(polysOver([1, 0, 0, 0, 1]))
+
+    V1, V2 = Taylor_Expansion(f, f.degree())
+    print(V1)
+    print(V2)
+
+    W = adfft(f, m, beta, shift)
+    print(W)
+  
   def test_basic(self):
     """Basic test of fft."""
     modulus = 31 
