@@ -15,6 +15,7 @@ from starks.multivariate_polynomial import multivariates_over
 from starks.poly_utils import construct_affine_vanishing_polynomial
 from starks.poly_utils import lagrange_interp
 from starks.poly_utils import draw_random_interpolant
+from starks.fft import adfft
 
 class APR(object):
   """A class holding an instance of the APR problem.
@@ -97,7 +98,7 @@ class APR(object):
     # Witness reductio
     self.w = self.generate_witness()
 
-  def tilde_expansion(self, indices, neighbor, X_loc):
+  def tilde_expansion(self, indices, neighbor, PhiPolys):
     """Performs the Tilde expansion of a neighbor.
 
     The STARKs paper defines a "tilde" expansion as follows:
@@ -108,15 +109,19 @@ class APR(object):
 
     Tilde{(tau_1,...,tau_n, N)} = Tilde{(tau_1, N)},...,Tilde{(tau_n, N)}
     """
-    
+    X_loc = PhiPolys({(1,) + (0,)*len(self.Nbrs): 1})
     N_X_loc = neighbor(X_loc)
     Z_boundaries = self.Z_boundaries
     Eps_boundaries = self.Eps_boundaries
     Z_N = Z_boundaries(N_X_loc)
     Eps_N = Eps_boundaries(N_X_loc)
 
+    tilde_exp = []
 
-    return []
+    for tau in range(indices):
+      tilde_N.append(PhiPolys({(0,)*len(tau) + (1,) + (0,)*len(neighbor-tau): 1})*Z_N+Eps_N)
+
+    return tilde_exp
 
   def construct_L(self, g):
     """Constructs the affine space L"""
@@ -174,11 +179,11 @@ class APR(object):
       # TODO(rbharath): Does evaluation on other polynomials work out of the box?
       TODO = 1
       Phi_P_0 = ((X_loc * (X_loc - 1))/Z_H0) * P(
-        self.tilde_expansion(range(self.width), n_id, X_loc),
-        self.tilde_expansion(range(self.width), n_0_cyc, X_loc))
+        self.tilde_expansion(range(self.width), n_id, PhiPolys),
+        self.tilde_expansion(range(self.width), n_0_cyc, PhiPolys))
       Phi_P_1 = 1/Z_H0 * P(
-        self.tilde_expansion(range(self.width), n_id, X_loc),
-        self.tilde_expansion(range(self.width), n_1_cyc, X_loc))
+        self.tilde_expansion(range(self.width), n_id, PhiPolys),
+        self.tilde_expansion(range(self.width), n_1_cyc, PhiPolys))
       Phis.append(Phi_P_0)
       Phis.append(Phi_P_1)
     return Phis
@@ -248,10 +253,6 @@ class APR(object):
       n_cyc_0 = polysOver([0, g])
       neighbors.extend([(tau, n_id), (tau, n_cyc_1), (tau, n_cyc_0)])
     return neighbors
-
-  def get_boundary_conditions(self):
-    """Retrieves boundary conditions B."""
-    raise NotImplementedError
 
   def generate_witness(self):
     """A witness w^hat is in (L^F)^T. That is, it's a set of functions indexed
