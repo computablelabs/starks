@@ -93,6 +93,55 @@ class Additive_FFT(object):
       w = w1 + w2
       return w
 
+  def adfft_inverse(self, x, y, m): 
+    beta = []
+    for i in range(m):
+      beta.append(x[2**i])
+
+    gamma = []
+    for i in range(m-1):
+      gamma.append(beta[i] * beta[m-1]).inverse();
+
+    delta = []
+    for i in range(m-1):
+      delta.append(gamma[i]**2-gamma[i])
+
+    S_G = shift * affine_beta[m-1].inverse()
+    S_D = S_G**2-S_G
+
+    G = []
+    G.append(S_G)
+    for i in range(m-1):
+      G.append(gamma[i])
+
+    D = delta
+
+    v = []
+    u = []
+    for i in range(2**(m-1)):
+      v.append(y[i+2**(m-1)]-w[i])
+      u.append(w[i] - G[i]*v[i])
+
+    g_0 = self.adfft_inverse(D, u, m-1)
+    g_1 = self.adfft_inverse(D, v, m-1)
+
+    g = field(polysOver([0]))
+    g_right_temp = field(polysOver([0, 1, 1]))
+    g_right = []
+    g_right.append(field(polysOver([1])))
+    multiplier = []
+    multiplier.append(field(polysOver([0]))) 
+    multiplier.append(field(polysOver([0, 1])))
+    multiplier.append(field(polysOver([1])))
+    multiplier.append(field(polysOver([1, 1])))
+    for i in range(2**(m-1)-1):
+      g_right.append(g_right[-1]*g_right_temp)
+
+    for i in range(2**(m-1)):
+      g  = g + multiplier[g_0.coefficients[i]+2**g_1.coefficients[i]] * g_right[i]
+
+    return g
+
 
 class FFT(object):
   """Abstract class that specifies a FFT solver."""
