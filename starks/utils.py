@@ -7,6 +7,78 @@ from starks.numbertype import Field
 from starks.numbertype import FieldElement
 from starks.poly_utils import multivariates_over
 
+def annotate_source_code(
+    source_code: str,
+    lineno: int,
+    col_offset: int = None,
+    context_lines: int = 0,
+    line_numbers: bool = False,
+) -> str:
+    """
+    Annotate the location specified by ``lineno`` and ``col_offset`` in the
+    source code given by ``source_code`` with a location marker and optional
+    line numbers and context lines.
+
+    :param source_code: The source code containing the source location.
+    :param lineno: The 1-indexed line number of the source location.
+    :param col_offset: The 0-indexed column offset of the source location.
+    :param context_lines: The number of contextual lines to include above and
+        below the source location.
+    :param line_numbers: If true, line numbers are included in the location
+        representation.
+
+    :return: A string containing the annotated source code location.
+    """
+    source_lines = source_code.splitlines(keepends=True)
+    if lineno < 1 or lineno > len(source_lines):
+        raise ValueError('Line number is out of range')
+
+    line_offset = lineno - 1
+    start_offset = max(0, line_offset - context_lines)
+    end_offset = min(len(source_lines), line_offset + context_lines + 1)
+
+    line_repr = source_lines[line_offset]
+    if '\n' not in line_repr[-2:]:  # Handle certain edge cases
+        line_repr += '\n'
+    if col_offset is None:
+        mark_repr = ''
+    else:
+        mark_repr = '-' * col_offset + '^' + '\n'
+
+    before_lines = ''.join(source_lines[start_offset:line_offset])
+    after_lines = ''.join(source_lines[line_offset + 1:end_offset])
+    location_repr = ''.join((before_lines, line_repr, mark_repr, after_lines))
+
+    if line_numbers:
+        # Create line numbers
+        lineno_reprs = [f'{i} ' for i in range(start_offset + 1, end_offset + 1)]
+
+        # Highlight line identified by `lineno`
+        local_line_off = line_offset - start_offset
+        lineno_reprs[local_line_off] = '---> ' + lineno_reprs[local_line_off]
+
+        # Calculate width of widest line no
+        max_len = max(len(i) for i in lineno_reprs)
+
+        # Justify all line nos according to this width
+        justified_reprs = [i.rjust(max_len) for i in lineno_reprs]
+        if col_offset is not None:
+            justified_reprs.insert(local_line_off + 1, '-' * max_len)
+
+        location_repr = indent(location_repr, indent_chars=justified_reprs)
+
+    # Ensure no trailing whitespace and trailing blank lines are only included
+    # if they are part of the source code
+    if col_offset is None:
+        # Number of lines doesn't include column marker line
+        num_lines = end_offset - start_offset
+    else:
+        num_lines = end_offset - start_offset + 1
+
+    cleanup_lines = [l.rstrip() for l in location_repr.splitlines()]
+    cleanup_lines += [''] * (num_lines - len(cleanup_lines))
+
+    return '\n'.join(cleanup_lines)
 
 def plus_one(num: int) -> int:
     return num + 1
