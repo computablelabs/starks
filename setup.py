@@ -1,14 +1,63 @@
-from setuptools import setup
+import os
+from setuptools import (
+    find_packages,
+    setup,
+)
+import subprocess
+
+test_deps = [
+    'pytest>=3.6',
+    'pytest-cov==2.4.0',
+    'coveralls[yaml]==1.6.0',
+    'pytest-xdist==1.18.1',
+    'py-evm==0.2.0a42',
+    'eth-tester==0.1.0b39',
+    'eth-abi==2.0.0b9',
+    'web3==5.0.0b2',
+    'tox>=3.7,<4',
+    'hypothesis==4.11.7'
+]
+
+extras = {
+    'test': test_deps,
+}
+
+hash_file_rel_path = os.path.join('starks', 'starks_git_version.txt')
+hashfile = os.path.relpath(hash_file_rel_path)
+
+try:
+    commithash = subprocess.check_output("git rev-parse HEAD".split())
+    commithash = commithash.decode('utf-8').strip()
+    with open(hashfile, 'w') as fh:
+        fh.write(commithash)
+except subprocess.CalledProcessError:
+    pass
 
 setup(
     name='starks',
     description='Starks Programming Language for Datatrust',
+    long_description_markdown_filename='README.md',
+    url='https://github.com/computablelabs/starks',
+    license="MIT",
+    keywords='computable',
+    include_package_data=True,
+    packages=find_packages(exclude=('tests', 'docs')),
     python_requires='>=3.6',
+    py_modules=['starks'],
     install_requires=[
         'asttokens==1.1.13',
+        'pycryptodome>=3.5.1,<4',
     ],
     setup_requires=[
-        'pbr'
+        'pytest-runner',
+        'setuptools-markdown'
     ],
-    pbr=True
+    tests_require=test_deps,
+    extras_require=extras,
+    classifiers=[
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: MIT License',
+        'Programming Language :: Python :: 3.6',
+    ],
+    data_files=[('', [hash_file_rel_path])],
 )

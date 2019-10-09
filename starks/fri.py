@@ -19,33 +19,33 @@ class FRI(object):
 
   def generate_proximity_proof(self,
                                f: Poly,
-                               S: Space,
+                               S,
                                security_factor:int = 40) -> List[bytes]:
     raise NotImplementedError
 
   def verify_proximity_proof(self,
                              proof: List[bytes],
                              merkle_root: bytes,
-                             S: Space,
+                             S,
                              security_factor:int = 40) -> bool:
     raise NotImplementedError
 
 class AffineSubspaceFRI(object):
   """Implements Fast Reed Solomon IOPP for affine spaces."""
-  def __init__(self, field, affine_space: AffineSpace):
+  def __init__(self, field, affine_space):
     self.field = field 
     self.affine_space = affine_space
 
   def generate_proximity_proof(self,
                                f: Poly,
-                               S: AffineSpace,
+                               S,
                                security_factor:int = 40) -> List[bytes]:
     raise NotImplementedError
 
   def verify_proximity_proof(self,
                              proof: List[bytes],
                              merkle_root: bytes,
-                             S: AffineSpace,
+                             S,
                              security_factor:int = 40) -> bool:
     raise NotImplementedError
 

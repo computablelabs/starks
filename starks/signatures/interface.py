@@ -9,28 +9,28 @@ from typing import (
     Tuple,
 )
 
-from vyper import ast
-from vyper.exceptions import (
+from starks import ast
+from starks.exceptions import (
     ParserException,
     StructureException,
 )
-import vyper.interfaces
-from vyper.parser import (
+import starks.interfaces
+from starks.parser import (
     parser,
 )
-from vyper.parser.constants import (
+from starks.parser.constants import (
     Constants,
 )
-from vyper.signatures import (
+from starks.signatures import (
     sig_utils,
 )
-from vyper.signatures.event_signature import (
+from starks.signatures.event_signature import (
     EventSignature,
 )
-from vyper.signatures.function_signature import (
+from starks.signatures.function_signature import (
     FunctionSignature,
 )
-from vyper.typing import (
+from starks.typing import (
     InterfaceImports,
     SourceCode,
 )
@@ -38,12 +38,12 @@ from vyper.typing import (
 
 # Populate built-in interfaces.
 def get_builtin_interfaces():
-    interface_names = [x.name for x in pkgutil.iter_modules(vyper.interfaces.__path__)]
+    interface_names = [x.name for x in pkgutil.iter_modules(starks.interfaces.__path__)]
     return {
         name: extract_sigs({
-            'type': 'vyper',
+            'type': 'starks',
             'code': importlib.import_module(
-                f'vyper.interfaces.{name}',
+                f'starks.interfaces.{name}',
             ).interface_code,
         })
         for name in interface_names
@@ -72,7 +72,7 @@ def abi_type_to_ast(atype):
             slice=ast.Index(256)
         )
     else:
-        raise ParserException(f'Type {atype} not supported by vyper.')
+        raise ParserException(f'Type {atype} not supported by starks.')
 
 
 def mk_full_signature_from_json(abi):
@@ -123,7 +123,7 @@ def mk_full_signature_from_json(abi):
 
 
 def extract_sigs(sig_code):
-    if sig_code['type'] == 'vyper':
+    if sig_code['type'] == 'starks':
         interface_ast = parser.parse_to_ast(sig_code['code'])
         return sig_utils.mk_full_signature(
             [i for i in interface_ast if not isinstance(i, (ast.Import, ast.ImportFrom))],
@@ -134,7 +134,7 @@ def extract_sigs(sig_code):
     else:
         raise Exception(
             (f"Unknown interface signature type '{sig_code['type']}' supplied. "
-             "'vyper' & 'json' are supported")
+             "'starks' & 'json' are supported")
         )
 
 
@@ -220,7 +220,7 @@ def extract_file_interface_imports(code: SourceCode) -> InterfaceImports:
                     raise StructureException("From imports cannot use aliases", item)
             level = item.level  # type: ignore
             module = item.module or ""  # type: ignore
-            if not level and module == 'vyper.interfaces':
+            if not level and module == 'starks.interfaces':
                 continue
             if level:
                 base_path = f"{'.'*level}/{module.replace('.','/')}"

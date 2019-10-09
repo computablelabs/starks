@@ -15,7 +15,7 @@ from starks.utils import generate_Xi_s
 from starks.utils import get_power_cycle
 from starks.utils import is_a_power_of_2
 from starks.utils import get_pseudorandom_indices
-from starks.air import Computation
+#from starks.air import Computation
 from starks.poly_utils import make_multivar
 from starks.poly_utils import multi_inv
 from starks.numbertype import Field

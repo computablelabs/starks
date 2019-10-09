@@ -133,32 +133,32 @@ class AIR(object):
     W = self.generate_witness()
     output_eval = []
 
-    for i in in range(steps - 1):
+    for i in range(steps - 1):
       Xs = W[i]
       temp = []
       for j in range(self.width):
         Ys = Polys[j](Xs) - W[i+1][j]
-        if !Ys.is_zero():
+        if not Ys.is_zero():
           temp.append(False)
         else:
           temp.append(True)
       output_eval.append(temp)
 
     output = []
-    for i in in range(steps - 1):
+    for i in range(steps - 1):
       temp_bool = output_eval[i][-1]
       for j in range(self.width-1):
         temp_bool = temp_bool and output_eval[i][j] 
       output.append(temp_bool)
 
-    for i in in range(steps - 1):
+    for i in range(steps - 1):
       if output[i] == False:
         return False
 
     return True
 
   def C_degree(self, Polys):
-    return max([Polys[j].degree() j in range(self.width)])
+    return max([Polys[j].degree() for j in range(self.width)])
 
 
   def get_degree(self):

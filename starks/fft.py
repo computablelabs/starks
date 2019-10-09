@@ -19,8 +19,8 @@ class Additive_FFT(object):
 
     polysOver = polynomials_over(IntegersModP(2))
     list_f0 = []
-      for i in range(2**(k+1)):
-        list_f0.append(Polys.coefficients[i])
+    for i in range(2**(k+1)):
+      list_f0.append(Polys.coefficients[i])
 
     list_f1 = []
     for i in range(2**(k)):
@@ -51,56 +51,22 @@ class Additive_FFT(object):
 
 
 
-  def adfft(self, Polys, m, affine_beta, shift):
-    if m == 1:
-      return Polys(shift), Polys(shift+affine_beta[0])
+def adfft(self, Polys, m, affine_beta, shift):
+  if m == 1:
+    return Polys(shift), Polys(shift+affine_beta[0])
 
-    polysOver = polynomials_over(IntegersModP(2))
-    list_g = []
-    for i in range(Polys.degree()+1):
-        list_g.append((affine_beta[m-1]**i*Polys.coefficients[i])%2)
+  polysOver = polynomials_over(IntegersModP(2))
+  list_g = []
+  for i in range(Polys.degree()+1):
+    list_g.append((affine_beta[m-1]**i*Polys.coefficients[i])%2)
 
-      g = field(polysOver(list_g))
+    g = field(polysOver(list_g))
 
-      g0, g1 = Taylor_Expansion(g, g.degree())
-
-      gamma = []
-      for i in range(m-1):
-        gamma.append(affine_beta[i] * affine_beta[m-1]).inverse();
-
-      delta = []
-      for i in range(m-1):
-        delta.append(gamma[i]**2-gamma[i])
-
-      S_G = shift * affine_beta[m-1].inverse()
-      S_D = S_G**2-S_G
-
-      G = []
-      G.append(S_G)
-      for i in range(m-1):
-        G.append(gamma[i])
-
-      D = delta
-
-      u = Additive_FFT(g0, m-1, D, S_D)
-      v = Additive_FFT(g1, m-1, D, S_D)
-
-      w1 = []
-      for i in range(2**(m-1)):
-        w1.append(u[i]+G[i]*u[i])
-        w2.append(w[i]+v[i])
-
-      w = w1 + w2
-      return w
-
-  def adfft_inverse(self, x, y, m): 
-    beta = []
-    for i in range(m):
-      beta.append(x[2**i])
+    g0, g1 = Taylor_Expansion(g, g.degree())
 
     gamma = []
     for i in range(m-1):
-      gamma.append(beta[i] * beta[m-1]).inverse();
+      gamma.append(affine_beta[i] * affine_beta[m-1]).inverse();
 
     delta = []
     for i in range(m-1):
@@ -116,31 +82,65 @@ class Additive_FFT(object):
 
     D = delta
 
-    v = []
-    u = []
+    u = Additive_FFT(g0, m-1, D, S_D)
+    v = Additive_FFT(g1, m-1, D, S_D)
+
+    w1 = []
     for i in range(2**(m-1)):
-      v.append(y[i+2**(m-1)]-w[i])
-      u.append(w[i] - G[i]*v[i])
+      w1.append(u[i]+G[i]*u[i])
+      w2.append(w[i]+v[i])
 
-    g_0 = self.adfft_inverse(D, u, m-1)
-    g_1 = self.adfft_inverse(D, v, m-1)
+    w = w1 + w2
+    return w
 
-    g = field(polysOver([0]))
-    g_right_temp = field(polysOver([0, 1, 1]))
-    g_right = []
-    g_right.append(field(polysOver([1])))
-    multiplier = []
-    multiplier.append(field(polysOver([0]))) 
-    multiplier.append(field(polysOver([0, 1])))
-    multiplier.append(field(polysOver([1])))
-    multiplier.append(field(polysOver([1, 1])))
-    for i in range(2**(m-1)-1):
-      g_right.append(g_right[-1]*g_right_temp)
+def adfft_inverse(self, x, y, m): 
+  beta = []
+  for i in range(m):
+    beta.append(x[2**i])
 
-    for i in range(2**(m-1)):
-      g  = g + multiplier[g_0.coefficients[i]+2**g_1.coefficients[i]] * g_right[i]
+  gamma = []
+  for i in range(m-1):
+    gamma.append(beta[i] * beta[m-1]).inverse();
 
-    return g
+  delta = []
+  for i in range(m-1):
+    delta.append(gamma[i]**2-gamma[i])
+
+  S_G = shift * affine_beta[m-1].inverse()
+  S_D = S_G**2-S_G
+
+  G = []
+  G.append(S_G)
+  for i in range(m-1):
+    G.append(gamma[i])
+
+  D = delta
+
+  v = []
+  u = []
+  for i in range(2**(m-1)):
+    v.append(y[i+2**(m-1)]-w[i])
+    u.append(w[i] - G[i]*v[i])
+
+  g_0 = self.adfft_inverse(D, u, m-1)
+  g_1 = self.adfft_inverse(D, v, m-1)
+
+  g = field(polysOver([0]))
+  g_right_temp = field(polysOver([0, 1, 1]))
+  g_right = []
+  g_right.append(field(polysOver([1])))
+  multiplier = []
+  multiplier.append(field(polysOver([0]))) 
+  multiplier.append(field(polysOver([0, 1])))
+  multiplier.append(field(polysOver([1])))
+  multiplier.append(field(polysOver([1, 1])))
+  for i in range(2**(m-1)-1):
+    g_right.append(g_right[-1]*g_right_temp)
+
+  for i in range(2**(m-1)):
+    g  = g + multiplier[g_0.coefficients[i]+2**g_1.coefficients[i]] * g_right[i]
+
+  return g
 
 
 class FFT(object):
