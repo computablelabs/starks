@@ -29,14 +29,14 @@ class ParserException(Exception):
         lineno, col_offset = self.lineno, self.col_offset
 
         if lineno is not None and hasattr(self, 'source_code'):
-            from vyper.utils import annotate_source_code
+            from starks.utils import annotate_source_code
 
             source_annotation = annotate_source_code(
                 self.source_code,
                 lineno,
                 col_offset,
-                context_lines=VYPER_ERROR_CONTEXT_LINES,
-                line_numbers=VYPER_ERROR_LINE_NUMBERS,
+                context_lines=STARKS_ERROR_CONTEXT_LINES,
+                line_numbers=STARKS_ERROR_LINE_NUMBERS,
             )
             col_offset_str = '' if col_offset is None else str(col_offset)
             return f'line {lineno}:{col_offset_str} {self.message}\n{source_annotation}'

@@ -1,10 +1,11 @@
 """Test the algebraic placement and routing (APR) transformation."""
-from starks.modp import IntegersModP
-from starks.finitefield import FiniteField 
-from starks.air import AIR 
-from starks.apr import APR
-from starks.poly_utils import multivariates_over
-from starks.polynomial import polynomials_over
+import pytest
+#from starks.modp import IntegersModP
+#from starks.finitefield import FiniteField 
+#from starks.air import AIR 
+#from starks.apr import APR
+#from starks.poly_utils import multivariates_over
+#from starks.polynomial import polynomials_over
 
 #class TestAPR(unittest.TestCase):
 #  """Basic tests for APR classes."""

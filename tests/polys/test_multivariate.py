@@ -1,8 +1,9 @@
-from starks.modp import IntegersModP
-from starks.multivariate_polynomial import multivariates_over
-from starks.utils import generate_Xi_s
-from starks.polynomial import polynomials_over
-from starks.finitefield import FiniteField
+import pytest
+#from starks.modp import IntegersModP
+#from starks.multivariate_polynomial import multivariates_over
+#from starks.utils import generate_Xi_s
+#from starks.polynomial import polynomials_over
+#from starks.finitefield import FiniteField
 
 #class TestMultivariate(unittest.TestCase):
 #  """"

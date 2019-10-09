@@ -1,12 +1,12 @@
 """Test the construction of the algebraic intermediate representaiton."""
-
-from starks.air import AIR 
-from starks.air import get_computational_trace
-from starks.finitefield import FiniteField
-from starks.modp import IntegersModP
-from starks.polynomial import polynomials_over
-from starks.poly_utils import multivariates_over
-from starks.utils import generate_Xi_s
+import pytest
+#from starks.air import AIR 
+#from starks.air import get_computational_trace
+#from starks.finitefield import FiniteField
+#from starks.modp import IntegersModP
+#from starks.polynomial import polynomials_over
+#from starks.poly_utils import multivariates_over
+#from starks.utils import generate_Xi_s
 
 
 #class TestAIR(unittest.TestCase):

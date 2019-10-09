@@ -1,5 +1,6 @@
-from starks.modp import IntegersModP
-from starks.rationals_modp import RationalsModP
+import pytest
+#from starks.modp import IntegersModP
+#from starks.rationals_modp import RationalsModP
 
 #class TestModP(unittest.TestCase):
 #  """Basic tests for Mod-p numbers."""

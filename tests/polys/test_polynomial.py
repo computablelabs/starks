@@ -1,6 +1,7 @@
-from starks.modp import IntegersModP
-from fractions import Fraction
-from starks.polynomial import polynomials_over
+import pytest
+#from starks.modp import IntegersModP
+#from fractions import Fraction
+#from starks.polynomial import polynomials_over
 
 #class TestPolynomial(unittest.TestCase):
 #  """"

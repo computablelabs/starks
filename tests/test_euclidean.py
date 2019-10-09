@@ -1,6 +1,7 @@
-from starks.euclidean import gcd
-from starks.euclidean import extended_euclidean_algorithm
-from starks.modp import IntegersModP
+import pytest
+#from starks.euclidean import gcd
+#from starks.euclidean import extended_euclidean_algorithm
+#from starks.modp import IntegersModP
 
 
 #class TestEuclidean(unittest.TestCase):

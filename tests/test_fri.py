@@ -1,21 +1,22 @@
-from starks.fri import AffineSubspaceFRI
-from starks.fri import SmoothSubgroupFRI
-from starks.merkle_tree import merkelize
-from starks.merkle_tree import merkelize_polynomial_evaluations
-from starks.compression import bin_length
-from starks.compression import compress_fri
-from starks.modp import IntegersModP
-from starks.polynomial import polynomials_over
-from starks.fft import NonBinaryFFT
-from starks.poly_utils import multivariates_over
-from starks.air import Computation
-from starks.stark import get_power_cycle 
-from starks.stark import STARK
-from starks.stark import construct_trace_polynomials
-from starks.stark import construct_constraint_polynomials
-from starks.stark import construct_remainder_polynomials
-from starks.stark import construct_boundary_polynomials
-from starks.stark import compute_pseudorandom_linear_combination
+import pytest
+#from starks.fri import AffineSubspaceFRI
+#from starks.fri import SmoothSubgroupFRI
+#from starks.merkle_tree import merkelize
+#from starks.merkle_tree import merkelize_polynomial_evaluations
+#from starks.compression import bin_length
+#from starks.compression import compress_fri
+#from starks.modp import IntegersModP
+#from starks.polynomial import polynomials_over
+#from starks.fft import NonBinaryFFT
+#from starks.poly_utils import multivariates_over
+#from starks.air import Computation
+#from starks.stark import get_power_cycle 
+#from starks.stark import STARK
+#from starks.stark import construct_trace_polynomials
+#from starks.stark import construct_constraint_polynomials
+#from starks.stark import construct_remainder_polynomials
+#from starks.stark import construct_boundary_polynomials
+#from starks.stark import compute_pseudorandom_linear_combination
 
 
 #class TestFRI(unittest.TestCase):

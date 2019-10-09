@@ -1,7 +1,8 @@
-from starks.polynomial import polynomials_over
-from starks.modp import IntegersModP
-from starks.finitefield import FiniteField
-from starks.reedsolomon import AffineSpace
+import pytest
+#from starks.polynomial import polynomials_over
+#from starks.modp import IntegersModP
+#from starks.finitefield import FiniteField
+#from starks.reedsolomon import AffineSpace
 
 #class TestAffineSpace(unittest.TestCase):
 #  """

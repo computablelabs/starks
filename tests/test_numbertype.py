@@ -1,5 +1,6 @@
-from starks.modp import IntegersModP
-from starks.polynomial import polynomials_over
+import pytest
+#from starks.modp import IntegersModP
+#from starks.polynomial import polynomials_over
 
 #class TestNumberType(unittest.TestCase):
 #  """"

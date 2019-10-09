@@ -1,8 +1,9 @@
-from starks.modp import IntegersModP
-from starks.polynomial import polynomials_over
-from starks.finitefield import FiniteField
-from starks.finitefield import generate_irreducible_polynomial 
-from starks.poly_utils import is_irreducible
+import pytest
+#from starks.modp import IntegersModP
+#from starks.polynomial import polynomials_over
+#from starks.finitefield import FiniteField
+#from starks.finitefield import generate_irreducible_polynomial 
+#from starks.poly_utils import is_irreducible
 
 #class TestFiniteField(unittest.TestCase):
 #  """"

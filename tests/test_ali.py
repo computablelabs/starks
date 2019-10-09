@@ -1,10 +1,11 @@
 """Test the Algebraic linking IOP (ALI) protocol."""
+import pytest
 
-from starks.air import Computation
-from starks.apr import APR
-from starks.ali import ALIProver
-from starks.finitefield import FiniteField 
-from starks.poly_utils import multivariates_over
+#from starks.air import Computation
+#from starks.apr import APR
+#from starks.ali import ALIProver
+#from starks.finitefield import FiniteField 
+#from starks.poly_utils import multivariates_over
 
 #class TestALI(unittest.TestCase):
 #  """Basic tests for ALI classes."""
