@@ -163,7 +163,7 @@ class Web3:
 
     @property
     def clientVersion(self):
-        return self.manager.request_blocking("starks_web3_clientVersion", [])
+        return self.manager.request_blocking("web3_clientVersion", [])
 
     @property
     def api(self):
