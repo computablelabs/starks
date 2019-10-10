@@ -7,7 +7,7 @@ from typing import Tuple
 from typing import Callable
 #from primefac import factorint
 from starks.polynomial import Poly
-from starks.modp import IntegersModP
+from starks.finitefield import IntegersModP
 from starks.polynomial import polynomials_over
 from starks.euclidean import gcd
 from starks.numbertype import Field

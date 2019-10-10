@@ -7,7 +7,7 @@ from starks.euclidean import gcd
 from starks.numbertype import FieldElement
 from starks.numbertype import memoize
 from starks.numbertype import typecheck
-from starks.modp import _Modular
+from starks.finitefield import _Modular
 
 
 @memoize

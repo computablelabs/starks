@@ -1,5 +1,5 @@
 import pytest
-from starks.modp import IntegersModP
+from starks.finitefield import IntegersModP
 from fractions import Fraction
 from starks.polynomial import polynomials_over
 

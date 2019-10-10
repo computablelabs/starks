@@ -1,5 +1,5 @@
 import pytest
-from starks.modp import IntegersModP
+from starks.finitefield import IntegersModP
 from starks.multivariate_polynomial import multivariates_over
 from starks.poly_utils import project_to_univariate
 

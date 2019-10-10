@@ -7,7 +7,7 @@ from starks.utils import (
     get_power_cycle,
     plus_one
 )
-from starks.modp import IntegersModP
+from starks.finitefield import IntegersModP
 
 TEST_TEXT = """
 test

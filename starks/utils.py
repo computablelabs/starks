@@ -1,6 +1,6 @@
 import time
 from starks.merkle_tree import blake
-from starks.modp import IntegersModP
+from starks.finitefield import IntegersModP
 from typing import Dict
 from typing import List
 from starks.numbertype import Field

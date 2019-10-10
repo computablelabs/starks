@@ -9,49 +9,48 @@ class Additive_FFT(object):
   def __init__(self):
     raise NotImplementedError
 
-  def Taylor_Expansion(self, Polys, degree):
-    if degree <= 2:
-      return Polys
+def Taylor_Expansion(Polys, degree):
+  if degree <= 2:
+    return Polys
 
-    for x in range(degree):
-      if 2**(x+1) < degree and 2**(x+2) >= degree:
-        k = x
+  for x in range(degree):
+    if 2**(x+1) < degree and 2**(x+2) >= degree:
+      k = x
 
-    polysOver = polynomials_over(IntegersModP(2))
-    list_f0 = []
-    for i in range(2**(k+1)):
-      list_f0.append(Polys.coefficients[i])
+  polysOver = polynomials_over(IntegersModP(2))
+  list_f0 = []
+  for i in range(2**(k+1)):
+    list_f0.append(Polys.coefficients[i])
 
-    list_f1 = []
-    for i in range(2**(k)):
-        list_f0.append(Polys.coefficients[2**(k+1)+i])
+  list_f1 = []
+  for i in range(2**(k)):
+      list_f0.append(Polys.coefficients[2**(k+1)+i])
 
-    list_f2 = []
-    for i in range(2**k):
-        list_f0.append(Polys.coefficients[2**(k+1)+2**k+i])
+  list_f2 = []
+  for i in range(2**k):
+      list_f0.append(Polys.coefficients[2**(k+1)+2**k+i])
 
-    f0 = field(polysOver(list_f0))
-    f1 = field(polysOver(list_f1))
-    f2 = field(polysOver(list_f2))
+  f0 = field(polysOver(list_f0))
+  f1 = field(polysOver(list_f1))
+  f2 = field(polysOver(list_f2))
 
-    h = f1+f2
-    twoK = []
-    for i in range(2**(k)):
-      twoK.append(0)
-      twoK.append(1)
-      f_twoK = field(polysOver(twoK))
+  h = f1+f2
+  twoK = []
+  for i in range(2**(k)):
+    twoK.append(0)
+    twoK.append(1)
+    f_twoK = field(polysOver(twoK))
 
-    g0 = f0+f_twoK*h
-    g1 = h+f_twoK*f2
+  g0 = f0+f_twoK*h
+  g1 = h+f_twoK*f2
 
-    V1 = Taylor_Expansion(g0, degree/2)
-    V2 = Taylor_Expansion(g1, degree/2)
+  V1 = Taylor_Expansion(g0, degree/2)
+  V2 = Taylor_Expansion(g1, degree/2)
 
-    return V1, V2
+  return V1, V2
 
 
-
-def adfft(self, Polys, m, affine_beta, shift):
+def adfft(Polys, m, affine_beta, shift):
   if m == 1:
     return Polys(shift), Polys(shift+affine_beta[0])
 
@@ -93,7 +92,7 @@ def adfft(self, Polys, m, affine_beta, shift):
     w = w1 + w2
     return w
 
-def adfft_inverse(self, x, y, m): 
+def adfft_inverse(x, y, m): 
   beta = []
   for i in range(m):
     beta.append(x[2**i])
@@ -122,8 +121,8 @@ def adfft_inverse(self, x, y, m):
     v.append(y[i+2**(m-1)]-w[i])
     u.append(w[i] - G[i]*v[i])
 
-  g_0 = self.adfft_inverse(D, u, m-1)
-  g_1 = self.adfft_inverse(D, v, m-1)
+  g_0 = adfft_inverse(D, u, m-1)
+  g_1 = adfft_inverse(D, v, m-1)
 
   g = field(polysOver([0]))
   g_right_temp = field(polysOver([0, 1, 1]))
