@@ -1,4 +1,4 @@
-from stark.web3.module import (
+from starks.web3.module import (
     Module,
 )
 
