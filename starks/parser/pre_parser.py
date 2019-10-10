@@ -60,7 +60,7 @@ def validate_version_pragma(version_str: str, start: ParserPosition) -> None:
         )
 
 
-VYPER_CLASS_TYPES = (
+STARK_CLASS_TYPES = (
     'contract',
     'struct',
 )
@@ -117,7 +117,7 @@ def pre_parse(code: str) -> Tuple[ClassTypes, str]:
 
             # Translate starks-specific class keywords into python "class"
             # keyword
-            if typ == NAME and string in VYPER_CLASS_TYPES and start[1] == 0:
+            if typ == NAME and string in STARK_CLASS_TYPES and start[1] == 0:
                 toks = [TokenInfo(NAME, "class", start, end, line)]
                 previous_keyword = string
 

@@ -46,7 +46,7 @@ except subprocess.CalledProcessError:
 setup(
     name='starks',
     # *IMPORTANT*: Don't manually change the version here. Use the 'bumpversion' utility.
-    version='0.0',
+    version='0.1.0-beta.1',
     description='Starks Programming Language for Datatrust',
     long_description_markdown_filename='README.md',
     long_description_content_type='text/markdown',

@@ -1,14 +1,15 @@
+from itertools import (
+    chain,
+)
 import typing
 
 from starks.exceptions import (
     CompilerPanic,
 )
-
 from starks.settings import (
     STARKS_ERROR_CONTEXT_LINES,
     STARKS_ERROR_LINE_NUMBERS,
 )
-
 from starks.utils import (
     annotate_source_code,
 )
@@ -22,6 +23,7 @@ BASE_NODE_ATTRIBUTES = (
     'end_lineno',
     'src'
 )
+
 
 class StarksNode:
     __slots__ = BASE_NODE_ATTRIBUTES
@@ -68,45 +70,59 @@ class StarksNode:
 
         return f'{class_repr}:\n{source_annotation}'
 
+
 class Module(StarksNode):
     __slots__ = ('body', )
+
 
 class Name(StarksNode):
     __slots__ = ('id', )
 
+
 class Subscript(StarksNode):
     __slots__ = ('slice', 'value')
+
 
 class Index(StarksNode):
     __slots__ = ('value', )
 
+
 class arg(StarksNode):
     __slots__ = ('arg', 'annotation')
+
 
 class Tuple(StarksNode):
     __slots__ = ('elts', )
 
+
 class FunctionDef(StarksNode):
     __slots__ = ('args', 'body', 'returns', 'name', 'decorator_list', 'pos')
+
 
 class arguments(StarksNode):
     __slots__ = ('args', 'defaults', 'default')
     only_empty_fields = ('vararg', 'kwonlyargs', 'kwarg', 'kw_defaults')
 
+
 class Import(StarksNode):
     __slots__ = ('names', )
+
 
 class Call(StarksNode):
     __slots__ = ('func', 'args', 'keywords', 'keyword')
 
+
 class keyword(StarksNode):
     __slots__ = ('arg', 'value')
+
 
 class Str(StarksNode):
     __slots__ = ('s', )
 
+
 class Compare(StarksNode):
     __slots__ = ('comparators', 'ops', 'left', 'right')
+
 
 class Num(StarksNode):
     __slots__ = ('n', )

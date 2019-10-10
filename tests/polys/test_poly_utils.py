@@ -1,6 +1,8 @@
 import pytest
-#from starks.modp import IntegersModP
-#from starks.multivariate_polynomial import multivariates_over
+from starks.modp import IntegersModP
+from starks.multivariate_polynomial import multivariates_over
+from starks.poly_utils import project_to_univariate
+
 #from starks.poly_utils import zpoly
 #from starks.poly_utils import multi_inv
 #from starks.poly_utils import lagrange_interp
@@ -14,40 +16,33 @@ import pytest
 #from starks.polynomial import polynomials_over
 #from starks.poly_utils import construct_multivariate_dirac_delta
 #from starks.poly_utils import construct_multivariate_coefficients
-#from starks.poly_utils import project_to_univariate
 #from starks.poly_utils import construct_affine_vanishing_polynomial
 #from starks.utils import get_power_cycle
 #from starks.finitefield import FiniteField
 #from starks.reedsolomon import AffineSpace
 
-#class TestPolyUtils(unittest.TestCase):
-#  """
-#  Basic tests for polynomial utility functions. 
-#  """
-#
-#  def test_basic(self):
-#    """Basic test"""
-#    #field7 = PrimeField(7)
-#    mod7 = IntegersModP(7)
-#    # 12 % 7 == 5
-#    assert mod7(6) + mod7(6) == mod7(5)
-#
-#    # 6^-1 = 6
-#    assert 1/mod7(6) == mod7(6)
-#
-#  def test_project_multivar(self):
-#    """Test the multivariate projection."""
-#    modulus = 7
-#    field = IntegersModP(modulus)
-#    width = 3
-#    # Let's make polynomials in (Z/7)[x, y, z]
-#    multi = multivariates_over(field, width).factory
-#    # This should equal xy
-#    xy_poly = multi({(1, 1, 0): 1})
-#    x_poly = project_to_univariate(xy_poly, 0, field, width)
-#    # TODO(rbharath): Add more nontrivial tests
-#
-#  def test_zpoly(self):
+def test_basic():
+    """Basic test"""
+    mod7 = IntegersModP(7)
+    # 12 % 7 == 5
+    assert mod7(6) + mod7(6) == mod7(5)
+    # 6^-1 = 6
+    assert 1/mod7(6) == mod7(6)
+
+def test_project_multivar():
+    """Test the multivariate projection."""
+    modulus = 7
+    field = IntegersModP(modulus)
+    width = 3
+    # Let's make polynomials in (Z/7)[x, y, z]
+    multi = multivariates_over(field, width).factory
+    # This should equal xy
+    xy_poly = multi({(1, 1, 0): 1})
+    x_poly = project_to_univariate(xy_poly, 0, field, width)
+    # TODO(rbharath): Add more nontrivial tests
+
+
+#  def test_zpoly():
 #    """Test construction of polynomials with specified root"""
 #    modulus = 7
 #    mod7 = IntegersModP(modulus)
@@ -69,7 +64,7 @@ import pytest
 #    assert poly == polysMod7([2, -3, 1])
 #
 #
-#  def test_multi_inv(self):
+#  def test_multi_inv():
 #    """Test of faster multiple inverse method."""
 #    # 6^-1 = 6
 #    modulus = 7
@@ -102,7 +97,7 @@ import pytest
 #    for i in range(1, 5):
 #      assert z_evals[i] * z_inv[i] == 1
 #
-#  def test_lagrange_interp(self):
+#  def test_lagrange_interp():
 #    """Test lagrangian interpolation."""
 #    modulus = 7
 #    mod7 = IntegersModP(modulus)
@@ -129,7 +124,7 @@ import pytest
 #    # interp should equal x
 #    assert interp == polysOverF([F25(0), F25(1)])
 #
-#  def test_lagrange_interp_4(self):
+#  def test_lagrange_interp_4():
 #    """Test fast interpolation for degree 4 polynomials."""
 #    modulus = 7
 #    mod7 = IntegersModP(modulus)
@@ -141,7 +136,7 @@ import pytest
 #    # interp should equal x
 #    assert interp == polysOverMod([0, 1])
 #
-#  def test_lagrange_interp_2(self):
+#  def test_lagrange_interp_2():
 #    """Test fast interpolation for degree 2 polynomials."""
 #    modulus = 7
 #    mod7 = IntegersModP(modulus)
@@ -153,7 +148,7 @@ import pytest
 #    # interp should equal x
 #    assert interp == polysOverMod([0, 1])
 #
-#  def test_multi_interp_4(self):
+#  def test_multi_interp_4():
 #    """Test fast interpolation for multiple degree 4 polynomials."""
 #    modulus = 7
 #    mod7 = IntegersModP(modulus)
@@ -167,7 +162,7 @@ import pytest
 #    assert interp[0] == polysOverMod([0, 1])
 #    assert interp[1] == polysOverMod([0, 1])
 #
-##  def test_is_primitive(self):
+##  def test_is_primitive():
 ##    """Tests whether the primitivity check is correctly implemented."""
 ##    modulus = 2
 ##    degree = 2
@@ -192,7 +187,7 @@ import pytest
 ##    prim_poly = polysOver(coeffs)
 ##    assert is_primitive(prim_poly, modulus, degree)
 #
-##  def test_generate_primitive_poly(self):
+##  def test_generate_primitive_poly():
 ##    """Tests the generation of primitive polynomials."""
 ##    modulus = 2
 ##    degree = 2
@@ -205,7 +200,7 @@ import pytest
 ##    assert is_irreducible(gen_poly, modulus)
 ##    assert is_primitive(gen_poly, modulus, degree)
 #
-#  def test_is_monic(self):
+#  def test_is_monic():
 #    """Tests the is_monic primitive."""
 #    modulus = 3
 #    degree = 2
@@ -219,7 +214,7 @@ import pytest
 #    poly = polysOver([1, 1, 2])
 #    assert not is_monic(poly)
 #
-#  def test_construct_multivariate_dirac_delta(self):
+#  def test_construct_multivariate_dirac_delta():
 #    """Tests the construct of the multivariate dirac delta."""
 #    modulus = 3
 #    mod7 = IntegersModP(modulus)
@@ -248,7 +243,7 @@ import pytest
 #    assert dirac((0, 1, 0)) == 0
 #    assert dirac((0, 0, 1)) == 0
 #
-#  def test_construct_multivariate_coefficients(self):
+#  def test_construct_multivariate_coefficients():
 #    """Tests the "compilation" of a function into a polynomial."""
 #    modulus = 7
 #    mod7 = IntegersModP(modulus)
@@ -266,7 +261,7 @@ import pytest
 #    x_plus_one_poly = multi({(0, 0, 0): mod7(1), (1, 0, 0): mod7(1)})
 #    assert poly == x_plus_one_poly
 #
-#  def test_construct_affine_vanishing_poly(self):
+#  def test_construct_affine_vanishing_poly():
 #    """Tests the construction of an affine vanishing poly."""
 #    p = 2
 #    m = 2
