@@ -7,8 +7,8 @@ from eth_tester import (
     EthereumTester,
 )
 import pytest
-from web3 import Web3
-from web3.providers.eth_tester import (
+from starks.web3 import Web3
+from starks.web3.providers.eth_tester import (
     EthereumTesterProvider,
 )
 
@@ -26,6 +26,18 @@ from .base_conftest import (
     _get_contract,
     zero_gas_price_strategy,
 )
+
+from eth_utils import (
+    to_bytes,
+)
+from eth_utils.toolz import (
+    identity,
+)
+
+from .utils import (
+    get_open_port,
+)
+
 
 # Import the base_conftest fixtures
 pytest_plugins = ['tests.base_conftest']
@@ -176,3 +188,12 @@ def search_for_sublist():
         return False
 
     return search_for_sublist
+
+@pytest.fixture(scope="module", params=[lambda x: to_bytes(hexstr=x), identity])
+def address_conversion_func(request):
+    return request.param
+
+
+@pytest.fixture()
+def open_port():
+    return get_open_port()
