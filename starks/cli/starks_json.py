@@ -15,7 +15,7 @@ from typing import (
 import warnings
 
 import starks 
-from starks.cli.starksimport (
+from starks.cli.starks_compile import (
     get_interface_file_path,
 )
 from starks.exceptions import (
