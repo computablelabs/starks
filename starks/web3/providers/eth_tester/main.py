@@ -31,8 +31,8 @@ class EthereumTesterProvider(BaseProvider):
 
     def __init__(self, ethereum_tester=None, api_endpoints=None):
         # do not import eth_tester until runtime, it is not a default dependency
-        from eth_tester import EthereumTester
-        from eth_tester.backends.base import BaseChainBackend
+        from starks.eth_tester import EthereumTester
+        from starks.eth_tester.backends.base import BaseChainBackend
         if ethereum_tester is None:
             self.ethereum_tester = EthereumTester()
         elif isinstance(ethereum_tester, EthereumTester):

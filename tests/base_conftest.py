@@ -1,7 +1,7 @@
-from eth_tester import (
+from starks.eth_tester import (
     EthereumTester,
 )
-from eth_tester.exceptions import (
+from starks.eth_tester.exceptions import (
     TransactionFailed,
 )
 from eth_utils.toolz import (
