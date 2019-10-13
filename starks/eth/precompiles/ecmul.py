@@ -13,7 +13,7 @@ from eth_utils.toolz import (
     curry,
 )
 
-from eth import constants
+from starks.eth import constants
 
 from starks.eth.exceptions import (
     VMError,

@@ -5,7 +5,7 @@ from eth_utils.toolz import (
     merge
 )
 
-from eth import (
+from starks.eth import (
     constants
 )
 from starks.eth.abc import OpcodeAPI

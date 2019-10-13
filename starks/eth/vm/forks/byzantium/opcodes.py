@@ -9,7 +9,7 @@ from typing import (
     Callable,
 )
 
-from eth import constants
+from starks.eth import constants
 
 from starks.eth.abc import OpcodeAPI
 from starks.eth.exceptions import (

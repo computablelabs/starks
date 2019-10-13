@@ -1,4 +1,4 @@
-from eth import precompiles
+from starks.eth import precompiles
 
 from eth_hash.auto import keccak
 from eth_utils import (

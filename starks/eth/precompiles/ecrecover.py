@@ -8,7 +8,7 @@ from eth_utils import (
     ValidationError,
 )
 
-from eth import constants
+from starks.eth import constants
 
 from starks.eth._utils.padding import (
     pad32,

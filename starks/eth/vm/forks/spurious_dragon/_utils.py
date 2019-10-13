@@ -4,7 +4,7 @@ from eth_typing import Address
 
 from eth_utils import to_set
 
-from eth import constants
+from starks.eth import constants
 
 from starks.eth._utils.address import (
     force_bytes_to_address,

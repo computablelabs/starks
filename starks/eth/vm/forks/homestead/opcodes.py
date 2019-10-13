@@ -3,7 +3,7 @@ from typing import Dict
 
 from eth_utils.toolz import merge
 
-from eth import constants
+from starks.eth import constants
 from starks.eth.abc import OpcodeAPI
 from starks.eth.vm import mnemonics
 from starks.eth.vm import opcode_values

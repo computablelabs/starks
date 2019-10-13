@@ -1,4 +1,4 @@
-from eth import constants
+from starks.eth import constants
 
 from starks.eth._utils.numeric import (
     signed_to_unsigned,

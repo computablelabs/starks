@@ -1,6 +1,6 @@
 from typing import Dict
 
-from eth import constants
+from starks.eth import constants
 
 from starks.eth.abc import OpcodeAPI
 from starks.eth.vm import mnemonics

@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 import functools
 from typing import Tuple
-from eth import constants
+from starks.eth import constants
 
 from starks.eth.vm.computation import BaseComputation
 

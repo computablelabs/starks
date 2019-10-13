@@ -1,4 +1,4 @@
-from eth.vm.forks.homestead.state import HomesteadState
+from starks.eth.vm.forks.homestead.state import HomesteadState
 
 from .computation import TangerineWhistleComputation
 

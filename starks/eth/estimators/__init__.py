@@ -16,7 +16,7 @@ from starks.eth._utils.module_loading import (
 def get_gas_estimator() -> Callable[[StateAPI, SignedTransactionAPI], int]:
     import_path = os.environ.get(
         'GAS_ESTIMATOR_BACKEND_FUNC',
-        'eth.estimators.gas.binary_gas_search_intrinsic_tolerance',
+        'starks.eth.estimators.gas.binary_gas_search_intrinsic_tolerance',
     )
     return cast(
         Callable[[StateAPI, SignedTransactionAPI], int],

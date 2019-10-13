@@ -1,7 +1,7 @@
 import functools
 import pytest
 
-from eth_tester import (
+from starks.eth_tester import (
     EthereumTester,
 )
 from eth_utils import (

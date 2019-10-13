@@ -1,4 +1,4 @@
-from eth_tester.exceptions import (
+from starks.eth_tester.exceptions import (
     TransactionFailed,
 )
 import pytest

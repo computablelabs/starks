@@ -20,7 +20,7 @@ from .constants import (
     DAO_FORK_MAINNET_EXTRA_DATA,
     DAO_FORK_MAINNET_BLOCK,
 )
-from eth import constants as eth_constants
+from starks.eth import constants as eth_constants
 
 from starks.eth.abc import (
     BlockHeaderAPI,

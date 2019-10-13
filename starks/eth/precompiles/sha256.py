@@ -1,6 +1,6 @@
 import hashlib
 
-from eth import constants
+from starks.eth import constants
 
 from starks.eth._utils.numeric import (
     ceil32,

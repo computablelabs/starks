@@ -7,7 +7,7 @@ from typing import (
     Tuple,
 )
 
-from eth import constants
+from starks.eth import constants
 
 from eth_typing import (
     Address,

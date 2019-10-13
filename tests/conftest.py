@@ -3,7 +3,7 @@ from functools import (
 )
 import logging
 
-from eth_tester import (
+from starks.eth_tester import (
     EthereumTester,
 )
 import pytest

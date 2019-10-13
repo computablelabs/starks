@@ -1,7 +1,7 @@
 import pkg_resources
 import sys
 
-from eth.chains import (  # noqa: F401
+from starks.eth.chains import (  # noqa: F401
     Chain,
     MainnetChain,
     MainnetTesterChain,

@@ -10,7 +10,7 @@ from eth_utils import import_string
 from starks.eth.abc import AtomicDatabaseAPI
 
 
-DEFAULT_DB_BACKEND = 'eth.db.atomic.AtomicDB'
+DEFAULT_DB_BACKEND = 'starks.eth.db.atomic.AtomicDB'
 
 
 def get_db_backend_class(import_path: str = None) -> Type[AtomicDatabaseAPI]:
