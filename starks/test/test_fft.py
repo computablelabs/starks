@@ -1,18 +1,31 @@
 import unittest
+from starks.fft import Additive_FFT
 from starks.fft import NonBinaryFFT
 from starks.fft import mul_polys
 from starks.modp import IntegersModP
 from starks.polynomial import polynomials_over
+from starks.finitefield import FiniteField
 
 class TestFFT(unittest.TestCase):
   """
   Basic tests for fft implementation. 
   """
+
   def test_Taylor_Expansion(self):
-    polysOver = polynomials_over(IntegersModP(2))
+    p = 2
+    m = 4
+    Zp = IntegersModP(p)
+    polysOver = polynomials_over(Zp)
+    coefficients = [Zp(0)] * 5
+    coefficients[0] = Zp(1)
+    coefficients[1] = Zp(1)
+    coefficients[4] = Zp(1)
+    poly = polysOver(coefficients)
+    field = FiniteField(p, m, polynomialModulus=poly)
     # 1 + x + x^3
     f = field(polysOver([1, 1, 0, 1]))
-    V1, V2 = Taylor_Expansion(f, f.degree())
+    obj = Additive_FFT(field)
+    V1, V2 = obj.Taylor_Expansion(f, f.poly.degree())
 
     print(f)
     print(V1)
@@ -20,23 +33,69 @@ class TestFFT(unittest.TestCase):
 
 
   def test_adfft(self):
-    polysOver = polynomials_over(IntegersModP(2))
-    # 1 + x + x^3 + x^7
-    f = field(polysOver([1, 1, 0, 1, 0, 0, 0, 1]))
-    m = 3
+    p = 2
+    m = 4
+    Zp = IntegersModP(p)
+    polysOver = polynomials_over(Zp)
+    coefficients = [Zp(0)] * 5
+    coefficients[0] = Zp(1)
+    coefficients[1] = Zp(1)
+    coefficients[4] = Zp(1)
+    poly = polysOver(coefficients)
+    field = FiniteField(p, m, polynomialModulus=poly)
+    # 1 + x + x^3
+    f = field(polysOver([1, 1, 0, 1]))
+    obj = Additive_FFT(field)
+    mp = 2
     beta = []
-    beta.append(field(polysOver([1, 0, 0, 1, 1])))
-    beta.append(field(polysOver([1, 1, 0, 1])))
-    beta.append(field(polysOver([1, 0, 1, 1])))
-    shift = field(polysOver([1, 0, 0, 0, 1]))
-
-    V1, V2 = Taylor_Expansion(f, f.degree())
+    beta.append(field(polysOver([1, 0, 1])))
+    beta.append(field(polysOver([0, 1, 1])))
+    shift = field(polysOver([1, 0, 1]))
+    obj = Additive_FFT(field)
+    V1, V2 = obj.Taylor_Expansion(f, f.poly.degree())
+    W = obj.adfft(f, mp, beta, shift)
     print(V1)
     print(V2)
-
-    W = adfft(f, m, beta, shift)
     print(W)
-  
+
+
+  def test_adfft_inverse(self):
+    p = 2
+    m = 4
+    Zp = IntegersModP(p)
+    polysOver = polynomials_over(Zp)
+    coefficients = [Zp(0)] * 5
+    coefficients[0] = Zp(1)
+    coefficients[1] = Zp(1)
+    coefficients[4] = Zp(1)
+    poly = polysOver(coefficients)
+    field = FiniteField(p, m, polynomialModulus=poly)
+
+    mp = 2
+    x = []
+    y = []
+    x.append(field(polysOver([1, 0, 0])))
+    y.append(field(polysOver([1, 1])))
+    x.append(field(polysOver([1, 1, 1])))
+    y.append(field(polysOver([0, 0, 1])))
+    x.append(field(polysOver([1, 0])))
+    y.append(field(polysOver([0, 1])))
+    x.append(field(polysOver([1, 1])))
+    y.append(field(polysOver([0, 1, 1])))
+    x.append(field(polysOver([1, 1, 1])))
+    y.append(field(polysOver([1, 0, 1])))
+    x.append(field(polysOver([1, 0, 0])))
+    y.append(field(polysOver([1, 1, 1])))
+    x.append(field(polysOver([1])))
+    y.append(field(polysOver([0])))
+    x.append(field(polysOver([1])))
+    y.append(field(polysOver([1, 1])))
+    
+    obj = Additive_FFT(field)
+    f = obj.adfft_inverse(x, y, m)
+    print(f)
+
+
   def test_basic(self):
     """Basic test of fft."""
     modulus = 31 
