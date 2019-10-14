@@ -4,7 +4,7 @@ from starks.euclidean import extended_euclidean_algorithm
 from starks.polynomial import polynomials_over
 from starks.poly_utils import generate_irreducible_polynomial
 from starks.poly_utils import generate_primitive_polynomial
-from starks.modp import IntegersModP
+from starks.finitefield.modp import IntegersModP
 from starks.numbertype import FieldElement
 from starks.numbertype import DomainElement
 from starks.numbertype import memoize
