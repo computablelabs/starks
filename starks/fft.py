@@ -4,10 +4,26 @@ from starks.numbertype import FieldElement
 from starks.numbertype import Vector
 from starks.numbertype import Poly
 from starks.polynomial import polynomials_over
+from starks.modp import IntegersModP
 
-class Additive_FFT(object):
+class FFT(object):
+  """Abstract class that specifies a FFT solver."""
+
   def __init__(self):
     raise NotImplementedError
+
+  def fft(self, poly: Poly) -> List[FieldElement]:
+    """The FFT efficiently evaluates a polynomial on many field elements."""
+    raise NotImplementedError
+
+  def inv_fft(self, values: List[FieldElement]) -> Poly:
+    """Converts a polynomial represented as evaluations on m points to coefficients."""
+    raise NotImplementedError
+
+
+class Additive_FFT(FFT):
+  def __init__(self, field):
+    self.field = field
 
   def Taylor_Expansion(self, Polys, degree):
     if degree <= 2:
@@ -19,88 +35,67 @@ class Additive_FFT(object):
 
     polysOver = polynomials_over(IntegersModP(2))
     list_f0 = []
-      for i in range(2**(k+1)):
-        list_f0.append(Polys.coefficients[i])
+    for i in range(2**(k+1)):
+      list_f0.append(int(str(Polys.poly.coefficients[i])[0]))
 
     list_f1 = []
     for i in range(2**(k)):
-        list_f0.append(Polys.coefficients[2**(k+1)+i])
+        list_f1.append(int(str(Polys.poly.coefficients[2**(k+1)+i])[0]))
 
     list_f2 = []
     for i in range(2**k):
-        list_f0.append(Polys.coefficients[2**(k+1)+2**k+i])
+        list_f2.append(int(str(Polys.poly.coefficients[2**(k+1)+2**k+i])[0]))
 
-    f0 = field(polysOver(list_f0))
-    f1 = field(polysOver(list_f1))
-    f2 = field(polysOver(list_f2))
+    f0 = self.field(polysOver(list_f0))
+    f1 = self.field(polysOver(list_f1))
+    f2 = self.field(polysOver(list_f2))
 
     h = f1+f2
     twoK = []
     for i in range(2**(k)):
       twoK.append(0)
-      twoK.append(1)
-      f_twoK = field(polysOver(twoK))
+    twoK.append(1)
+    f_twoK = self.field(polysOver(twoK))
 
     g0 = f0+f_twoK*h
     g1 = h+f_twoK*f2
 
-    V1 = Taylor_Expansion(g0, degree/2)
-    V2 = Taylor_Expansion(g1, degree/2)
+    V1 = self.Taylor_Expansion(g0, degree/2)
+    V2 = self.Taylor_Expansion(g1, degree/2)
 
     return V1, V2
 
 
 
   def adfft(self, Polys, m, affine_beta, shift):
-    if m == 1:
-      return Polys(shift), Polys(shift+affine_beta[0])
-
     polysOver = polynomials_over(IntegersModP(2))
-    list_g = []
-    for i in range(Polys.degree()+1):
-        list_g.append((affine_beta[m-1]**i*Polys.coefficients[i])%2)
+    f1 = self.field(polysOver([0]))
+    for i in range(Polys.poly.degree()+1):
+      if str(Polys.poly.coefficients[i])[0] == '1':
+        f1 = f1 + (shift + affine_beta[0])**i
 
-      g = field(polysOver(list_g))
+    f2 = self.field(polysOver([0]))
+    for i in range(Polys.poly.degree()+1):
+      if str(Polys.poly.coefficients[i])[0] == '1':
+        f2 = f2 + shift**i
 
-      g0, g1 = Taylor_Expansion(g, g.degree())
+    if m == 1:
+      return f1, f2
 
-      gamma = []
-      for i in range(m-1):
-        gamma.append(affine_beta[i] * affine_beta[m-1]).inverse();
+    g = self.field(polysOver([0]))
+    x = self.field(polysOver([0, 1]))
+    x = x * affine_beta[m-1] 
+    for i in range(Polys.poly.degree()+1):
+      if str(Polys.poly.coefficients[i])[0] == '1':
+        g = g + x**i
+    print(g)
+    print(g.poly.degree())
 
-      delta = []
-      for i in range(m-1):
-        delta.append(gamma[i]**2-gamma[i])
-
-      S_G = shift * affine_beta[m-1].inverse()
-      S_D = S_G**2-S_G
-
-      G = []
-      G.append(S_G)
-      for i in range(m-1):
-        G.append(gamma[i])
-
-      D = delta
-
-      u = Additive_FFT(g0, m-1, D, S_D)
-      v = Additive_FFT(g1, m-1, D, S_D)
-
-      w1 = []
-      for i in range(2**(m-1)):
-        w1.append(u[i]+G[i]*u[i])
-        w2.append(w[i]+v[i])
-
-      w = w1 + w2
-      return w
-
-  def adfft_inverse(self, x, y, m): 
-    beta = []
-    for i in range(m):
-      beta.append(x[2**i])
+    g0, g1 = self.Taylor_Expansion(g, g.poly.degree())
 
     gamma = []
     for i in range(m-1):
-      gamma.append(beta[i] * beta[m-1]).inverse();
+      gamma.append((affine_beta[i] * affine_beta[m-1]).inverse());
 
     delta = []
     for i in range(m-1):
@@ -116,24 +111,58 @@ class Additive_FFT(object):
 
     D = delta
 
+    u = self.adfft(g0, m-1, D, S_D)
+    v = self.adfft(g1, m-1, D, S_D)
+
+    w1 = []
+    w2 = []
+    for i in range(2**(m-1)):
+      w1.append(u[i]+G[i]*v[i])
+      w2.append(w1[i]+v[i])
+
+    w = w1 + w2
+    return w
+
+  def adfft_inverse(self, x, y, m): 
+    beta = []
+    for i in range(m):
+      beta.append(x[2**i])
+
+    gamma = []
+    for i in range(m-1):
+      gamma.append(beta[i] * beta[m-1].inverse());
+
+    delta = []
+    for i in range(m-1):
+      delta.append(gamma[i]**2-gamma[i])
+
+    G = []
+    for i in range(m-1):
+      G.append(gamma[i])
+
+    D = delta
+
     v = []
     u = []
     for i in range(2**(m-1)):
-      v.append(y[i+2**(m-1)]-w[i])
-      u.append(w[i] - G[i]*v[i])
+      v.append(y[i+2**(m-1)]-y[i])
+      u.append(y[i] - G[i]*v[i])
 
     g_0 = self.adfft_inverse(D, u, m-1)
     g_1 = self.adfft_inverse(D, v, m-1)
 
+    Ibeta = beta[-1].inverse()
+
     g = field(polysOver([0]))
-    g_right_temp = field(polysOver([0, 1, 1]))
+    g_right_tempp = field(polysOver([0, 1])) * Ibeta
+    g_right_temp = g_right_tempp * g_right_tempp - g_right_tempp
     g_right = []
     g_right.append(field(polysOver([1])))
     multiplier = []
     multiplier.append(field(polysOver([0]))) 
-    multiplier.append(field(polysOver([0, 1])))
+    multiplier.append(g_right_tempp)
     multiplier.append(field(polysOver([1])))
-    multiplier.append(field(polysOver([1, 1])))
+    multiplier.append(field(polysOver([1]))+g_right_tempp)
     for i in range(2**(m-1)-1):
       g_right.append(g_right[-1]*g_right_temp)
 
@@ -141,21 +170,6 @@ class Additive_FFT(object):
       g  = g + multiplier[g_0.coefficients[i]+2**g_1.coefficients[i]] * g_right[i]
 
     return g
-
-
-class FFT(object):
-  """Abstract class that specifies a FFT solver."""
-
-  def __init__(self):
-    raise NotImplementedError
-
-  def fft(self, poly: Poly) -> List[FieldElement]:
-    """The FFT efficiently evaluates a polynomial on many field elements."""
-    raise NotImplementedError
-
-  def inv_fft(self, values: List[FieldElement]) -> Poly:
-    """Converts a polynomial represented as evaluations on m points to coefficients."""
-    raise NotImplementedError
 
 
 class NonBinaryFFT(FFT):
