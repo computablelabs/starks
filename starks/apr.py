@@ -17,6 +17,44 @@ from starks.poly_utils import lagrange_interp
 from starks.poly_utils import draw_random_interpolant
 from starks.fft import adfft
 
+def construct_neighbors(Tau, zeta, g, polysOver):
+    """Helper method to construct neighbor set."""
+    neighbors = []
+    for tau in Tau:
+        # n_id(x) = x
+        n_id = polysOver([0, 1])
+        # n_cyc_1 = gx + zeta
+        n_cyc_1 = polysOver([zeta, g])
+        # n_cyc_0 = gx
+        n_cyc_0 = polysOver([0, g])
+        neighbors.extend([(tau, n_id), (tau, n_cyc_1), (tau, n_cyc_0)])
+    return neighbors
+
+
+def tilde_expansion(N_nbrs, Z, Eps,  indices, neighbor, PhiPolys):
+    """Performs the Tilde expansion of a neighbor.
+  
+    The STARKs paper defines a "tilde" expansion as follows:
+  
+    Tilde{(tau, N)} = X_{(tau, N)} * Z_{B, tau}(N(X_loc)) + E_{B, tau}(N(X_loc))
+  
+    This has an expansion to sequences as follows
+  
+    Tilde{(tau_1,...,tau_n, N)} = Tilde{(tau_1, N)},...,Tilde{(tau_n, N)}
+    """
+    X_loc = PhiPolys({(1,) + (0,)*N_nbrs): 1})
+    N_X_loc = neighbor(X_loc)
+    Z_N = Z(N_X_loc)
+    Eps_N = Eps(N_X_loc)
+  
+    tilde_exp = []
+  
+    for tau in range(indices):
+        tilde_N.append(PhiPolys({(0,)*len(tau) + (1,) + (0,)*len(neighbor-tau): 1})*Z_N+Eps_N)
+  
+    return tilde_exp
+
+
 class APR(object):
   """A class holding an instance of the APR problem.
 
@@ -77,7 +115,7 @@ class APR(object):
     # Element of (Z/2[g]/h(g))
     self.zeta = generate_primitive_polynomial(modulus, self.width)
     # Neighbors
-    self.Nbrs = self.construct_neighbors(self.Tau, self.zeta, g, self.polysOver)
+    self.Nbrs = construct_neighbors(self.Tau, self.zeta, g, self.polysOver)
 
     # Define the affine spaces
     self.H = AffineSpace(base_field, [g**k for k in range(self.t)])
@@ -97,31 +135,6 @@ class APR(object):
 
     # Witness reductio
     self.w = self.generate_witness()
-
-  def tilde_expansion(self, indices, neighbor, PhiPolys):
-    """Performs the Tilde expansion of a neighbor.
-
-    The STARKs paper defines a "tilde" expansion as follows:
-
-    Tilde{(tau, N)} = X_{(tau, N)} * Z_{B, tau}(N(X_loc)) + E_{B, tau}(N(X_loc))
-
-    This has an expansion to sequences as follows
-
-    Tilde{(tau_1,...,tau_n, N)} = Tilde{(tau_1, N)},...,Tilde{(tau_n, N)}
-    """
-    X_loc = PhiPolys({(1,) + (0,)*len(self.Nbrs): 1})
-    N_X_loc = neighbor(X_loc)
-    Z_boundaries = self.Z_boundaries
-    Eps_boundaries = self.Eps_boundaries
-    Z_N = Z_boundaries(N_X_loc)
-    Eps_N = Eps_boundaries(N_X_loc)
-
-    tilde_exp = []
-
-    for tau in range(indices):
-      tilde_N.append(PhiPolys({(0,)*len(tau) + (1,) + (0,)*len(neighbor-tau): 1})*Z_N+Eps_N)
-
-    return tilde_exp
 
   def construct_L(self, g):
     """Constructs the affine space L"""
@@ -188,8 +201,10 @@ class APR(object):
       # TODO(rbharath): Does evaluation on other polynomials work out of the box?
       TODO = 1
       Phi_P_0 = ((X_loc * (X_loc - 1))/Z_H0) * P(
-        self.tilde_expansion(range(self.width), n_id, PhiPolys),
-        self.tilde_expansion(range(self.width), n_0_cyc, PhiPolys))
+        tilde_expansion(len(self.Nbrs), self.Z_boundaries,
+            self.Eps_boundaries, range(self.width), n_id, PhiPolys),
+        tilde_expansion(range(self.width), self.Z_boundaries,
+            self.Eps_boundaries, n_0_cyc, PhiPolys))
       Phi_P_1 = 1/Z_H0 * P(
         self.tilde_expansion(range(self.width), n_id, PhiPolys),
         self.tilde_expansion(range(self.width), n_1_cyc, PhiPolys))
@@ -237,19 +252,6 @@ class APR(object):
       interp = lagrange_interp(self.field, xs, ys)
       accums.append(interp)
     return accums
-
-  def construct_neighbors(self, Tau, zeta, g, polysOver):
-    """Helper method to construct neighbor set."""
-    neighbors = []
-    for tau in Tau:
-      # n_id(x) = x
-      n_id = polysOver([0, 1])
-      # n_cyc_1 = gx + zeta
-      n_cyc_1 = polysOver([zeta, g])
-      # n_cyc_0 = gx
-      n_cyc_0 = polysOver([0, g])
-      neighbors.extend([(tau, n_id), (tau, n_cyc_1), (tau, n_cyc_0)])
-    return neighbors
 
   def generate_witness(self):
     """A witness w^hat is in (L^F)^T. That is, it's a set of functions indexed
