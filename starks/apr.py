@@ -42,7 +42,7 @@ def tilde_expansion(N_nbrs, Z, Eps,  indices, neighbor, PhiPolys):
   
     Tilde{(tau_1,...,tau_n, N)} = Tilde{(tau_1, N)},...,Tilde{(tau_n, N)}
     """
-    X_loc = PhiPolys({(1,) + (0,)*N_nbrs): 1})
+    X_loc = PhiPolys({(1,) + (0,)*N_nbrs: 1})
     N_X_loc = neighbor(X_loc)
     Z_N = Z(N_X_loc)
     Eps_N = Eps(N_X_loc)
