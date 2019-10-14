@@ -164,16 +164,25 @@ class APR(object):
       Phi_P_1 = 1/Z_H0 * P(Tilde{(1,...,w, n^{id})}, Tilde{(1,...,w, n_1^cyc)})
     """
     Phis = []
-    Z_H0 = construct_affine_vanishing_polynomial(self.field, self.H0)
     # Define X_loc
     X_loc = PhiPolys({(1,) + (0,)*len(self.Nbrs): 1})
+    Z_H0 = construct_affine_vanishing_polynomial(self.field, self.H0)
+    #########################################################
+    print("Z_H0")
+    print(Z_H0)
+    #########################################################
+    #########################################################
+    print("Z_H0(X_loc)")
+    print(Z_H0(X_loc))
+    #########################################################
+    Z_H0 = Z_H0(X_loc)
     # n_id(x) = x
     n_id = self.polysOver([0, 1])
     # n_cyc_1 = gx + zeta
     n_cyc_1 = self.polysOver([zeta, g])
     # n_cyc_0 = gx
     n_cyc_0 = self.polysOver([0, g])
-    for P in comp.Polys:
+    for P in comp.polys:
       # TODO(rbharath): How does this division work? Division in multivariate
       # polynomial rings is gnarly to get right.
       # TODO(rbharath): Does evaluation on other polynomials work out of the box?
@@ -197,21 +206,9 @@ class APR(object):
 
     Z_{B,j}(x) = \prod_{(i, j, alpha) \in B}
     """
-    ##########################################
-    print("B")
-    print(B)
-    ##########################################
     accums = []
     x = self.polysOver([0, 1])
     g = self.basePolys([0, 1])
-    ##########################################
-    print("self.width")
-    print(self.width)
-    print("self.zeta")
-    print(self.zeta)
-    print("(g**2) % self.zeta")
-    print((g**2) % self.zeta)
-    ##########################################
     for w in range(self.width):
       accum = self.polysOver([self.basePolys(1)])
       for (i, j, alpha) in B:

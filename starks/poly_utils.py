@@ -5,7 +5,7 @@ from typing import List
 from typing import Dict
 from typing import Tuple
 from typing import Callable
-#from primefac import factorint
+from primefac import factorint
 from starks.polynomial import Poly
 from starks.finitefield import IntegersModP
 from starks.polynomial import polynomials_over
@@ -135,30 +135,30 @@ def is_monic(poly: Poly) -> bool:
   """Tests whether a polynomial is monic."""
   return poly.coefficients[-1] == 1
 
-#def is_primitive(irred_poly: Poly, modulus: int, degree: int) -> bool:
-#  """Returns true if given polynomial is primitve.
-#  
-#  Follows algorithm 4.78 in the Handbook of Applied Cryptography
-#  (http://math.fau.edu/bkhadka/Syllabi/A%20handbook%20of%20applied%20cryptography.pdf).
-#  """
-#  # All primitive polynomials are irreducible
-#  if not is_irreducible(irred_poly, modulus):
-#    return False
-#  # factorize p^m - 1
-#  prime_factors = factorint(modulus**degree - 1)
-#  # This is returned as dictionary with multiplicities. Turn into list
-#  prime_factors = [int(factor) for factor in prime_factors.keys()]
-#  Zp = IntegersModP(modulus)
-#  polysOver = polynomials_over(Zp)
-#  x = polysOver([0, 1])
-#  # This is 1 right?
-#  one = polysOver([1])
-#  for i, factor in enumerate(prime_factors):
-#    power = (modulus**degree - 1) // factor
-#    l_x = (x**power) % irred_poly
-#    if l_x == one:
-#      return False
-#  return True
+def is_primitive(irred_poly: Poly, modulus: int, degree: int) -> bool:
+  """Returns true if given polynomial is primitve.
+  
+  Follows algorithm 4.78 in the Handbook of Applied Cryptography
+  (http://math.fau.edu/bkhadka/Syllabi/A%20handbook%20of%20applied%20cryptography.pdf).
+  """
+  # All primitive polynomials are irreducible
+  if not is_irreducible(irred_poly, modulus):
+    return False
+  # factorize p^m - 1
+  prime_factors = factorint(modulus**degree - 1)
+  # This is returned as dictionary with multiplicities. Turn into list
+  prime_factors = [int(factor) for factor in prime_factors.keys()]
+  Zp = IntegersModP(modulus)
+  polysOver = polynomials_over(Zp)
+  x = polysOver([0, 1])
+  # This is 1 right?
+  one = polysOver([1])
+  for i, factor in enumerate(prime_factors):
+    power = (modulus**degree - 1) // factor
+    l_x = (x**power) % irred_poly
+    if l_x == one:
+      return False
+  return True
 
 def construct_multivariate_dirac_delta(field: Field, values: List[FieldElement], n:int) -> MultiVarPoly:
   """Constructs the multivariate dirac delta polynomial at 0.
@@ -251,10 +251,6 @@ def zpoly(field, roots):
     root.insert(0, field(0))
     for j in range(len(root) - 1):
       root[j] -= root[j + 1] * x
-  ###########################################
-  print("root")
-  print(root)
-  ###########################################
   return polysOver(root)
 
 def lagrange_interp(field: Field, xs: List[FieldElement], ys: List[FieldElement]):

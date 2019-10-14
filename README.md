@@ -21,7 +21,13 @@ Then to enter this environment from the command-line, you run
 source activate starks
 ```
 
-This will ensure that you use the packages installed within this local environment. At present, the `starks` package has minimal installation requirements. The next step you'll need to take is to install the `starks` package. For this, you will need to clone the `starks` repo from github:
+This will ensure that you use the packages installed within this local environment. Start by installing the factorint package.
+
+pip install git+git://github.com/elliptic-shiho/primefac-fork@master
+
+The next step you'll need to take is to install the
+`starks` package. For this, you will need to clone the
+`starks` repo from github:
 
 ```
 git clone https://github.com/computablelabs/starks.git
