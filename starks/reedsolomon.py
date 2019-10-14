@@ -25,11 +25,11 @@ class AffineSpace(object):
     else:
       self.shift = shift
 
-  def __len__(self):
+  def size(self):
     """Returns the size of the affine space."""
     # TODO(rbharath): Implement this in a reasonable fashion
-    field_size = int(self.field.p)**self.field.m
-    basis_len = int(len(self.basis))
+    field_size = self.field.p**self.field.m
+    basis_len = len(self.basis)
     length = field_size**basis_len
     return length
 

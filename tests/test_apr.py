@@ -3,6 +3,7 @@ import pytest
 from starks.finitefield import IntegersModP
 from starks.air import AIR 
 from starks.apr import construct_neighbors
+from starks.apr import construct_L
 from starks.apr import APR
 from starks.utils import generate_Xi_s
 from starks.polynomial import polynomials_over
@@ -31,6 +32,29 @@ def test_construct_neighbors():
     polysOver = polynomials_over(field).factory
     Nbrs = construct_neighbors(Tau, zeta, g, polysOver)
     assert len(Nbrs) == 3 * len(Tau)
+
+def test_construct_L():
+    """Test construction of affine space L"""
+    p = 2
+    m = 17
+    Zp = IntegersModP(p)
+    basePolys = polynomials_over(Zp)
+    ##x^17 + x^3 + 1 is primitive 
+    coefficients = [Zp(0)] * 18
+    coefficients[0] = Zp(1)
+    coefficients[3] = Zp(1)
+    coefficients[17] = Zp(1)
+    poly = basePolys(coefficients)
+    field = FiniteField(p, m, polynomialModulus=poly)
+    # g
+    g = basePolys([0, 1])
+    k = 2
+    R = 2
+    t = 2
+    d = 3
+    L = construct_L(field, g, k, R, t, d)
+    assert len(L.basis) == 2 + k + R + t + d
+    assert L.size() == (p**m)**(2 + k + R + t + d)
 
 #def test_tilde_expansion():
 #    """"Test that that tilde expansion is performed correctly."""

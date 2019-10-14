@@ -17,6 +17,13 @@ from starks.poly_utils import lagrange_interp
 from starks.poly_utils import draw_random_interpolant
 from starks.fft import adfft
 
+def construct_L(field, g, k, R, t, d):
+    """Constructs the affine space L"""
+    basis = [g**i for i in range(1+k+R+t+d)] + [g**(1+k+R+t+d)*(1+g)]
+    shift = g**(1+k+R+t+d)
+    return AffineSpace(field, basis, shift)
+
+
 def construct_neighbors(Tau, zeta, g, polysOver):
     """Helper method to construct neighbor set."""
     neighbors = []
@@ -121,7 +128,7 @@ class APR(object):
     self.H = AffineSpace(base_field, [g**k for k in range(self.t)])
     self.H0 = AffineSpace(base_field, [g**k for k in range(self.t-1)])
     self.H1 = AffineSpace(base_field, [g**k for k in range(self.t-1)], g**(self.t-1))
-    self.L = self.construct_L(g) 
+    self.L = construct_L(self.field, g, self.k, self.R, self.t, self.d) 
     self.Lcmp = self.construct_L_cmp(g) 
     self.Z_boundaries = self.construct_Z_boundaries(air.B)
     self.Eps_boundaries = self.construct_Eps_boundaries(air.B)
@@ -135,12 +142,6 @@ class APR(object):
 
     # Witness reductio
     self.w = self.generate_witness()
-
-  def construct_L(self, g):
-    """Constructs the affine space L"""
-    basis = [g**i for i in range(1 + self.k + self.R + self.t + self.d)] + [g**(1+self.k+self.R+self.t+self.d)*(1+g)]
-    shift = g**(1+self.k+self.R+self.t+self.d)
-    return AffineSpace(self.field, basis, shift)
 
   def construct_L_cmp(self,g):
     """Constructs the affine space Lcmp"""
