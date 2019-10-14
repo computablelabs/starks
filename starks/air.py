@@ -106,7 +106,7 @@ class AIR(object):
       self.polys = self.generate_constraint_polynomials()
       self.C = self.generate_monotone_circuit(self.polys)
       self.d = 10 # this is only a sample value, we need to change it based on a computation
-      assert self.get_C_degree(self.polys) <= 2**self.d
+      assert self.get_C_degree() <= 2**self.d
       self.B = self.generate_boundary_constraints()
   
   def generate_witness(self):
@@ -149,8 +149,8 @@ class AIR(object):
 
     return True
 
-  def get_C_degree(self, polys):
-    return max([polys[j].degree() for j in range(self.width)])
+  def get_C_degree(self):
+    return max([self.polys[j].degree() for j in range(self.width)])
 
 
   def get_degree(self):

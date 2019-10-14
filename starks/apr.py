@@ -62,11 +62,11 @@ class APR(object):
     g = self.basePolys([0, 1])
 
     # Some constants
-    T = air.steps
-    self.t = int(math.log(T, 2))
+    self.t = air.t
+    #self.t = int(math.log(air.T, 2))
     # chosen so deg(C) <= 2^d
     # Setting to arbitrary value for now.
-    self.d = int(math.log(self.air.c_degree(), 2))+1 
+    self.d = int(math.log(self.air.get_C_degree(), 2))+1 
     # TODO(rbharath): How should this constant be set correctly?
     self.R = 5
     # This is the zero-knowledge expansion
