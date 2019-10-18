@@ -15,7 +15,6 @@ from starks.multivariate_polynomial import multivariates_over
 from starks.poly_utils import construct_affine_vanishing_polynomial
 from starks.poly_utils import lagrange_interp
 from starks.poly_utils import draw_random_interpolant
-from starks.fft import adfft
 
 class APR(object):
   """A class holding an instance of the APR problem.
@@ -66,7 +65,7 @@ class APR(object):
     self.t = int(math.log(T, 2))
     # chosen so deg(C) <= 2^d
     # Setting to arbitrary value for now.
-    self.d = int(math.log(self.air.c_degree(), 2))+1 
+    self.d = int(math.log(self.air.CDegree, 2))+1 
     # TODO(rbharath): How should this constant be set correctly?
     self.R = 5
     # This is the zero-knowledge expansion
@@ -89,11 +88,12 @@ class APR(object):
     self.Eps_boundaries = self.construct_Eps_boundaries(air.B)
     self.rho_js = self.compute_rho_js(self.Z_boundaries, self.L)
     self.rho_cmp = self.compute_rho_cmp(self.Lcmp)
+    self.comp = air
 
     # X_loc + {X_N}_{n in Nbrs}
     num_Phi_vars = 1 + len(self.Nbrs)
     PhiPolys = multivariates_over(self.field, num_Phi_vars).factory
-    self.Phi = self.construct_Phi_polynomials(air, PhiPolys, g, self.zeta)
+    #self.Phi = self.construct_Phi_polynomials(air, PhiPolys, g, self.zeta)
 
     # Witness reductio
     self.w = self.generate_witness()
@@ -177,7 +177,6 @@ class APR(object):
       # TODO(rbharath): How does this division work? Division in multivariate
       # polynomial rings is gnarly to get right.
       # TODO(rbharath): Does evaluation on other polynomials work out of the box?
-      TODO = 1
       Phi_P_0 = ((X_loc * (X_loc - 1))/Z_H0) * P(
         self.tilde_expansion(range(self.width), n_id, PhiPolys),
         self.tilde_expansion(range(self.width), n_0_cyc, PhiPolys))
@@ -266,7 +265,7 @@ class APR(object):
     comp = self.comp
     Z_boundary = self.Z_boundaries
     E_boundary = self.Eps_boundaries
-    w_air = comp.get_witness()
+    w_air = comp.generate_witness()
     w_apr = []
     g = self.basePolys([0, 1])
     for (w_air_j, Z_B_j, E_B_j) in zip(w_air, Z_boundary, E_boundary):

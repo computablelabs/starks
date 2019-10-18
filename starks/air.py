@@ -94,9 +94,9 @@ class AIR(object):
       inp = [inp]
 
     # Some constraints to make our job easier
-    self.t = 32 # this is only a sample value, we need to change it based on a computation
-    assert steps == 2**self.t - 1
-    assert is_a_power_of_2(steps)
+    self.t = 9 # this is only a sample value, we need to change it based on a computation
+    assert steps == 2**self.t-1
+    #assert is_a_power_of_2(steps)
 
     self.inp = inp
     self.steps = steps
@@ -114,7 +114,8 @@ class AIR(object):
     self.Polys = self.generate_constraint_polynomials()
     self.C = self.generate_monotone_circuit(self.Polys)
     self.d = 10 # this is only a sample value, we need to change it based on a computation
-    assert self.C_degree(self.Polys) <= 2**self.d
+    self.CDegree = self.C_degree(self.Polys)
+    assert self.CDegree <= 2**self.d
     self.B = self.generate_boundary_constraints()
   
   def generate_witness(self):
@@ -130,35 +131,30 @@ class AIR(object):
     return boundary_constraints
 
   def generate_monotone_circuit(self, Polys):
-    W = self.generate_witness()
     output_eval = []
-
-    for i in in range(steps - 1):
-      Xs = W[i]
+    for i in range(self.steps - 1):
+      Wt = self.computational_trace[i]
+      Wt1 = self.computational_trace[i+1]
       temp = []
       for j in range(self.width):
-        Ys = Polys[j](Xs) - W[i+1][j]
-        if !Ys.is_zero():
-          temp.append(False)
-        else:
-          temp.append(True)
+        temp.append(Polys[j](Wt+Wt1))
       output_eval.append(temp)
 
     output = []
-    for i in in range(steps - 1):
-      temp_bool = output_eval[i][-1]
-      for j in range(self.width-1):
-        temp_bool = temp_bool and output_eval[i][j] 
-      output.append(temp_bool)
+    for i in range(self.steps - 1):
+      t_temp = True;
+      for j in range(self.width):
+        t_temp = t_temp and output_eval[i][j] == 0
+      output.append(t_temp)
 
-    for i in in range(steps - 1):
+    for i in range(self.steps - 1):
       if output[i] == False:
         return False
 
     return True
 
   def C_degree(self, Polys):
-    return max([Polys[j].degree() j in range(self.width)])
+    return max([Polys[j].degree() for j in range(self.width)])
 
 
   def get_degree(self):
