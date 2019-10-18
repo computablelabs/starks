@@ -41,7 +41,7 @@ class TestAIR(unittest.TestCase):
     Tests construction of trace for a AIR 
     """
     width = 2
-    steps = 512
+    steps = 512-1
     extension_factor = 8
     modulus = 2**256 - 2**32 * 351 + 1
     field = IntegersModP(modulus)
@@ -51,7 +51,7 @@ class TestAIR(unittest.TestCase):
     step_polys = [X_2, X_1 + X_2] 
     air = AIR(field, width, inp, steps, step_polys,
                extension_factor)
-    assert len(air.computational_trace) == 512
+    assert len(air.computational_trace) == 512-1
     for state in air.computational_trace:
       assert len(state) == width 
       for dim in range(width):
@@ -59,7 +59,7 @@ class TestAIR(unittest.TestCase):
 
   def test_binary_air(self):
     """"Test construction of a binary AIR."""
-    steps = 512
+    steps = 512-1
     # This finite field is of size 2^17
     p = 2
     m = 17
