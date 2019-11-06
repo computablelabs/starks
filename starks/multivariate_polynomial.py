@@ -14,7 +14,11 @@ from starks.numbertype import memoize
 from starks.numbertype import Field
 from starks.numbertype import FieldElement
 from starks.numbertype import MultiVarPoly
-from starks.numbertype import typecheck
+from starks.numbertype import typecheck 
+from sympy import Poly
+from sympy import div
+
+
 
 def remove_zero_coefficients(coefficients: Dict) -> Dict:
   reduced = {}
@@ -87,7 +91,7 @@ def multivariates_over(ring: Field, num_vars: int) -> MultiVarPoly:
         return '0'
 
       def power_tuple_to_string(power_tup):
-        return "".join(["X_%d^%d" % (i+1, power) for (i, power) in enumerate(power_tup)])
+        return "".join(["*X_%d**%d" % (i+1, power) for (i, power) in enumerate(power_tup)])
 
       return ' + '.join([
           '%s %s' % (str(coeff), power_tuple_to_string(power_tup)) if power_tup != (0,)*num_vars else '%s' % coeff 
@@ -151,16 +155,110 @@ def multivariates_over(ring: Field, num_vars: int) -> MultiVarPoly:
           if prod not in new_coeffs:
             new_coeffs[prod] = ring(0)
           new_coeffs[prod] += coeff 
-
       return MultivariatePolynomial(new_coeffs)
 
     @typecheck
-    def __divmod__(self, divisor):
+    def __truediv__(self, divisor):
       """"TODO(rbharath): Implementing polynomial division in multiple
       variables gets pretty tricky. The standard euclidean algorithm doesn't
       work for multivariate polynomials. Instead, we'd need to implement
-      Grobner bases. I'm punting on this for the time being."""
-      raise NotImplementedError
+      Grobner bases. I'm punting on this for the time being. 
+      SOLVED: div operation is implemented by using div in sympy"""
+
+      X = Poly(str(self))
+      X_size = self.size_p()
+      Y = Poly(str(divisor))
+      Y_size = divisor.size_p()
+      Z = div(X, Y)
+      Z_str = str(Z)
+      result = ""
+      i = 6
+      while i < len(Z_str) and Z_str[i] != ",":
+        result += Z_str[i]
+        i += 1
+
+      return self.StrToMulti(result, max(X_size, Y_size))
+
+    def size_p(self):
+      Max_Sym = 0
+      st = str(self)
+      for i in range(len(st)):
+        if st[i] == "_" and int(st[i+1]) > Max_Sym:
+          Max_Sym = int(st[i+1])
+
+      return Max_Sym
+
+    def StrToMulti(self, st, s):
+      Max_Sym = 0
+      for i in range(len(st)):
+        if st[i] == "_" and int(st[i+1]) > Max_Sym:
+          Max_Sym = int(st[i+1])
+
+      zero = []
+      for i in range(max(s, Max_Sym)):
+        zero.append(0)
+      zero_t = tuple(zero)
+      new_coeffs = {}
+
+      if Max_Sym == 0:
+        new_coeffs[zero_t] = ring(0)
+        new_coeffs[zero_t] += int(st)
+        return MultivariatePolynomial(new_coeffs)
+
+      i = 0
+      while i < len(st):
+        temp = ""
+        while st[i].isdigit():
+          temp += st[i]
+          i += 1
+
+        if temp == "":
+          temp_i = 1
+        else:
+          temp_i = int(temp)
+
+        temp_zero = zero_t
+
+        while i < len(st) and st[i] is not " ":
+          if st[i] == "X" and st[i+1] == "_":
+            i += 2
+          elif st[i] == "*" and st[i+1] == "X" and st[i+2] == "_":
+            i += 3
+
+          index = ""
+          while i < len(st) and st[i].isdigit(): 
+            index += st[i]
+            i += 1
+          index_i = int(index)
+
+          if i >= len(st):
+            pow_i = 1
+          else:
+            pow_i = 1
+            if st[i] == "*" and i+1 < len(st) and st[i+1] == "*":
+              i += 2
+              poww = ""
+              while st[i].isdigit():
+                poww += st[i]
+                i += 1
+              pow_i = int(poww)
+
+            elif st[i] == "*" and i+1 < len(st) and st[i+1] is not "*":
+              pow_i = 1
+
+          temp_zero_l = list(temp_zero)
+          temp_zero_l[index_i-1] = pow_i
+          temp_zero = tuple(temp_zero_l)
+
+        new_coeffs[temp_zero] = ring(0)
+        new_coeffs[temp_zero] += temp_i
+        i += 3
+
+      return MultivariatePolynomial(new_coeffs) 
+
+
+    def div_remainder(self, Y, Z):
+      return self-Y*Z               
 
     # TODO(rbharath): Possibly type-check this.
     def __call__(self, vals):

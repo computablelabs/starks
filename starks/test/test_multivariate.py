@@ -4,6 +4,7 @@ from starks.multivariate_polynomial import multivariates_over
 from starks.utils import generate_Xi_s
 from starks.polynomial import polynomials_over
 from starks.finitefield import FiniteField
+from sympy import Poly
 
 class TestMultivariate(unittest.TestCase):
   """"
@@ -124,6 +125,27 @@ class TestMultivariate(unittest.TestCase):
     sq_x_y_poly = multi({(2, 0, 0): mod7(1), (1, 1, 0): mod7(2), (0, 2, 0): mod7(1)})
     prod = x_y_poly*x_y_poly
     assert sq_x_y_poly == prod 
+
+  def test_div(self):
+    """Test division of multivariate polynomials."""
+    modulus = 7
+    mod7 = IntegersModP(modulus)
+    n = 3
+    # Let's make polynomials in (Z/7)[x, y, z]
+    multi = multivariates_over(mod7, n).factory
+
+    # This should equal y
+    y_poly = multi({(0, 1, 0): mod7(1)})
+    # This is y^2
+    y_sq_poly = multi({(0, 2, 0): mod7(1)})
+    assert y_sq_poly/y_poly == y_poly
+
+    # This should equal x + y
+    x_y_poly = multi({(1, 0, 0): mod7(1), (0, 1, 0): mod7(1)})
+    # This should equal x^2 + 2xy + y^2
+    sq_x_y_poly = multi({(2, 0, 0): mod7(1), (1, 1, 0): mod7(2), (0, 2, 0): mod7(1)})
+    prod = x_y_poly*x_y_poly
+    assert sq_x_y_poly/x_y_poly == x_y_poly 
 
   def test_cross_mul(self):
     """Test multiplication with different types."""
