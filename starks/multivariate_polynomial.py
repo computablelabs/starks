@@ -17,7 +17,8 @@ from starks.numbertype import MultiVarPoly
 from starks.numbertype import typecheck 
 from sympy import Poly
 from sympy import div
-
+from sympy import invert
+from starks.modp import IntegersModP
 
 
 def remove_zero_coefficients(coefficients: Dict) -> Dict:
@@ -30,9 +31,18 @@ def remove_zero_coefficients(coefficients: Dict) -> Dict:
   return reduced
 
 def add_power_tuples(a: Tuple, b: Tuple) -> Tuple:
-  if len(a) != len(b):
-    raise ValueError("Can't add tuples of different lengths")
-  return tuple([a_i + b_i for a_i, b_i in zip(a, b)])
+  add_l = []
+  min_a_b = min(len(a), len(b))
+  for i in range(min_a_b):
+    add_l.append(a[i]+b[i])
+   
+  if len(a) == min_a_b:
+    for i in range(len(b)-min_a_b):
+      add_l.append(b[i])
+  else:
+    for i in range(len(a)-min_a_b):
+      add_l.append(a[i])
+  return tuple(add_l)
 
 def sum_power_tuple(a: Tuple) -> Any:
   out = 0
@@ -169,6 +179,9 @@ def multivariates_over(ring: Field, num_vars: int) -> MultiVarPoly:
       X_size = self.size_p()
       Y = Poly(str(divisor))
       Y_size = divisor.size_p()
+      print("taghsiiiim")
+      print(X)
+      print(Y)
       Z = div(X, Y)
       Z_str = str(Z)
       result = ""
@@ -183,8 +196,8 @@ def multivariates_over(ring: Field, num_vars: int) -> MultiVarPoly:
       Max_Sym = 0
       st = str(self)
       for i in range(len(st)):
-        if st[i] == "_" and int(st[i+1]) > Max_Sym:
-          Max_Sym = int(st[i+1])
+        if st[i] == "X" and i+2 < len(st) and  st[i+1] == "_" and int(st[i+2]) > Max_Sym:
+          Max_Sym = int(st[i+2])
 
       return Max_Sym
 
@@ -258,7 +271,50 @@ def multivariates_over(ring: Field, num_vars: int) -> MultiVarPoly:
 
 
     def div_remainder(self, Y, Z):
-      return self-Y*Z               
+      return self-Y*Z   
+
+    def division(self, divisor):
+      X = Poly(self.CheckforDiv(self))
+      X_size = self.size_p()
+      Y = Poly(self.CheckforDiv(divisor))
+      Y_size = 1      
+
+      Z = div(X, Y)
+      print(Z)
+      Z_str = str(Z)
+      result = ""
+      i = 6
+      while i < len(Z_str) and Z_str[i] != ",":
+        result += Z_str[i]
+        i += 1
+
+      return self.StrToMulti(result, max(X_size, Y_size))
+
+    def PolytoMulti(self, p):
+      size = self.size_p()
+
+      Y = self.CheckforDiv(p)
+
+      return self.StrToMulti(Y, size)
+
+    def CheckforDiv(self, p):
+      poly = str(p)
+      if poly.find("F_") == -1:
+        return poly
+
+      result = ""
+      i = 0
+      while i < len(poly):
+        if i+4 < len(poly):
+          result += poly[i]
+          if poly[i+4] == "F":
+            while poly[i] is not "}":
+              i += 1
+        else:
+          result += poly[i]
+        i += 1
+
+      return result         
 
     # TODO(rbharath): Possibly type-check this.
     def __call__(self, vals):
@@ -274,6 +330,7 @@ def multivariates_over(ring: Field, num_vars: int) -> MultiVarPoly:
 
   def Zero():
     return MultivariatePolynomial({})
+
 
   MultivariatePolynomial.ring = ring 
   MultivariatePolynomial.num_vars = num_vars
