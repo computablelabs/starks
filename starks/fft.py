@@ -6,6 +6,18 @@ from starks.numbertype import Poly
 from starks.polynomial import polynomials_over
 from starks.modp import IntegersModP
 
+def int_to_bin_string(i):
+    if i == 0:
+        return "0"
+    s = ''
+    while i:
+        if i & 1 == 1:
+            s = "1" + s
+        else:
+            s = "0" + s
+        i //= 2
+    return s
+
 class FFT(object):
   """Abstract class that specifies a FFT solver."""
 
@@ -25,25 +37,34 @@ class Additive_FFT(FFT):
   def __init__(self, field):
     self.field = field
 
-  def Taylor_Expansion(self, Polys, degree):
-    if degree <= 2:
+  def Taylor_Expansion(self, Polys, n):
+    if n <= 2:
       return Polys
 
-    for x in range(degree):
-      if 2**(x+1) < degree and 2**(x+2) >= degree:
+    for x in range(n):
+      if 2**(x+1) < n and 2**(x+2) >= n:
         k = x
 
     polysOver = polynomials_over(IntegersModP(2))
     list_f0 = []
     for i in range(2**(k+1)):
-      list_f0.append(int(str(Polys.poly.coefficients[i])[0]))
+      if i > Polys.poly.degree():
+        list_f0.append(0)
+      else:
+        list_f0.append(int(str(Polys.poly.coefficients[i])[0]))
 
     list_f1 = []
     for i in range(2**(k)):
+      if 2**(k+1)+i > Polys.poly.degree():
+        list_f1.append(0)
+      else:
         list_f1.append(int(str(Polys.poly.coefficients[2**(k+1)+i])[0]))
 
     list_f2 = []
     for i in range(2**k):
+      if 2**(k+1)+2**k+i > Polys.poly.degree():
+        list_f2.append(0)
+      else:
         list_f2.append(int(str(Polys.poly.coefficients[2**(k+1)+2**k+i])[0]))
 
     f0 = self.field(polysOver(list_f0))
@@ -60,8 +81,8 @@ class Additive_FFT(FFT):
     g0 = f0+f_twoK*h
     g1 = h+f_twoK*f2
 
-    V1 = self.Taylor_Expansion(g0, degree/2)
-    V2 = self.Taylor_Expansion(g1, degree/2)
+    V1 = self.Taylor_Expansion(g0, n/2)
+    V2 = self.Taylor_Expansion(g1, n/2)
 
     return V1, V2
 
@@ -88,20 +109,19 @@ class Additive_FFT(FFT):
     for i in range(Polys.poly.degree()+1):
       if str(Polys.poly.coefficients[i])[0] == '1':
         g = g + x**i
-    print(g)
-    print(g.poly.degree())
 
-    g0, g1 = self.Taylor_Expansion(g, g.poly.degree())
+    g0, g1 = self.Taylor_Expansion(g, 2**m)
 
     gamma = []
+    beta_m_I = affine_beta[m-1].inverse()
     for i in range(m-1):
-      gamma.append((affine_beta[i] * affine_beta[m-1]).inverse());
+      gamma.append(affine_beta[i] * beta_m_I);
 
     delta = []
     for i in range(m-1):
       delta.append(gamma[i]**2-gamma[i])
 
-    S_G = shift * affine_beta[m-1].inverse()
+    S_G = shift * beta_m_I
     S_D = S_G**2-S_G
 
     G = []
@@ -120,24 +140,35 @@ class Additive_FFT(FFT):
       w1.append(u[i]+G[i]*v[i])
       w2.append(w1[i]+v[i])
 
-    w = w1 + w2
+    w = []
+    for i in range(len(w1)):
+      w.append(w1[i])
+    for i in range(len(w2)):
+      w.append(w2[i])
+
     return w
 
   def adfft_inverse(self, x, y, m): 
     beta = []
+    beta.append(x[0])
     for i in range(m):
       beta.append(x[2**i])
 
     gamma = []
-    for i in range(m-1):
-      gamma.append(beta[i] * beta[m-1].inverse());
+    beta_m_I = beta[m].inverse()
+    for i in range(m):
+      gamma.append(beta[i+1] * beta_m_I);
 
     delta = []
     for i in range(m-1):
       delta.append(gamma[i]**2-gamma[i])
 
+    S_G = beta[0] * beta_m_I
+    S_D = S_G**2-S_G
+
     G = []
-    for i in range(m-1):
+    G.append(S_G)
+    for i in range(m):
       G.append(gamma[i])
 
     D = delta
@@ -148,8 +179,19 @@ class Additive_FFT(FFT):
       v.append(y[i+2**(m-1)]-y[i])
       u.append(y[i] - G[i]*v[i])
 
-    g_0 = self.adfft_inverse(D, u, m-1)
-    g_1 = self.adfft_inverse(D, v, m-1)
+    x = []
+    x.append(S_D)
+    for i in range(2**(m-1)-1):
+      binary = int_to_bin_string(i+1)
+      temp = S_D
+      for j in range(len(binary)):
+        if binary[j] == '1':
+          temp = temp + D[j]
+      x.append(temp)
+
+
+    g_0 = self.adfft_inverse(x, u, m-1)
+    g_1 = self.adfft_inverse(x, v, m-1)
 
     Ibeta = beta[-1].inverse()
 
