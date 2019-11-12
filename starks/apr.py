@@ -15,6 +15,7 @@ from starks.multivariate_polynomial import multivariates_over
 from starks.poly_utils import construct_affine_vanishing_polynomial
 from starks.poly_utils import lagrange_interp
 from starks.poly_utils import draw_random_interpolant
+from sympy import Poly
 
 class APR(object):
   """A class holding an instance of the APR problem.
@@ -93,7 +94,7 @@ class APR(object):
     # X_loc + {X_N}_{n in Nbrs}
     num_Phi_vars = 1 + len(self.Nbrs)
     PhiPolys = multivariates_over(self.field, num_Phi_vars).factory
-    #self.Phi = self.construct_Phi_polynomials(air, PhiPolys, g, self.zeta)
+    self.Phi = self.construct_Phi_polynomials(air, PhiPolys, g, self.zeta, modulus)
 
     # Witness reductio
     self.w = self.generate_witness()
@@ -113,13 +114,18 @@ class APR(object):
     N_X_loc = neighbor(X_loc)
     Z_boundaries = self.Z_boundaries
     Eps_boundaries = self.Eps_boundaries
-    Z_N = Z_boundaries(N_X_loc)
-    Eps_N = Eps_boundaries(N_X_loc)
+    Z_N = []
+    for i in range(len(Z_boundaries)):
+      Z_N.append(Z_boundaries[i](N_X_loc))
+
+    Eps_N = []
+    for i in range(len(Eps_boundaries)):
+      Eps_N.append(Eps_boundaries[i](N_X_loc))
 
     tilde_exp = []
 
-    for tau in range(indices):
-      tilde_N.append(PhiPolys({(0,)*len(tau) + (1,) + (0,)*len(neighbor-tau): 1})*Z_N+Eps_N)
+    for tau in indices:
+      tilde_exp.append(PhiPolys({(0,)*tau + (1,) + (0,)*(len(N_X_loc)-tau): 1})*Z_N[tau]+Eps_N[tau])
 
     return tilde_exp
 
@@ -156,7 +162,7 @@ class APR(object):
     return (1 + 2**(self.k+self.t+self.d))/Lcmp.__len__()
 
 
-  def construct_Phi_polynomials(self, comp, PhiPolys, g, zeta):
+  def construct_Phi_polynomials(self, comp, PhiPolys, g, zeta, modulus):
     """Constructs Phi polynomials that encode transition and boundary constraints.
 
     For each P in comp.Polys:
@@ -174,19 +180,24 @@ class APR(object):
     # n_cyc_0 = gx
     n_cyc_0 = self.polysOver([0, g])
     for P in comp.Polys:
+      X_loc_p = X_loc * (X_loc - 1)
+      Phi_P_0_temp = X_loc_p.division(Z_H0)
+      Phi_P_1_p = self.polysOver([1])/Z_H0
+      Phi_P_1_temp = X_loc_p.PolytoMulti(Phi_P_1_p)
       # TODO(rbharath): How does this division work? Division in multivariate
       # polynomial rings is gnarly to get right.
       # TODO(rbharath): Does evaluation on other polynomials work out of the box?
-      Phi_P_0 = ((X_loc * (X_loc - 1))/Z_H0) * P(
-        self.tilde_expansion(range(self.width), n_id, PhiPolys),
-        self.tilde_expansion(range(self.width), n_0_cyc, PhiPolys))
-      Phi_P_1 = 1/Z_H0 * P(
-        self.tilde_expansion(range(self.width), n_id, PhiPolys),
-        self.tilde_expansion(range(self.width), n_1_cyc, PhiPolys))
+      Phi_P_0 = Phi_P_0_temp * P(
+        self.tilde_expansion(range(self.width), n_id, PhiPolys) +
+        self.tilde_expansion(range(self.width), n_cyc_0, PhiPolys))
+      Phi_P_1 = Phi_P_1_temp * P(
+        self.tilde_expansion(range(self.width), n_id, PhiPolys) +
+        self.tilde_expansion(range(self.width), n_cyc_1, PhiPolys))
+
       Phis.append(Phi_P_0)
       Phis.append(Phi_P_1)
-    return Phis
 
+    return Phis
 
   # TODO(rbharath): This is broken. Fix!!
   def construct_Z_boundaries(self, B):
