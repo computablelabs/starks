@@ -88,17 +88,17 @@ class Additive_FFT(FFT):
 
 
 
-  def adfft(self, Polys, m, affine_beta, shift):
+  def adfft(self, Polys, m, affine_beta):
     polysOver = polynomials_over(IntegersModP(2))
     f1 = self.field(polysOver([0]))
     for i in range(Polys.poly.degree()+1):
       if str(Polys.poly.coefficients[i])[0] == '1':
-        f1 = f1 + (shift + affine_beta[0])**i
+        f1 = f1 + (affine_beta[0])**i
 
     f2 = self.field(polysOver([0]))
     for i in range(Polys.poly.degree()+1):
       if str(Polys.poly.coefficients[i])[0] == '1':
-        f2 = f2 + shift**i
+        f2 = f2
 
     if m == 1:
       return f1, f2
@@ -121,18 +121,19 @@ class Additive_FFT(FFT):
     for i in range(m-1):
       delta.append(gamma[i]**2-gamma[i])
 
-    S_G = shift * beta_m_I
-    S_D = S_G**2-S_G
-
     G = []
-    G.append(S_G)
-    for i in range(m-1):
-      G.append(gamma[i])
+    for i in range(2**(m-1)):
+      binary = int_to_bin_string(i)
+      temp = self.field(polysOver([0]))
+      for j in range(len(binary)):
+        if binary[j] == '1':
+          temp = temp + gamma[j]
+      G.append(temp)
 
     D = delta
 
-    u = self.adfft(g0, m-1, D, S_D)
-    v = self.adfft(g1, m-1, D, S_D)
+    u = self.adfft(g0, m-1, D)
+    v = self.adfft(g1, m-1, D)
 
     w1 = []
     w2 = []
@@ -149,27 +150,34 @@ class Additive_FFT(FFT):
     return w
 
   def adfft_inverse(self, x, y, m): 
+    if m == 1:
+      if x[0] == x[1]:
+        return x[0]
+      else:
+        return ((y[1]-y[0])/(x[1]-x[0]))*(self.field(polysOver([0, 1]))-x[0])+y[0]
+
+    polysOver = polynomials_over(IntegersModP(2))
     beta = []
-    beta.append(x[0])
     for i in range(m):
       beta.append(x[2**i])
 
     gamma = []
-    beta_m_I = beta[m].inverse()
-    for i in range(m):
-      gamma.append(beta[i+1] * beta_m_I);
+    Ibeta = beta[-1].inverse()
+    for i in range(m-1):
+      gamma.append(beta[i] * Ibeta);
 
     delta = []
     for i in range(m-1):
-      delta.append(gamma[i]**2-gamma[i])
-
-    S_G = beta[0] * beta_m_I
-    S_D = S_G**2-S_G
+      delta.append(gamma[i]*gamma[i]-gamma[i])
 
     G = []
-    G.append(S_G)
-    for i in range(m):
-      G.append(gamma[i])
+    for i in range(2**(m-1)):
+      binary = int_to_bin_string(i)
+      temp = self.field(polysOver([0]))
+      for j in range(len(binary)):
+        if binary[j] == '1':
+          temp = temp + gamma[j]
+      G.append(temp)
 
     D = delta
 
@@ -179,37 +187,42 @@ class Additive_FFT(FFT):
       v.append(y[i+2**(m-1)]-y[i])
       u.append(y[i] - G[i]*v[i])
 
-    x = []
-    x.append(S_D)
-    for i in range(2**(m-1)-1):
+    x1 = []
+    for i in range(2**(m-1)):
       binary = int_to_bin_string(i+1)
-      temp = S_D
+      temp = self.field(polysOver([0]))
       for j in range(len(binary)):
         if binary[j] == '1':
           temp = temp + D[j]
-      x.append(temp)
+      x1.append(temp)
 
+    g_0 = self.adfft_inverse(x1, u, m-1)
+    g_1 = self.adfft_inverse(x1, v, m-1)
 
-    g_0 = self.adfft_inverse(x, u, m-1)
-    g_1 = self.adfft_inverse(x, v, m-1)
-
-    Ibeta = beta[-1].inverse()
-
-    g = field(polysOver([0]))
-    g_right_tempp = field(polysOver([0, 1])) * Ibeta
+    g = self.field(polysOver([0]))
+    g_right_tempp = self.field(polysOver([0, 1])) * Ibeta
     g_right_temp = g_right_tempp * g_right_tempp - g_right_tempp
     g_right = []
-    g_right.append(field(polysOver([1])))
+    g_right.append(self.field(polysOver([1])))
     multiplier = []
-    multiplier.append(field(polysOver([0]))) 
+    multiplier.append(self.field(polysOver([0]))) 
     multiplier.append(g_right_tempp)
-    multiplier.append(field(polysOver([1])))
-    multiplier.append(field(polysOver([1]))+g_right_tempp)
-    for i in range(2**(m-1)-1):
+    multiplier.append(self.field(polysOver([1])))
+    multiplier.append(self.field(polysOver([1]))+g_right_tempp)
+    for i in range(2**(m-1)):
       g_right.append(g_right[-1]*g_right_temp)
 
     for i in range(2**(m-1)):
-      g  = g + multiplier[g_0.coefficients[i]+2**g_1.coefficients[i]] * g_right[i]
+      if i <= g_0.poly.degree():
+        g0I = int(g_0.poly.coefficients[i])
+      else:
+        g0I = 0
+
+      if i <= g_1.poly.degree():
+        g1I = int(g_1.poly.coefficients[i])
+      else:
+        g1I = 0
+      g  = g + multiplier[g0I+2**g1I] * g_right[i]
 
     return g
 
