@@ -179,9 +179,6 @@ def multivariates_over(ring: Field, num_vars: int) -> MultiVarPoly:
       X_size = self.size_p()
       Y = Poly(str(divisor))
       Y_size = divisor.size_p()
-      print("taghsiiiim")
-      print(X)
-      print(Y)
       Z = div(X, Y)
       Z_str = str(Z)
       result = ""
