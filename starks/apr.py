@@ -7,7 +7,7 @@ This file transforms the trace into a path (?) in an affine graph. Here, an affi
 """
 
 import math
-from starks.air import AIR 
+from starks.air import AIR
 from starks.reedsolomon import AffineSpace
 from starks.polynomial import polynomials_over
 from starks.poly_utils import generate_primitive_polynomial
@@ -23,7 +23,7 @@ class APR(object):
   Recall that instance of the APR problem is a tuple
 
     x = (F, Tau, N, Phi, L, Lcmp, rhovec, rhocomp)
-    
+
   Let's define each of these terms in sequence.
 
   - F is a finite field of characteristic 2 (TODO(rbharath): Can this be changed to characteristic p?)
@@ -32,7 +32,7 @@ class APR(object):
   - Phi is  subset of (F x F^N)->F. That is, it's a set of functions over the
     variables {X_loc, X_n}_{n in N}.
   - L is an F_2 affine subspace of F.
-  - Lcmp is another F_2 affine subspace of F 
+  - Lcmp is another F_2 affine subspace of F
   - phovec in (0, 1)^Tau is a list of rates between 0 and 1.
   - phocmp in (0, 1) is a rate between 0 and 1.
 
@@ -48,7 +48,7 @@ class APR(object):
 
     Implements the AIR->APR transform from the STARKs paper.
     """
-    self.air = air 
+    self.air = air
     modulus = air.field.p
     self.width = air.width
     # field = (Z/2[g]/h(g))
@@ -66,7 +66,7 @@ class APR(object):
     self.t = int(math.log(T, 2))
     # chosen so deg(C) <= 2^d
     # Setting to arbitrary value for now.
-    self.d = int(math.log(self.air.CDegree, 2))+1 
+    self.d = int(math.log(self.air.CDegree, 2))+1
     # TODO(rbharath): How should this constant be set correctly?
     self.R = 5
     # This is the zero-knowledge expansion
@@ -83,8 +83,8 @@ class APR(object):
     self.H = AffineSpace(base_field, [g**k for k in range(self.t)])
     self.H0 = AffineSpace(base_field, [g**k for k in range(self.t-1)])
     self.H1 = AffineSpace(base_field, [g**k for k in range(self.t-1)], g**(self.t-1))
-    self.L = self.construct_L(g) 
-    self.Lcmp = self.construct_L_cmp(g) 
+    self.L = self.construct_L(g)
+    self.Lcmp = self.construct_L_cmp(g)
     self.Z_boundaries = self.construct_Z_boundaries(air.B)
     self.Eps_boundaries = self.construct_Eps_boundaries(air.B)
     self.rho_js = self.compute_rho_js(self.Z_boundaries, self.L)
@@ -199,7 +199,6 @@ class APR(object):
 
     return Phis
 
-  # TODO(rbharath): This is broken. Fix!!
   def construct_Z_boundaries(self, B):
     """Constructs Z_{B,j}(x) boundary constraint polynomials
 
@@ -207,21 +206,9 @@ class APR(object):
 
     Z_{B,j}(x) = \prod_{(i, j, alpha) \in B}
     """
-    ##########################################
-    print("B")
-    print(B)
-    ##########################################
     accums = []
     x = self.polysOver([0, 1])
     g = self.basePolys([0, 1])
-    ##########################################
-    print("self.width")
-    print(self.width)
-    print("self.zeta")
-    print(self.zeta)
-    print("(g**2) % self.zeta")
-    print((g**2) % self.zeta)
-    ##########################################
     for w in range(self.width):
       accum = self.polysOver([self.basePolys(1)])
       for (i, j, alpha) in B:
@@ -267,11 +254,11 @@ class APR(object):
   def generate_witness(self):
     """A witness w^hat is in (L^F)^T. That is, it's a set of functions indexed
     by set T. Each function maps from space L to field F.
-   
+
     TODO(rbharath): I think the reason zero-knowledge holds here is that it's
     hard to find g**i % zeta for the verifier since the only thing they're
     given is the coefficients of a high dimensional interpolant polynomial.
-    
+
     """
     comp = self.comp
     Z_boundary = self.Z_boundaries

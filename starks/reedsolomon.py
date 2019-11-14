@@ -39,19 +39,15 @@ class AffineSpace(object):
     for _ in range(len(self.basis)):
       field_iterators.append(self.field.__iter__())
     for basis_vals in itertools.product(*field_iterators):
-      print("basis_vals")
-      print(basis_vals)
       elt = self.shift
       for val, basis_elt in zip(basis_vals, self.basis):
         elt += val * basis_elt
-      print("elt")
-      print(elt)
       yield elt
 
 
 class ReedSolomonCode(object):
   """Defines a Reed Solomon Code.
-  
+
   A Reed Solomon code RS[F, S, rho] is defined by the following parameters
 
   - F: A finite field

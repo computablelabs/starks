@@ -13,7 +13,7 @@ from starks.polynomial import polynomials_over
 from starks.euclidean import gcd
 from starks.numbertype import Field
 from starks.numbertype import FieldElement
-from starks.numbertype import MultiVarPoly 
+from starks.numbertype import MultiVarPoly
 from starks.multivariate_polynomial import multivariates_over
 from starks.reedsolomon import AffineSpace
 from starks.numbertype import Field
@@ -23,7 +23,7 @@ from starks.numbertype import FieldElement
 
 def make_multivar(poly: Poly, i: int, field: Field, width: int) -> MultiVarPoly:
   """Converts a univariate polynomial into multivariate.
- 
+
   Suppose poly = x^2 + 3
 
   Suppose that width = 5, i = 2. Then returns
@@ -46,9 +46,9 @@ def project_to_univariate(multivar_poly: MultiVarPoly, i: int, field: Field, wid
   multiVarsOver = multivars.factory
   polysOver = polynomials_over(multivars).factory
   X = polysOver([0, 1])
-  out = 0 
+  out = 0
   for (term, coeff) in multivar_poly:
-    # Remove i-th variable 
+    # Remove i-th variable
     term_minus_i = term[:i] + term[i+1:]
     coeff = multiVarsOver({term_minus_i: coeff})
     out += polysOver([coeff]) * X**term[i]
@@ -63,16 +63,6 @@ def construct_affine_vanishing_polynomial(field: Field, aff: AffineSpace) -> Pol
   """Constructs a polynomial which vanishes over a given affine space."""
   # TODO(rbharath): Need to implement this correctly.
   aff_elts = [field(elt) for elt in aff]
-  ##############################################
-  # TODO(rbharath): This doesn't work for arbitrary finite fields! 
-  print("field")
-  print(field)
-  print("aff_elts")
-  print(aff_elts)
-  print("[type(aff) for aff in aff_elts]")
-  print([type(aff) for aff in aff_elts])
-  # Ok the error here is that aff_elts are not being interpreted as finite field elements? How to fix?
-  ##############################################
   return zpoly(field, aff_elts)
 
 def is_irreducible(polynomial: Poly, p: int) -> bool:
@@ -101,7 +91,7 @@ def is_irreducible(polynomial: Poly, p: int) -> bool:
   return True
 
 def generate_irreducible_polynomial(modulus: int, degree: int) -> Poly:
-  """ 
+  """
   Generate a random irreducible polynomial of a given degree over Z/p, where p
   is given by the integer 'modulus'. This algorithm is expected to terminate
   after 'degree' many irreducibility tests. By Chernoff bounds the probability
@@ -119,11 +109,11 @@ def generate_irreducible_polynomial(modulus: int, degree: int) -> Poly:
 
 def generate_primitive_polynomial(modulus: int, degree: int) -> Poly:
   """Generates a primitive polynomial over Z/modulus.
-  
+
   Follows algorithm 4.78 in the Handbook of Applied Cryptography
   (http://math.fau.edu/bkhadka/Syllabi/A%20handbook%20of%20applied%20cryptography.pdf).
   Generates a random irreducible polynomial and then checks if it's prime.
-  
+
   """
   Zp = IntegersModP(modulus)
   Polynomial = polynomials_over(Zp)
@@ -138,7 +128,7 @@ def is_monic(poly: Poly) -> bool:
 
 def is_primitive(irred_poly: Poly, modulus: int, degree: int) -> bool:
   """Returns true if given polynomial is primitve.
-  
+
   Follows algorithm 4.78 in the Handbook of Applied Cryptography
   (http://math.fau.edu/bkhadka/Syllabi/A%20handbook%20of%20applied%20cryptography.pdf).
   """
@@ -176,7 +166,7 @@ def construct_multivariate_dirac_delta(field: Field, values: List[FieldElement],
   for i, val in enumerate(values):
     # x_i_term = (0,...1,...0) with the 1 in the ith-term
     x_i_term = [0] * n
-    x_i_term[i] = 1 
+    x_i_term[i] = 1
     term = multi({(0,)*n: -values[i], tuple(x_i_term): 1})
     term = field(1) - term**(q-1)
     base = base * term
@@ -222,7 +212,7 @@ def construct_multivariate_coefficients(field: Field, step_fn: Callable, n:int) 
 
 def multi_inv(field, values):
   """Use one field inversion to invert many values simultaneously.
-  
+
   TODO(rbharath): Find a reference for this algorithm.
   """
   partials = [field(1)]
@@ -243,8 +233,8 @@ def multi_inv(field, values):
 
 def zpoly(field, roots):
   """Build a polynomial with the specified roots over the given field.
-  
-  TODO(rbharath): Find a reference for this implementation. 
+
+  TODO(rbharath): Find a reference for this implementation.
   """
   polysOver = polynomials_over(field).factory
   root = [field(1)]
@@ -252,10 +242,6 @@ def zpoly(field, roots):
     root.insert(0, field(0))
     for j in range(len(root) - 1):
       root[j] -= root[j + 1] * x
-  ###########################################
-  print("root")
-  print(root)
-  ###########################################
   return polysOver(root)
 
 def lagrange_interp(field: Field, xs: List[FieldElement], ys: List[FieldElement]):
@@ -307,8 +293,8 @@ def lagrange_interp_4(field, xs, ys):
   e01 = e0 * e1
   e23 = e2 * e3
   invall = 1 / (e01 * e23)
-  inv_y0 = ys[0] * invall * e1 * e23 
-  inv_y1 = ys[1] * invall * e0 * e23 
+  inv_y0 = ys[0] * invall * e1 * e23
+  inv_y1 = ys[1] * invall * e0 * e23
   inv_y2 = ys[2] * invall * e01 * e3
   inv_y3 = ys[3] * invall * e01 * e2
   return polysOver([

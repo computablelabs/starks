@@ -1,7 +1,7 @@
 """Test the construction of the algebraic intermediate representaiton."""
 
 import unittest
-from starks.air import AIR 
+from starks.air import AIR
 from starks.air import get_computational_trace
 from starks.finitefield import FiniteField
 from starks.modp import IntegersModP
@@ -12,7 +12,7 @@ from starks.utils import generate_Xi_s
 
 class TestAIR(unittest.TestCase):
   """
-  Basic tests for AIR construction. 
+  Basic tests for AIR construction.
   """
 
   def test_higher_dim_trace(self):
@@ -27,7 +27,7 @@ class TestAIR(unittest.TestCase):
     polysOver = multivariates_over(field, width).factory
     X_1 = polysOver({(1,0): field(1)})
     X_2 = polysOver({(0,1): field(1)})
-    step_polys = [X_2, X_1 + X_2] 
+    step_polys = [X_2, X_1 + X_2]
     trace, output = get_computational_trace(inp, steps,
         width, step_polys)
     assert list(trace[0]) == [0, 1]
@@ -38,7 +38,7 @@ class TestAIR(unittest.TestCase):
 
   def test_trace_extraction(self):
     """
-    Tests construction of trace for a AIR 
+    Tests construction of trace for a AIR
     """
     width = 2
     steps = 512-1
@@ -48,12 +48,12 @@ class TestAIR(unittest.TestCase):
     inp = [field(0), field(1)]
     polysOver = multivariates_over(field, width).factory
     [X_1, X_2] = generate_Xi_s(field, width)
-    step_polys = [X_2, X_1 + X_2] 
+    step_polys = [X_2, X_1 + X_2]
     air = AIR(field, width, inp, steps, step_polys,
                extension_factor)
     assert len(air.computational_trace) == 512-1
     for state in air.computational_trace:
-      assert len(state) == width 
+      assert len(state) == width
       for dim in range(width):
         assert isinstance(state[dim], field)
 
@@ -69,7 +69,7 @@ class TestAIR(unittest.TestCase):
     Zp = IntegersModP(p)
     polysOver = polynomials_over(Zp)
     #field = FiniteField(p, m)
-    #x^17 + x^3 + 1 is primitive 
+    #x^17 + x^3 + 1 is primitive
     coefficients = [Zp(0)] * 18
     coefficients[0] = Zp(1)
     coefficients[3] = Zp(1)

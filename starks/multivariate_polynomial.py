@@ -4,7 +4,7 @@ Multivariate polynomials are used to represent transitions between adjacent
 computation states.
 """
 from __future__ import annotations
-from typing import List 
+from typing import List
 from typing import Tuple
 from typing import Dict
 from typing import Callable
@@ -14,7 +14,7 @@ from starks.numbertype import memoize
 from starks.numbertype import Field
 from starks.numbertype import FieldElement
 from starks.numbertype import MultiVarPoly
-from starks.numbertype import typecheck 
+from starks.numbertype import typecheck
 from sympy import Poly
 from sympy import div
 from sympy import invert
@@ -35,7 +35,7 @@ def add_power_tuples(a: Tuple, b: Tuple) -> Tuple:
   min_a_b = min(len(a), len(b))
   for i in range(min_a_b):
     add_l.append(a[i]+b[i])
-   
+
   if len(a) == min_a_b:
     for i in range(len(b)-min_a_b):
       add_l.append(b[i])
@@ -65,13 +65,13 @@ def multivariates_over(ring: Field, num_vars: int) -> MultiVarPoly:
     #operatorPrecedence = 2
     operatorPrecedence = 4
 
-    # TODO(rbharath): Using Any here isn't optimal. cls is meant to be a ring type. 
+    # TODO(rbharath): Using Any here isn't optimal. cls is meant to be a ring type.
     @classmethod
     def factory(cls: Any, coefficients: Dict = None,
                 step_fn: Callable = None) -> MultivariatePolynomial:
       """Constructs a multivariate polynomial with given coefficients."""
       if coefficients is not None:
-        return MultivariatePolynomial(coefficients) 
+        return MultivariatePolynomial(coefficients)
       elif step_fn is not None:
         coefficients = construct_multivariate_coefficients(step_fn)
         return MultivariatePolynomial(coefficients)
@@ -104,7 +104,7 @@ def multivariates_over(ring: Field, num_vars: int) -> MultiVarPoly:
         return "".join(["*X_%d**%d" % (i+1, power) for (i, power) in enumerate(power_tup)])
 
       return ' + '.join([
-          '%s %s' % (str(coeff), power_tuple_to_string(power_tup)) if power_tup != (0,)*num_vars else '%s' % coeff 
+          '%s %s' % (str(coeff), power_tuple_to_string(power_tup)) if power_tup != (0,)*num_vars else '%s' % coeff
           for power_tup, coeff in self.coefficients.items()
       ])
 
@@ -130,7 +130,7 @@ def multivariates_over(ring: Field, num_vars: int) -> MultiVarPoly:
 
     @typecheck
     def __eq__(self, other):
-      return (self.degree() == other.degree() and 
+      return (self.degree() == other.degree() and
           # Checks monomials are the same
           self.coefficients.keys() == other.coefficients.keys() and
           all(
@@ -148,7 +148,7 @@ def multivariates_over(ring: Field, num_vars: int) -> MultiVarPoly:
       self_monomials = set(self.coefficients.keys())
       other_monomials = set(other.coefficients.keys())
       joint_monomials = self_monomials.union(other_monomials)
-      new_coefficients = { 
+      new_coefficients = {
           monomial: self[monomial] + other[monomial] for monomial in joint_monomials}
       return MultivariatePolynomial(new_coefficients)
 
@@ -161,10 +161,10 @@ def multivariates_over(ring: Field, num_vars: int) -> MultiVarPoly:
       for i, (a, a_coeff) in enumerate(self):
         for j, (b, b_coeff) in enumerate(other):
           prod = add_power_tuples(a, b)
-          coeff = a_coeff * b_coeff 
+          coeff = a_coeff * b_coeff
           if prod not in new_coeffs:
             new_coeffs[prod] = ring(0)
-          new_coeffs[prod] += coeff 
+          new_coeffs[prod] += coeff
       return MultivariatePolynomial(new_coeffs)
 
     @typecheck
@@ -172,7 +172,7 @@ def multivariates_over(ring: Field, num_vars: int) -> MultiVarPoly:
       """"TODO(rbharath): Implementing polynomial division in multiple
       variables gets pretty tricky. The standard euclidean algorithm doesn't
       work for multivariate polynomials. Instead, we'd need to implement
-      Grobner bases. I'm punting on this for the time being. 
+      Grobner bases. I'm punting on this for the time being.
       SOLVED: div operation is implemented by using div in sympy"""
 
       X = Poly(str(self))
@@ -236,7 +236,7 @@ def multivariates_over(ring: Field, num_vars: int) -> MultiVarPoly:
             i += 3
 
           index = ""
-          while i < len(st) and st[i].isdigit(): 
+          while i < len(st) and st[i].isdigit():
             index += st[i]
             i += 1
           index_i = int(index)
@@ -264,20 +264,19 @@ def multivariates_over(ring: Field, num_vars: int) -> MultiVarPoly:
         new_coeffs[temp_zero] += temp_i
         i += 3
 
-      return MultivariatePolynomial(new_coeffs) 
+      return MultivariatePolynomial(new_coeffs)
 
 
     def div_remainder(self, Y, Z):
-      return self-Y*Z   
+      return self-Y*Z
 
     def division(self, divisor):
       X = Poly(self.CheckforDiv(self))
       X_size = self.size_p()
       Y = Poly(self.CheckforDiv(divisor))
-      Y_size = 1      
+      Y_size = 1
 
       Z = div(X, Y)
-      print(Z)
       Z_str = str(Z)
       result = ""
       i = 6
@@ -311,7 +310,7 @@ def multivariates_over(ring: Field, num_vars: int) -> MultiVarPoly:
           result += poly[i]
         i += 1
 
-      return result         
+      return result
 
     # TODO(rbharath): Possibly type-check this.
     def __call__(self, vals):
@@ -329,7 +328,7 @@ def multivariates_over(ring: Field, num_vars: int) -> MultiVarPoly:
     return MultivariatePolynomial({})
 
 
-  MultivariatePolynomial.ring = ring 
+  MultivariatePolynomial.ring = ring
   MultivariatePolynomial.num_vars = num_vars
   MultivariatePolynomial.__name__ = "".join(["(%s)" % ring.__name__, "[", ",".join(["X_%d" % (i+1) for i in range(num_vars)]), "]"])
   return MultivariatePolynomial
