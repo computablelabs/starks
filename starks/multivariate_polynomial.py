@@ -271,17 +271,8 @@ def multivariates_over(ring: Field, num_vars: int) -> MultiVarPoly:
       return self-Y*Z
 
     def division(self, divisor):
-      ###############################################
-      print("division")
-      print("self.CheckforDiv(self)")
-      print(self.CheckforDiv(self))
-      ###############################################
       X = Poly(self.CheckforDiv(self))
       X_size = self.size_p()
-      ###############################################
-      print("self.CheckforDiv(divisor)")
-      print(self.CheckforDiv(divisor))
-      ###############################################
       Y = Poly(self.CheckforDiv(divisor))
       Y_size = 1
 
