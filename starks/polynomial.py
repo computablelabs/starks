@@ -22,8 +22,8 @@ def strip(L, elt):
 
 @memoize
 def polynomials_over(ring=fractions.Fraction):
-  """Create a polynomial with coefficients in a ring 
-  
+  """Create a polynomial with coefficients in a ring
+
   Coefficients are in increasing order of monomial degree so that, for example,
   [1,2,3] corresponds to 1 + 2x + 3x^2.
   """
@@ -65,7 +65,7 @@ def polynomials_over(ring=fractions.Fraction):
         return '0'
 
       return ' + '.join([
-          '%s x^%d' % (a, i) if i > 0 else '%s' % a
+          '%s *x**%d' % (a, i) if i > 0 else '%s' % a
           for i, a in enumerate(self.coefficients)
       ])
 
@@ -159,7 +159,7 @@ def polynomials_over(ring=fractions.Fraction):
       y = self.ring(0)
       power_of_x = 1
       for i, a in enumerate(self):
-        y += power_of_x * a 
+        y += power_of_x * a
         power_of_x = (power_of_x * x)
       return y
 
@@ -170,7 +170,7 @@ def polynomials_over(ring=fractions.Fraction):
   def Zero():
     return Polynomial([])
 
-  Polynomial.ring = ring 
+  Polynomial.ring = ring
   Polynomial.__name__ = '(%s)[x]' % ring.__name__
   Polynomial.englishName = 'Polynomials in one variable over %s' % ring.__name__
   return Polynomial

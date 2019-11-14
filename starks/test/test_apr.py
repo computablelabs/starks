@@ -49,7 +49,6 @@ class TestAPR(unittest.TestCase):
     # Set the field small in tests since primitive polynomial generation is slow.
     p = 2
     m = 17
-    #m = 8
     Zp = IntegersModP(p)
     polysOver = polynomials_over(Zp)
     #x^17 + x^3 + 1 is primitive

@@ -105,7 +105,7 @@ class Additive_FFT(FFT):
 
     g = self.field(polysOver([0]))
     x = self.field(polysOver([0, 1]))
-    x = x * affine_beta[m-1] 
+    x = x * affine_beta[m-1]
     for i in range(Polys.poly.degree()+1):
       if str(Polys.poly.coefficients[i])[0] == '1':
         g = g + x**i
@@ -149,7 +149,7 @@ class Additive_FFT(FFT):
 
     return w
 
-  def adfft_inverse(self, x, y, m): 
+  def adfft_inverse(self, x, y, m):
     if m == 1:
       if x[0] == x[1]:
         return x[0]
@@ -205,7 +205,7 @@ class Additive_FFT(FFT):
     g_right = []
     g_right.append(self.field(polysOver([1])))
     multiplier = []
-    multiplier.append(self.field(polysOver([0]))) 
+    multiplier.append(self.field(polysOver([0])))
     multiplier.append(g_right_tempp)
     multiplier.append(self.field(polysOver([1])))
     multiplier.append(self.field(polysOver([1]))+g_right_tempp)
@@ -260,7 +260,7 @@ class BinaryFFT(FFT):
 
 def _simple_ft(vals: List[FieldElement], roots_of_unity: FieldElement) -> List[FieldElement]:
   """Efficient base case implementation.
-  
+
   The FFT recurses down halves of the list. This method is
   called to handle the base case of the fft.
   """

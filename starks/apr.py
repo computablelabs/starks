@@ -199,7 +199,6 @@ class APR(object):
 
     return Phis
 
-  # TODO(rbharath): This is broken. Fix!!
   def construct_Z_boundaries(self, B):
     """Constructs Z_{B,j}(x) boundary constraint polynomials
 
@@ -207,21 +206,9 @@ class APR(object):
 
     Z_{B,j}(x) = \prod_{(i, j, alpha) \in B}
     """
-    ##########################################
-    print("B")
-    print(B)
-    ##########################################
     accums = []
     x = self.polysOver([0, 1])
     g = self.basePolys([0, 1])
-    ##########################################
-    print("self.width")
-    print(self.width)
-    print("self.zeta")
-    print(self.zeta)
-    print("(g**2) % self.zeta")
-    print((g**2) % self.zeta)
-    ##########################################
     for w in range(self.width):
       accum = self.polysOver([self.basePolys(1)])
       for (i, j, alpha) in B:

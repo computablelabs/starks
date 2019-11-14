@@ -95,7 +95,6 @@ class AIR(object):
       inp = [inp]
 
     # Some constraints to make our job easier
-    #assert steps == 2**self.t-1
     assert math.log(steps+1, 2).is_integer()
     self.t = math.log(steps+1, 2)
 

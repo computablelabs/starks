@@ -20,38 +20,38 @@ def num_to_binary_list_pow(index):
     output_list.append(0)
   output_list.append(1)
 
-  return output_list 
+  return output_list
 
 #binary addition of two binary strings from geeksforgeeks
-def add_binary_nums(x, y): 
-  max_len = max(len(x), len(y)) 
-  
-  x = x.zfill(max_len) 
-  y = y.zfill(max_len) 
-          
-  # initialize the result 
-  result = '' 
-          
-  # initialize the carry 
+def add_binary_nums(x, y):
+  max_len = max(len(x), len(y))
+
+  x = x.zfill(max_len)
+  y = y.zfill(max_len)
+
+  # initialize the result
+  result = ''
+
+  # initialize the carry
   carry = 0
-  
-  # Traverse the string 
-  for i in range(max_len - 1, -1, -1): 
-    r = carry 
+
+  # Traverse the string
+  for i in range(max_len - 1, -1, -1):
+    r = carry
     r += 1 if x[i] == '1' else 0
     r += 1 if y[i] == '1' else 0
-    result = ('1' if r % 2 == 1 else '0') + result 
-    carry = 0 if r < 2 else 1     # Compute the carry. 
-          
-  if carry !=0 : result = '1' + result 
-  
+    result = ('1' if r % 2 == 1 else '0') + result
+    carry = 0 if r < 2 else 1     # Compute the carry.
+
+  if carry !=0 : result = '1' + result
+
   result = result.zfill(max_len)
-  result = result[::-1] 
+  result = result[::-1]
 
   output_list = []
   for i in range(len(result)):
     output_list.append(result[i])
-  
+
   return output_list
 
 @memoize
@@ -66,7 +66,7 @@ def FiniteField(p, m, polynomialModulus=None):
 
   Polynomial = polynomials_over(Zp)
   if polynomialModulus is None:
-    polynomialModulus = generate_primitive_polynomial(modulus=p, degree=m) 
+    polynomialModulus = generate_primitive_polynomial(modulus=p, degree=m)
 
 
   class Fq(FieldElement):
@@ -152,12 +152,12 @@ def FiniteField(p, m, polynomialModulus=None):
     #this function computes 2^x where x is a number in binary finite field representation and output is in in binary finite field representation
     def two_pow(self):
       num = Fq([1])
-    
+
       for i in range(self.poly.degree()+1):
         if str(self.poly.coefficients[i])[0] == '1':
           l = num_to_binary_list_pow(i+1)
           num = num * Fq(l)
-      
+
       return num
 
 
@@ -173,8 +173,8 @@ def FiniteField(p, m, polynomialModulus=None):
 
       if xor_o == Fq(0):
         return 1
-      
-      
+
+
       if str(self.poly.coefficients[xor_o.poly.degree()])[0] > str(other.poly.coefficients[xor_o.poly.degree()])[0]:
         return 0
       else:
