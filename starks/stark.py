@@ -8,14 +8,14 @@ from starks.merkle_tree import merkelize
 from starks.merkle_tree import merkelize_polynomial_evaluations
 from starks.merkle_tree import unpack_merkle_leaf
 from starks.polynomial import polynomials_over
-from starks.poly_utils import lagrange_interp_2 
+from starks.poly_utils import lagrange_interp_2
 from starks.fft import NonBinaryFFT
-from starks.fri import FRI 
+from starks.fri import FRI
 from starks.utils import generate_Xi_s
 from starks.utils import get_power_cycle
 from starks.utils import is_a_power_of_2
 from starks.utils import get_pseudorandom_indices
-from starks.air import Computation
+from starks.air import AIR
 from starks.poly_utils import make_multivar
 from starks.poly_utils import multi_inv
 from starks.numbertype import Field
@@ -50,16 +50,16 @@ def construct_constraint_polynomials(step_polys: List[MultiVarPoly], trace_polys
   # Convert trace polys to multidimensional polys by evaluating
   constraint_polys = []
   for next_trace, step_poly in zip(next_traces, step_polys):
-    constraint_poly = next_trace - step_poly(trace_polys) 
+    constraint_poly = next_trace - step_poly(trace_polys)
     constraint_polys.append(constraint_poly)
   return constraint_polys
 
 def construct_remainder_polynomials(constraint_polys: List[Poly], field: Field, steps:int, last_step_position: FieldElement) -> List[Poly]:
   """Computes the remainder polynomial for the STARK.
-  
+
   Compute D(x) = C(P(x), P(g1*x)) / Z(x)
   Z(x) = (x^steps - 1) / (x - x_atlast_step)
-  TODO(rbharath): I think this is supposed to equal 
+  TODO(rbharath): I think this is supposed to equal
   Z(x) = (x - 1)(x-2)...(x-(steps_1)). How are these equal?
   """
   polysOver = polynomials_over(field).factory
@@ -79,7 +79,7 @@ def construct_remainder_polynomials(constraint_polys: List[Poly], field: Field, 
 
 def construct_boundary_polynomials(trace_polys: List[Poly], witness: List[List], boundary: List[Tuple], field:Field, last_step_position: FieldElement, width: int) -> List[Vector]:
   """Polynomial encoding boundary constraints on tape.
-  
+
   Compute interpolant of ((1, input), (x_atlast_step, output))
 
   TODO(rbharath): This assumes boundary has simplified form
@@ -105,7 +105,7 @@ def construct_boundary_polynomials(trace_polys: List[Poly], witness: List[List],
 
 def get_pseudorandom_ks(m_root: bytes, num: int) -> List[int]:
   """Computes pseudorandom values from mtree root for linear combo.
-  
+
   Parameters
   ----------
   m_root: bytestring
@@ -174,11 +174,11 @@ def compute_pseudorandom_linear_combination(entropy: bytes, trace_polys: List[Po
   l_ks = get_pseudorandom_ks(entropy, width)
   l_joint_poly = sum([l_poly + l_poly * l_k * powers[i] for (l_poly, l_k) in zip(l_polys, l_ks)])
   print('Computed random linear combination')
-  return l_joint_poly 
+  return l_joint_poly
 
 class STARK(object):
   """Generates and verifies STARKs
- 
+
   TODO(rbharath): This should perhaps be split into STARKProver and
   STARKVerifier for sanitation in a future PR.
   """
@@ -193,8 +193,8 @@ class STARK(object):
     ----------
     field: Field
       The Field in which computation is permored
-    steps: int 
-      The number of steps in Computation 
+    steps: int
+      The number of steps in AIR
     extension_factor: Int
       A power of two which is the degree to which the trace is expanded
       when  constructing polynomials. For example, a trace of length 512
@@ -221,6 +221,14 @@ class STARK(object):
 
       ## Powers of the higher-order root of unity
       self.xs = get_power_cycle(self.G2, self.field)
+      ######################################
+      print("steps")
+      print(steps)
+      print("extension_factor")
+      print(extension_factor)
+      print("(steps - 1) * extension_factor")
+      print((steps - 1) * extension_factor)
+      ######################################
       self.last_step_position = self.xs[(steps - 1) * extension_factor]
       self.fft_solver = NonBinaryFFT(self.field, self.G2)
     else:
@@ -280,10 +288,10 @@ class STARK(object):
 
   def verify_proof(self, proof: List[bytes], witness, boundary):
     """Verifies a STARK
-    
+
     Parameters
     ----------
-    comp: Computation 
+    comp: AIR
       An Algebraic Intermediate Representation
       TODO(rbharath): This function should not see comp! This wouldn't be present
       in the real protocol.
