@@ -8,7 +8,7 @@ from starks.finitefield import FiniteField
 
 class TestFFT(unittest.TestCase):
   """
-  Basic tests for fft implementation. 
+  Basic tests for fft implementation.
   """
 
   def test_Taylor_Expansion(self):
@@ -90,7 +90,7 @@ class TestFFT(unittest.TestCase):
     y.append(field(polysOver([0])))
     x.append(field(polysOver([1])))
     y.append(field(polysOver([1, 1])))
-    
+
     obj = Additive_FFT(field)
     f = obj.adfft_inverse(x, y, m)
     print(f)
@@ -98,7 +98,7 @@ class TestFFT(unittest.TestCase):
 
   def test_basic(self):
     """Basic test of fft."""
-    modulus = 31 
+    modulus = 31
     field = IntegersModP(31)
     polysOver = polynomials_over(field).factory
     # 1 + 2x + 3x^2 + 4 x^3 mod 31
@@ -132,7 +132,7 @@ class TestFFT(unittest.TestCase):
 
   def test_fft_inv(self):
     """Test of Inverse FFT."""
-    modulus = 31 
+    modulus = 31
     field = IntegersModP(31)
     # 1 + 2x + 3x^2 + 4 x^3 mod 31
     polysOver = polynomials_over(field).factory
@@ -146,12 +146,12 @@ class TestFFT(unittest.TestCase):
     fft_solver = NonBinaryFFT(field, root_of_unity)
     evaluations = fft_solver.fft(poly)
     inv = fft_solver.inv_fft(evaluations)
-    # Check we recover the original polynomial 
-    assert inv == poly 
+    # Check we recover the original polynomial
+    assert inv == poly
 
   def test_fft_output_type(self):
     """The output of FFT should be in the field if input is in field."""
-    modulus = 31 
+    modulus = 31
     field = IntegersModP(31)
     polysOver = polynomials_over(field).factory
     # 1 + 2x + 3x^2 + 4 x^3 mod 31
@@ -171,7 +171,7 @@ class TestFFT(unittest.TestCase):
   # TODO(rbharath): Remove in future PR if confirmed not necessary
   #def test_fft_multidim(self):
   #  """Test FFT of multidimensional signal."""
-  #  steps = 512 
+  #  steps = 512
   #  modulus = 2**256 - 2**32 * 351 + 1
   #  mod = IntegersModP(modulus)
   #  # [1 + 2x + 3x^2 + 4 x^3 mod 31,
@@ -190,7 +190,7 @@ class TestFFT(unittest.TestCase):
     # Root of unity such that x^512=1
     root_of_unity = mod(7)**((modulus - 1) // 512)
     # a = b = 1 + 2x + 3x^2 + 4 x^3 mod 31
-    a = [mod(val) for val in range(4)] 
-    b = [mod(val) for val in range(4)] 
+    a = [mod(val) for val in range(4)]
+    b = [mod(val) for val in range(4)]
     prod = mul_polys(a, b, root_of_unity)
 

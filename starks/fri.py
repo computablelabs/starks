@@ -19,33 +19,33 @@ class FRI(object):
 
   def generate_proximity_proof(self,
                                f: Poly,
-                               S: Space,
+                               S,
                                security_factor:int = 40) -> List[bytes]:
     raise NotImplementedError
 
   def verify_proximity_proof(self,
                              proof: List[bytes],
                              merkle_root: bytes,
-                             S: Space,
+                             S,
                              security_factor:int = 40) -> bool:
     raise NotImplementedError
 
 class AffineSubspaceFRI(object):
   """Implements Fast Reed Solomon IOPP for affine spaces."""
-  def __init__(self, field, affine_space: AffineSpace):
-    self.field = field 
+  def __init__(self, field, affine_space):
+    self.field = field
     self.affine_space = affine_space
 
   def generate_proximity_proof(self,
                                f: Poly,
-                               S: AffineSpace,
+                               S,
                                security_factor:int = 40) -> List[bytes]:
     raise NotImplementedError
 
   def verify_proximity_proof(self,
                              proof: List[bytes],
                              merkle_root: bytes,
-                             S: AffineSpace,
+                             S,
                              security_factor:int = 40) -> bool:
     raise NotImplementedError
 
@@ -56,11 +56,11 @@ class SmoothSubgroupFRI(object):
   subgroup of a finite field. Recall that such a subgroup is
   of size 2^n and is a subgroup of the cyclic group of nonzero
   elements of the finite field.
-  
-  # TODO(rbharath): Swap this to work with a FourierPolynomial instead of a regular polynomial. Will be more efficient. 
+
+  # TODO(rbharath): Swap this to work with a FourierPolynomial instead of a regular polynomial. Will be more efficient.
   """
   def __init__(self, field):
-    self.field = field 
+    self.field = field
 
   def generate_proximity_proof(self,
                                f: Poly,
@@ -72,7 +72,7 @@ class SmoothSubgroupFRI(object):
     Generate an FRI proof that the polynomial that has the
     specified values at successive powers of the specified root
     of unity has a degree lower than maxdeg_plus_1
-    
+
     We use maxdeg+1 instead of maxdeg because it's more
     mathematically convenient in this case.
 
@@ -91,7 +91,7 @@ class SmoothSubgroupFRI(object):
 
     # Calculate the set of x coordinates
     xs = get_power_cycle(root_of_unity, self.field)
-    
+
     assert len(values) == len(xs)
 
     # Put the values into a Merkle tree. This is the root that
@@ -132,7 +132,7 @@ class SmoothSubgroupFRI(object):
     o = [m2[1], branches]
 
     # Recurse...
-    # Swapping the root of unity to get new polynomial 
+    # Swapping the root of unity to get new polynomial
     fft_solver = NonBinaryFFT(self.field, root_of_unity**4)
     column_poly = fft_solver.inv_fft(column)
     return [o] + self.generate_proximity_proof(
@@ -151,7 +151,7 @@ class SmoothSubgroupFRI(object):
     """Verifies proximity of this function to this RS code."""
     # Calculate which root of unity we're working with
     testval = root_of_unity
-    # roudeg is the power of the root of unity 
+    # roudeg is the power of the root of unity
     roudeg = 1
     while testval != 1:
       roudeg *= 2

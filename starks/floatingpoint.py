@@ -19,7 +19,7 @@ def num_to_binary_list(index):
 
   while index > 0:
     output_list.append(index%2)
-    index = index // 2  
+    index = index // 2
 
   return output_list
 
@@ -32,7 +32,7 @@ def FloatingPoint(field):
       self.p = p
       self.z = z
       self.s = s
-   
+
 
     #this is addition operation of two floating point numbers in binary finite field representation
     @typecheck
@@ -114,6 +114,7 @@ def FloatingPoint(field):
     #this is division operation of two floating point numbers in binary finite field representation
     @typecheck
     def __truediv__(self, other):
+      polysOver = polynomials_over(IntegersModP(field.p))
       if other.z == 1:
         raise ZeroDivisionError
       if other.v == field(polysOver([0])):
@@ -158,7 +159,7 @@ def FloatingPoint(field):
       else:
         p_c = self.p + other.p
         p_c = p_c + num_to_binary_list(self.v.poly.degree() + self.v.poly.degree() - (self.v.m - 1))
- 
+
       output = Fp(v_c, p_c, z_c, s_c)
       return output
 
