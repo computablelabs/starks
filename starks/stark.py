@@ -221,14 +221,6 @@ class STARK(object):
 
       ## Powers of the higher-order root of unity
       self.xs = get_power_cycle(self.G2, self.field)
-      ######################################
-      print("steps")
-      print(steps)
-      print("extension_factor")
-      print(extension_factor)
-      print("(steps - 1) * extension_factor")
-      print((steps - 1) * extension_factor)
-      ######################################
       self.last_step_position = self.xs[(steps - 1) * extension_factor]
       self.fft_solver = NonBinaryFFT(self.field, self.G2)
     else:
