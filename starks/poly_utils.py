@@ -59,11 +59,11 @@ def draw_random_interpolant(degree, xs, ys):
   # TODO(rbharath): Need to implement this correctly
   return 0
 
-def construct_affine_vanishing_polynomial(field: Field, aff: AffineSpace) -> Poly:
+def construct_affine_vanishing_polynomial(aff: AffineSpace) -> Poly:
   """Constructs a polynomial which vanishes over a given affine space."""
   # TODO(rbharath): Need to implement this correctly.
-  aff_elts = [field(elt) for elt in aff]
-  return zpoly(field, aff_elts)
+  aff_elts = [aff.field(elt) for elt in aff]
+  return zpoly(aff.field, aff_elts)
 
 def is_irreducible(polynomial: Poly, p: int) -> bool:
   """is_irreducible: Polynomial, int -> bool
