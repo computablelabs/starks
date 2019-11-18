@@ -11,13 +11,13 @@ from starks.fft import NonBinaryFFT
 from starks.poly_utils import multivariates_over
 from starks.air import AIR
 from starks.stark import get_power_cycle
-from starks.stark import STARK
 from starks.stark import construct_trace_polynomials
 from starks.stark import construct_constraint_polynomials
 from starks.stark import construct_remainder_polynomials
 from starks.stark import construct_boundary_polynomials
 from starks.stark import compute_pseudorandom_linear_combination
 from starks.finitefield import FiniteField
+from starks.reedsolomon import AffineSpace
 
 
 class TestFRI(unittest.TestCase):
@@ -45,28 +45,31 @@ class TestFRI(unittest.TestCase):
     # The proof is a list of length one, whose first entry is just the evaluations converted to bytes
     assert len(proof[0]) == 8
 
-#  def test_binary_fri_proof(self):
-#    """Test proof on low degree implementation"""
-#    # This finite field is of size 2^17
-#    p = 2
-#    m = 17
-#    Zp = IntegersModP(p)
-#    polysOver = polynomials_over(Zp)
-#    field = FiniteField(p, m)
-#    #field = FiniteField(p, m)
-#    #x^17 + x^3 + 1 is primitive
-#    coefficients = [Zp(0)] * 18
-#    coefficients[0] = Zp(1)
-#    coefficients[3] = Zp(1)
-#    coefficients[17] = Zp(1)
-#    poly = polysOver(coefficients)
-#    field = FiniteField(p, m, polynomialModulus=poly)
-#    polysOver = polynomials_over(field).factory
-#
-#    # This is a low degree polynomial so we hit the special
-#    # case of the handler.
-#    S = None # TODO: What is the space?
-#    fri = AffineSubspaceFRI(field)
+  def test_binary_fri_proof(self):
+    """Test proof on low degree implementation"""
+    # This finite field is of size 2^17
+    p = 2
+    m = 17
+    Zp = IntegersModP(p)
+    polysOver = polynomials_over(Zp)
+    field = FiniteField(p, m)
+    #field = FiniteField(p, m)
+    #x^17 + x^3 + 1 is primitive
+    coefficients = [Zp(0)] * 18
+    coefficients[0] = Zp(1)
+    coefficients[3] = Zp(1)
+    coefficients[17] = Zp(1)
+    poly = polysOver(coefficients)
+    field = FiniteField(p, m, polynomialModulus=poly)
+    polysOver = polynomials_over(field).factory
+
+    S = AffineSpace(field, [field(1)])# TODO: What is the space?
+    rho = 0.1
+    fri = AffineSubspaceFRI(field, S, rho)
+
+    fri_poly = polysOver([Zp(0), Zp(1)])
+    fri.generate_proximity_proof(fri_poly)
+
 #    proof = fri.generate_proximity_proof(poly, S)
 #    # The proof is a list of length one, whose first entry is just the evaluations converted to bytes
 #    assert len(proof[0]) == 8
