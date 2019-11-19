@@ -1,6 +1,6 @@
 import unittest
 from starks.fri import AffineSubspaceFRI
-from starks.fri import SmoothSubgroupFRI
+#from starks.fri import SmoothSubgroupFRI
 from starks.merkle_tree import merkelize
 from starks.merkle_tree import merkelize_polynomial_evaluations
 from starks.compression import bin_length
@@ -25,25 +25,25 @@ class TestFRI(unittest.TestCase):
   Basic tests for FRI implementation.
   """
 
-  def test_basic_prove(self):
-    """Test proof on low degree implementation"""
-    degree = 4
-    modulus = 2**256 - 2**32 * 351 + 1
-    field = IntegersModP(modulus)
-    polysOver = polynomials_over(field).factory
-    # 1 + x + 3x^2 + 4 x^3 mod 31
-    poly = polysOver([val for val in range(degree)])
+  #def test_basic_prove(self):
+  #  """Test proof on low degree implementation"""
+  #  degree = 4
+  #  modulus = 2**256 - 2**32 * 351 + 1
+  #  field = IntegersModP(modulus)
+  #  polysOver = polynomials_over(field).factory
+  #  # 1 + x + 3x^2 + 4 x^3 mod 31
+  #  poly = polysOver([val for val in range(degree)])
 
-    # A root of unity is a number such that z^n = 1
-    # This provides us a 6-th root of unity (z^6 = 1)
-    root_of_unity = field(7)**((modulus-1)//8)
+  #  # A root of unity is a number such that z^n = 1
+  #  # This provides us a 6-th root of unity (z^6 = 1)
+  #  root_of_unity = field(7)**((modulus-1)//8)
 
-    # This is a low degree polynomial so we hit the special
-    # case of the handler.
-    fri = SmoothSubgroupFRI(field)
-    proof = fri.generate_proximity_proof(poly, root_of_unity, degree)
-    # The proof is a list of length one, whose first entry is just the evaluations converted to bytes
-    assert len(proof[0]) == 8
+  #  # This is a low degree polynomial so we hit the special
+  #  # case of the handler.
+  #  fri = SmoothSubgroupFRI(field)
+  #  proof = fri.generate_proximity_proof(poly, root_of_unity, degree)
+  #  # The proof is a list of length one, whose first entry is just the evaluations converted to bytes
+  #  assert len(proof[0]) == 8
 
   def test_binary_fri_proof(self):
     """Test proof on low degree implementation"""
@@ -52,15 +52,16 @@ class TestFRI(unittest.TestCase):
     m = 17
     Zp = IntegersModP(p)
     polysOver = polynomials_over(Zp)
-    field = FiniteField(p, m)
     #field = FiniteField(p, m)
-    #x^17 + x^3 + 1 is primitive
-    coefficients = [Zp(0)] * 18
-    coefficients[0] = Zp(1)
-    coefficients[3] = Zp(1)
-    coefficients[17] = Zp(1)
-    poly = polysOver(coefficients)
-    field = FiniteField(p, m, polynomialModulus=poly)
+    ##field = FiniteField(p, m)
+    ##x^17 + x^3 + 1 is primitive
+    #coefficients = [Zp(0)] * 18
+    #coefficients[0] = Zp(1)
+    #coefficients[3] = Zp(1)
+    #coefficients[17] = Zp(1)
+    #poly = polysOver(coefficients)
+    #field = FiniteField(p, m, polynomialModulus=poly)
+    field = Zp
     polysOver = polynomials_over(field).factory
 
     S = AffineSpace(field, [field(1)])# TODO: What is the space?
@@ -68,90 +69,93 @@ class TestFRI(unittest.TestCase):
     fri = AffineSubspaceFRI(field, S, rho)
 
     fri_poly = polysOver([Zp(0), Zp(1)])
-    fri.generate_proximity_proof(fri_poly)
+    vals = fri.commit(fri_poly)
+    print("vals")
+    print(vals)
+    assert 0 == 1
 
 #    proof = fri.generate_proximity_proof(poly, S)
 #    # The proof is a list of length one, whose first entry is just the evaluations converted to bytes
 #    assert len(proof[0]) == 8
 
-  def test_high_degree_prove(self):
-    """Tests proof generation on high degree polynomials"""
-    steps = 512
-    modulus = 2**256 - 2**32 * 351 + 1
-    field = IntegersModP(modulus)
-    polysOver = polynomials_over(field).factory
-    # Some round constants borrowed from MiMC
-    poly = polysOver([field((i**7) ^ 42) for i in range(steps)])
-    # Root of unity such that x^steps=1
-    root_of_unity = field(7)**((modulus-1)//steps)
-    # We're trying to prove this is a (steps-1)-degree
-    # polnomial
-    # degree = (steps-1) + 1 = steps
-    fri = SmoothSubgroupFRI(field)
-    degree = steps
-    proof = fri.generate_proximity_proof(poly, root_of_unity, degree)
-    # The proof recurses by dividing maxdeg_plus_1 by 4
-    # So 512, 128, 32, 8. (The base case passes over to
-    # special handler for degree 16 or less so these are all
-    # recursions).
-    assert len(proof) == 4
-    for i, rec_proof in enumerate(proof):
-      if i < 3:
-        # Each subproof is [merkle_root, branches] for all but
-        # base case.
-        assert len(rec_proof) == 2
-        assert len(rec_proof[1]) == 40
-      else:
-        # Here we trigger the base case.
-        assert len(rec_proof) == 8
+  #def test_high_degree_prove(self):
+  #  """Tests proof generation on high degree polynomials"""
+  #  steps = 512
+  #  modulus = 2**256 - 2**32 * 351 + 1
+  #  field = IntegersModP(modulus)
+  #  polysOver = polynomials_over(field).factory
+  #  # Some round constants borrowed from MiMC
+  #  poly = polysOver([field((i**7) ^ 42) for i in range(steps)])
+  #  # Root of unity such that x^steps=1
+  #  root_of_unity = field(7)**((modulus-1)//steps)
+  #  # We're trying to prove this is a (steps-1)-degree
+  #  # polnomial
+  #  # degree = (steps-1) + 1 = steps
+  #  fri = SmoothSubgroupFRI(field)
+  #  degree = steps
+  #  proof = fri.generate_proximity_proof(poly, root_of_unity, degree)
+  #  # The proof recurses by dividing maxdeg_plus_1 by 4
+  #  # So 512, 128, 32, 8. (The base case passes over to
+  #  # special handler for degree 16 or less so these are all
+  #  # recursions).
+  #  assert len(proof) == 4
+  #  for i, rec_proof in enumerate(proof):
+  #    if i < 3:
+  #      # Each subproof is [merkle_root, branches] for all but
+  #      # base case.
+  #      assert len(rec_proof) == 2
+  #      assert len(rec_proof[1]) == 40
+  #    else:
+  #      # Here we trigger the base case.
+  #      assert len(rec_proof) == 8
 
-  def test_verify_low_degree_proof(self):
-    """Verify a low degree proof"""
-    dims = 1
-    modulus = 31
-    steps = 512
-    degree = steps
-    modulus = 2**256 - 2**32 * 351 + 1
-    field = IntegersModP(modulus)
-    polysOver = polynomials_over(field).factory
-    poly = polysOver([field((i**7) ^ 42) for i in range(steps)])
-    # Root of unity such that x^steps=1
-    root_of_unity = field(7)**((modulus - 1) // steps)
-    fri = SmoothSubgroupFRI(field)
-    proof = fri.generate_proximity_proof(poly, root_of_unity, degree)
+  #def test_verify_low_degree_proof(self):
+  #  """Verify a low degree proof"""
+  #  dims = 1
+  #  modulus = 31
+  #  steps = 512
+  #  degree = steps
+  #  modulus = 2**256 - 2**32 * 351 + 1
+  #  field = IntegersModP(modulus)
+  #  polysOver = polynomials_over(field).factory
+  #  poly = polysOver([field((i**7) ^ 42) for i in range(steps)])
+  #  # Root of unity such that x^steps=1
+  #  root_of_unity = field(7)**((modulus - 1) // steps)
+  #  fri = SmoothSubgroupFRI(field)
+  #  proof = fri.generate_proximity_proof(poly, root_of_unity, degree)
 
-    # TODO(rbharath): Should this be a method?
-    fft_solver = NonBinaryFFT(field, root_of_unity)
-    evaluations = fft_solver.fft(poly)
-    e_mtree = merkelize(evaluations)
-    mroot = e_mtree[1]
-    verification = fri.verify_proximity_proof(proof, mroot, root_of_unity, degree)
-    assert verification
+  #  # TODO(rbharath): Should this be a method?
+  #  fft_solver = NonBinaryFFT(field, root_of_unity)
+  #  evaluations = fft_solver.fft(poly)
+  #  e_mtree = merkelize(evaluations)
+  #  mroot = e_mtree[1]
+  #  verification = fri.verify_proximity_proof(proof, mroot, root_of_unity, degree)
+  #  assert verification
 
-  def test_fri(self):
-    """Pure FRI tests"""
-    #degree = 4096
-    degree = 256
-    modulus = 2**256 - 2**32 * 351 + 1
-    field= IntegersModP(modulus)
-    polysOver = polynomials_over(field).factory
-    poly = polysOver([field(val) for val in range(degree)])
-    root_of_unity = field(7)**((modulus - 1) // (degree*4))
-    #evaluations = fft(poly, modulus, root_of_unity)
-    #evaluations = [val[0] for val in evaluations]
-    #proof = prove_low_degree(evaluations, root_of_unity, 4096, modulus)
-    fri = SmoothSubgroupFRI(field)
-    proof = fri.generate_proximity_proof(poly, root_of_unity, degree)
-    print("Approx proof length: %d" % bin_length(compress_fri(proof)))
-    #assert verify_low_degree_proof(
-    #    merkelize(evaluations)[1], root_of_unity, proof, 4096, modulus)
+  #def test_fri(self):
+  #  """Pure FRI tests"""
+  #  #degree = 4096
+  #  degree = 256
+  #  modulus = 2**256 - 2**32 * 351 + 1
+  #  field= IntegersModP(modulus)
+  #  polysOver = polynomials_over(field).factory
+  #  poly = polysOver([field(val) for val in range(degree)])
+  #  root_of_unity = field(7)**((modulus - 1) // (degree*4))
+  #  #evaluations = fft(poly, modulus, root_of_unity)
+  #  #evaluations = [val[0] for val in evaluations]
+  #  #proof = prove_low_degree(evaluations, root_of_unity, 4096, modulus)
+  #  fri = SmoothSubgroupFRI(field)
+  #  proof = fri.generate_proximity_proof(poly, root_of_unity, degree)
+  #  print("Approx proof length: %d" % bin_length(compress_fri(proof)))
+  #  #assert verify_low_degree_proof(
+  #  #    merkelize(evaluations)[1], root_of_unity, proof, 4096, modulus)
 
-    fft_solver = NonBinaryFFT(field, root_of_unity)
-    evaluations = fft_solver.fft(poly)
-    e_mtree = merkelize(evaluations)
-    mroot = e_mtree[1]
-    verification = fri.verify_proximity_proof(proof, mroot, root_of_unity, degree)
-    assert verification
+  #  fft_solver = NonBinaryFFT(field, root_of_unity)
+  #  evaluations = fft_solver.fft(poly)
+  #  e_mtree = merkelize(evaluations)
+  #  mroot = e_mtree[1]
+  #  verification = fri.verify_proximity_proof(proof, mroot, root_of_unity, degree)
+  #  assert verification
 
     # TODO(rbharath): Make a good test for failure of high degree polynomials
     #fakedata = [
