@@ -12,6 +12,7 @@ from starks.reedsolomon import AffineSpace
 from starks.polynomial import polynomials_over
 from starks.poly_utils import generate_primitive_polynomial
 from starks.multivariate_polynomial import multivariates_over
+from starks.poly_utils import construct_affine_vanishing_polynomial_Moore
 from starks.poly_utils import construct_affine_vanishing_polynomial
 from starks.poly_utils import lagrange_interp
 from starks.poly_utils import draw_random_interpolant
@@ -170,7 +171,8 @@ class APR(object):
       Phi_P_1 = 1/Z_H0 * P(Tilde{(1,...,w, n^{id})}, Tilde{(1,...,w, n_1^cyc)})
     """
     Phis = []
-    Z_H0 = construct_affine_vanishing_polynomial(self.field, self.H0)
+    Z_H0 = construct_affine_vanishing_polynomial_Moore(self.field, self.H0)
+    #Z_H0 = construct_affine_vanishing_polynomial(self.field, self.H0)
     # Define X_loc
     X_loc = PhiPolys({(1,) + (0,)*len(self.Nbrs): 1})
     # n_id(x) = x
