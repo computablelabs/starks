@@ -75,7 +75,6 @@ def construct_affine_vanishing_polynomial(field: Field, aff: AffineSpace) -> Pol
   ##############################################
   print(aff_elts)
   return zpoly(field, aff_elts)
-  #return Moore_M(field, aff_elts)
 
 def construct_affine_vanishing_polynomial_Moore(field: Field, aff: AffineSpace) -> Poly:
   """Constructs a polynomial which vanishes over a given affine space."""
