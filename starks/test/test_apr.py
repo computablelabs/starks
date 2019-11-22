@@ -27,7 +27,7 @@ class TestAPR(unittest.TestCase):
     #coefficients[17] = Zp(1)
     #poly = polysOver(coefficients)
     #field = FiniteField(p, m, polynomialModulus=poly)
-    steps = 7
+    steps = 512-1
     extension_factor = 8
     inp = [field(0), field(1)]
     polysOver = multivariates_over(field, width).factory
@@ -58,7 +58,7 @@ class TestAPR(unittest.TestCase):
     coefficients[17] = Zp(1)
     poly = polysOver(coefficients)
     field = FiniteField(p, m, polynomialModulus=poly)
-    steps = 3
+    steps = 512-1
     extension_factor = 8
     inp = [field(0), field(1)]
     polysOver = multivariates_over(field, width).factory
