@@ -53,7 +53,7 @@ class TestFFT(unittest.TestCase):
     shift = field(polysOver([1, 0, 1]))
     obj = Additive_FFT(field)
     V1, V2 = obj.Taylor_Expansion(f, f.poly.degree())
-    W = obj.adfft(f, mp, beta, shift)
+    W = obj.adfft(f, mp, beta)
     print(V1)
     print(V2)
     print(W)
@@ -92,7 +92,7 @@ class TestFFT(unittest.TestCase):
     y.append(field(polysOver([1, 1])))
 
     obj = Additive_FFT(field)
-    f = obj.adfft_inverse(x, y, m)
+    f = obj.adfft_inverse(x, y, mp)
     print(f)
 
 
@@ -193,4 +193,3 @@ class TestFFT(unittest.TestCase):
     a = [mod(val) for val in range(4)]
     b = [mod(val) for val in range(4)]
     prod = mul_polys(a, b, root_of_unity)
-
