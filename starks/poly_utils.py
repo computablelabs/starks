@@ -65,15 +65,8 @@ def construct_affine_vanishing_polynomial(field: Field, aff: AffineSpace) -> Pol
   aff_elts = [field(elt) for elt in aff]
   ##############################################
   # TODO(rbharath): This doesn't work for arbitrary finite fields! 
-  print("field")
-  print(field)
-  print("aff_elts")
-  print(aff_elts)
-  print("[type(aff) for aff in aff_elts]")
-  print([type(aff) for aff in aff_elts])
   # Ok the error here is that aff_elts are not being interpreted as finite field elements? How to fix?
   ##############################################
-  print(aff_elts)
   return zpoly(field, aff_elts)
 
 def construct_affine_vanishing_polynomial_Moore(field: Field, aff: AffineSpace) -> Poly:
@@ -328,10 +321,8 @@ def zpoly(field, roots):
     root.insert(0, field(0))
     for j in range(len(root) - 1):
       root[j] -= root[j + 1] * x
-  ###########################################
   print("root")
   print(root)
-  ###########################################
   return polysOver(root)
 
 def lagrange_interp(field: Field, xs: List[FieldElement], ys: List[FieldElement]):
