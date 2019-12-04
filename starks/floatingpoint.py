@@ -19,7 +19,7 @@ def num_to_binary_list(index):
 
   while index > 0:
     output_list.append(index%2)
-    index = index // 2  
+    index = index // 2
 
   return output_list
 
