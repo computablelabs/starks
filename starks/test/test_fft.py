@@ -8,7 +8,7 @@ from starks.finitefield import FiniteField
 
 class TestFFT(unittest.TestCase):
   """
-  Basic tests for fft implementation.
+  Basic tests for fft implementation. 
   """
 
   def test_Taylor_Expansion(self):
@@ -24,13 +24,14 @@ class TestFFT(unittest.TestCase):
     field = FiniteField(p, m, polynomialModulus=poly)
     # 1 + x + x^3
     f = field(polysOver([1, 1, 0, 1]))
+    # 1 + x^2 + x^3
+    fp = field(polysOver([1, 0, 1, 1]))
     obj = Additive_FFT(field)
     V1, V2 = obj.Taylor_Expansion(f, f.poly.degree())
+    V1p, V2p = obj.Taylor_Expansion(fp, fp.poly.degree())
 
-    print(f)
-    print(V1)
-    print(V2)
-
+    assert V1.poly.degree() <= 3 and V2.poly.degree() <= 3
+    assert V1p.poly.degree() <= 3 and V2p.poly.degree() <= 3
 
   def test_adfft(self):
     p = 2
@@ -53,12 +54,11 @@ class TestFFT(unittest.TestCase):
     shift = field(polysOver([1, 0, 1]))
     obj = Additive_FFT(field)
     V1, V2 = obj.Taylor_Expansion(f, f.poly.degree())
-    W = obj.adfft(f, mp, beta, shift)
-    print(V1)
-    print(V2)
+    W = obj.adfft(f, mp, beta)
+    assert V1.poly.degree() <= 3 and V2.poly.degree() <= 3
     print(W)
 
-
+  
   def test_adfft_inverse(self):
     p = 2
     m = 4
@@ -71,7 +71,7 @@ class TestFFT(unittest.TestCase):
     poly = polysOver(coefficients)
     field = FiniteField(p, m, polynomialModulus=poly)
 
-    mp = 2
+    mp = 3
     x = []
     y = []
     x.append(field(polysOver([1, 0, 0])))
@@ -90,15 +90,14 @@ class TestFFT(unittest.TestCase):
     y.append(field(polysOver([0])))
     x.append(field(polysOver([1])))
     y.append(field(polysOver([1, 1])))
-
+    
     obj = Additive_FFT(field)
-    f = obj.adfft_inverse(x, y, m)
-    print(f)
-
+    f = obj.adfft_inverse(x, y, mp)
+  
 
   def test_basic(self):
     """Basic test of fft."""
-    modulus = 31
+    modulus = 31 
     field = IntegersModP(31)
     polysOver = polynomials_over(field).factory
     # 1 + 2x + 3x^2 + 4 x^3 mod 31
@@ -132,7 +131,7 @@ class TestFFT(unittest.TestCase):
 
   def test_fft_inv(self):
     """Test of Inverse FFT."""
-    modulus = 31
+    modulus = 31 
     field = IntegersModP(31)
     # 1 + 2x + 3x^2 + 4 x^3 mod 31
     polysOver = polynomials_over(field).factory
@@ -146,12 +145,12 @@ class TestFFT(unittest.TestCase):
     fft_solver = NonBinaryFFT(field, root_of_unity)
     evaluations = fft_solver.fft(poly)
     inv = fft_solver.inv_fft(evaluations)
-    # Check we recover the original polynomial
-    assert inv == poly
+    # Check we recover the original polynomial 
+    assert inv == poly 
 
   def test_fft_output_type(self):
     """The output of FFT should be in the field if input is in field."""
-    modulus = 31
+    modulus = 31 
     field = IntegersModP(31)
     polysOver = polynomials_over(field).factory
     # 1 + 2x + 3x^2 + 4 x^3 mod 31
@@ -171,7 +170,7 @@ class TestFFT(unittest.TestCase):
   # TODO(rbharath): Remove in future PR if confirmed not necessary
   #def test_fft_multidim(self):
   #  """Test FFT of multidimensional signal."""
-  #  steps = 512
+  #  steps = 512 
   #  modulus = 2**256 - 2**32 * 351 + 1
   #  mod = IntegersModP(modulus)
   #  # [1 + 2x + 3x^2 + 4 x^3 mod 31,
@@ -190,7 +189,6 @@ class TestFFT(unittest.TestCase):
     # Root of unity such that x^512=1
     root_of_unity = mod(7)**((modulus - 1) // 512)
     # a = b = 1 + 2x + 3x^2 + 4 x^3 mod 31
-    a = [mod(val) for val in range(4)]
-    b = [mod(val) for val in range(4)]
+    a = [mod(val) for val in range(4)] 
+    b = [mod(val) for val in range(4)] 
     prod = mul_polys(a, b, root_of_unity)
-
