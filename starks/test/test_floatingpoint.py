@@ -26,13 +26,13 @@ class TestFloatingPoint(unittest.TestCase):
 
     assert floating_point(field(polysOver([0])), field(polysOver([1])), 1, 0) == floating_point(field(polysOver([1,1,1])), field(polysOver([1])), 0, 0) + floating_point(field(polysOver([1,1,1])), field(polysOver([1])), 0, 0)
     assert floating_point(field(polysOver([1,1])), field(polysOver([1,1,1])), 0, 0) == floating_point(field(polysOver([1,1])), field(polysOver([1,1,1])), 0, 0) + floating_point(field(polysOver([1])), field(polysOver([0])), 0, 0)
-    assert floating_point(field(polysOver([0,1,1,1])), field(polysOver([1,1])), 0, 0) == floating_point(field(polysOver([1,0,1])), field(polysOver([1,1])), 0, 1) + floating_point(field(polysOver([1,1,1])), field(polysOver([1,1])), 0, 0)
+    assert floating_point(field(polysOver([0,1])), field(polysOver([1,1])), 0, 0) == floating_point(field(polysOver([1,0,1])), field(polysOver([1,1])), 0, 1) + floating_point(field(polysOver([1,1,1])), field(polysOver([1,1])), 0, 0)
     assert floating_point(field(polysOver([1,0,1])), field(polysOver([1,1])), 0, 1) == floating_point(field(polysOver([1,0,1])), field(polysOver([1,1])), 0, 1) + floating_point(field(polysOver([0])), field(polysOver([0])), 1, 0)
 
 
   def test_subtraction(self):
     """Basic test of floating point subraction."""
-
+    
     p = 2
     m = 4
     Zp = IntegersModP(p)
@@ -45,13 +45,13 @@ class TestFloatingPoint(unittest.TestCase):
     field = FiniteField(p, m, polynomialModulus=poly)
     floating_point = FloatingPoint(field)
 
-    assert floating_point(field(polysOver([0])), field(polysOver([1])), 1, 0) == floating_point(field(polysOver([1,1,1])), field(polysOver([1])), 0, 0) - floating_point(field(polysOver([1,1,1])), field(polysOver([1])), 0, 0)
+    assert floating_point(field(polysOver([0])), field(polysOver([1])), 1, 1) == floating_point(field(polysOver([1,1,1])), field(polysOver([1])), 0, 0) - floating_point(field(polysOver([1,1,1])), field(polysOver([1])), 0, 0)
     assert floating_point(field(polysOver([1,1])), field(polysOver([1,1,1])), 0, 0) == floating_point(field(polysOver([1,1])), field(polysOver([1,1,1])), 0, 0) - floating_point(field(polysOver([1])), field(polysOver([0])), 0, 0)
     assert floating_point(field(polysOver([0,1,1,1])), field(polysOver([1,1])), 0, 1) == floating_point(field(polysOver([1,0,1])), field(polysOver([1,1])), 0, 1) - floating_point(field(polysOver([1,1,1])), field(polysOver([1,1])), 0, 0)
     assert floating_point(field(polysOver([1,1,1])), field(polysOver([1])), 0, 1) == floating_point(field(polysOver([0])), field(polysOver([0])), 1, 0) - floating_point(field(polysOver([1,1,1])), field(polysOver([1])), 0, 0)
 
   def test_multiplication(self):
-    """Basic test of floating point multiplication."""
+    """Basic test of floating point multiplication."""   
 
     p = 2
     m = 4
@@ -72,7 +72,7 @@ class TestFloatingPoint(unittest.TestCase):
 
   def test_division(self):
     """Basic test of floating point division."""
-
+    
     p = 2
     m = 4
     Zp = IntegersModP(p)
@@ -91,7 +91,7 @@ class TestFloatingPoint(unittest.TestCase):
 
   def test_exponentiation(self):
     """Basic test of floating point exponentiation."""
-
+    
     p = 2
     m = 4
     Zp = IntegersModP(p)
@@ -107,5 +107,3 @@ class TestFloatingPoint(unittest.TestCase):
     assert floating_point(field(polysOver([1,1,1])), field(polysOver([1])), 0, 0) == floating_point(field(polysOver([1,1,1])), field(polysOver([1])), 0, 0) ** floating_point(field(polysOver([1])), field(polysOver([0])), 0, 0)
     assert floating_point(field(polysOver([1])), field(polysOver([0])), 0, 0) == floating_point(field(polysOver([1,1,1])), field(polysOver([1])), 0, 0) ** floating_point(field(polysOver([0])), field(polysOver([0])), 0, 0)
     assert floating_point(field(polysOver([1,1,1])), field(polysOver([0])), 0, 0) == floating_point(field(polysOver([1,1,1])), field(polysOver([1])), 0, 0) ** floating_point(field(polysOver([1])), field(polysOver([0,1])), 0, 0)
-
-
