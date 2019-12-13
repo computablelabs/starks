@@ -19,7 +19,8 @@ def int_to_bin_string(i):
     return s
 
 class FFT(object):
-  """Abstract class that specifies a FFT solver."""
+  """Abstract class that specifies a FFT solver. The additive FFT parts are implemented based on 
+  Shuhong Gao and Todd D. Mateer. Additive fast fourier transforms over finite fields"""
 
   def __init__(self):
     raise NotImplementedError
@@ -37,14 +38,19 @@ class Additive_FFT(FFT):
   def __init__(self, field):
     self.field = field
 
+  # this is the implementation of Taylor Expansion
   def Taylor_Expansion(self, Polys, n):
+    #  Let F be any field of characteristic two, t > 1 any integer, so we consider as 2
+    # if n <= t then return the original function
     if n <= 2:
       return Polys
-
+ 
+    # Find k such that t * 2^k < n ≤ 2 * t * 2^k
     for x in range(n):
       if 2**(x+1) < n and 2**(x+2) >= n:
         k = x
 
+    # Split f(x) into three blocks f0, f1, and f2 where f(x) = f0(x) + x^{t * 2^k} (f1(x) + x ^{(t-1) * 2^k} * f2(x))
     polysOver = polynomials_over(IntegersModP(2))
     list_f0 = []
     for i in range(2**(k+1)):
@@ -71,6 +77,7 @@ class Additive_FFT(FFT):
     f1 = self.field(polysOver(list_f1))
     f2 = self.field(polysOver(list_f2))
 
+    # h = f1+f2, g0 = f0 + x^{2^k} * h, and g1 = h + x^{(t-1) * 2^k} * f2
     h = f1+f2
     twoK = []
     for i in range(2**(k)):
@@ -81,14 +88,15 @@ class Additive_FFT(FFT):
     g0 = f0+f_twoK*h
     g1 = h+f_twoK*f2
 
+    # recursive part
     V1 = self.Taylor_Expansion(g0, n/2)
     V2 = self.Taylor_Expansion(g1, n/2)
 
     return V1, V2
 
-
-
+  # this is the implementation of additive FFT
   def adfft(self, Polys, m, affine_beta):
+    # evaluation f in 0 and beta_1
     polysOver = polynomials_over(IntegersModP(2))
     f1 = self.field(polysOver([0]))
     for i in range(Polys.poly.degree()+1):
@@ -100,18 +108,25 @@ class Additive_FFT(FFT):
       if str(Polys.poly.coefficients[i])[0] == '1':
         f2 = f2
 
+    # if m == 1 return f1 and f2
     if m == 1:
       return f1, f2
 
+    # g(x) = f(beta_m * x)
     g = self.field(polysOver([0]))
     x = self.field(polysOver([0, 1]))
-    x = x * affine_beta[m-1]
+    x = x * affine_beta[m-1] 
     for i in range(Polys.poly.degree()+1):
       if str(Polys.poly.coefficients[i])[0] == '1':
         g = g + x**i
 
+    # g_0 and g_1 are output of taylor expansion over g
     g0, g1 = self.Taylor_Expansion(g, 2**m)
 
+    """
+    gamma_i = beta_i * beta_m ^-1 and delta_i = gamma_i^2 - gamma_i for i = 1, ..., m-1
+    G = <gamma_1, ..., gamma_{m-1}> and D = <delta_1, ..., delta_{m-1}>
+    """
     gamma = []
     beta_m_I = affine_beta[m-1].inverse()
     for i in range(m-1):
@@ -132,6 +147,7 @@ class Additive_FFT(FFT):
 
     D = delta
 
+    # recursively call additive FFT
     u = self.adfft(g0, m-1, D)
     v = self.adfft(g1, m-1, D)
 
@@ -141,6 +157,7 @@ class Additive_FFT(FFT):
       w1.append(u[i]+G[i]*v[i])
       w2.append(w1[i]+v[i])
 
+    # outputs are w_0, ..., w_{n-1} where w_i = u_i + G[i] * v_i and w_[i+2^{m-1}] = w_i + v_i where i = 0, ..., 2 ^{m-1}
     w = []
     for i in range(len(w1)):
       w.append(w1[i])
@@ -149,18 +166,25 @@ class Additive_FFT(FFT):
 
     return w
 
-  def adfft_inverse(self, x, y, m):
+  # this is the inverse of additive FFt which actually is interpolation
+  def adfft_inverse(self, x, y, m): 
+    # this is th exit condition where the size of x and y is 2 and we need to interpolate a finction that has these two points on it
     if m == 1:
       if x[0] == x[1]:
         return x[0]
       else:
         return ((y[1]-y[0])/(x[1]-x[0]))*(self.field(polysOver([0, 1]))-x[0])+y[0]
 
+    # based on the value of x we can build all beta where beta_i = x_{2^i}
     polysOver = polynomials_over(IntegersModP(2))
     beta = []
     for i in range(m):
       beta.append(x[2**i])
 
+    """
+    gamma_i = beta_i * beta_m ^-1 and delta_i = gamma_i^2 - gamma_i for i = 1, ..., m-1
+    G = <gamma_1, ..., gamma_{m-1}> and D = <delta_1, ..., delta_{m-1}>
+    """
     gamma = []
     Ibeta = beta[-1].inverse()
     for i in range(m-1):
@@ -181,6 +205,7 @@ class Additive_FFT(FFT):
 
     D = delta
 
+    # comput u and v where v_i = y_{i+2^{m-1} - y_i and u_i = y_i - G_i * v_i
     v = []
     u = []
     for i in range(2**(m-1)):
@@ -196,16 +221,18 @@ class Additive_FFT(FFT):
           temp = temp + D[j]
       x1.append(temp)
 
+    # the recursion parts of the approach to get g0 and g1
     g_0 = self.adfft_inverse(x1, u, m-1)
     g_1 = self.adfft_inverse(x1, v, m-1)
 
+    # computing g based on g0 and g1 by using taylor expansion and then changing the variables to return it as the output
     g = self.field(polysOver([0]))
     g_right_tempp = self.field(polysOver([0, 1])) * Ibeta
     g_right_temp = g_right_tempp * g_right_tempp - g_right_tempp
     g_right = []
     g_right.append(self.field(polysOver([1])))
     multiplier = []
-    multiplier.append(self.field(polysOver([0])))
+    multiplier.append(self.field(polysOver([0]))) 
     multiplier.append(g_right_tempp)
     multiplier.append(self.field(polysOver([1])))
     multiplier.append(self.field(polysOver([1]))+g_right_tempp)
@@ -225,7 +252,6 @@ class Additive_FFT(FFT):
       g  = g + multiplier[g0I+2**g1I] * g_right[i]
 
     return g
-
 
 class NonBinaryFFT(FFT):
   """FFT that works for finite fields which don't have characteristic 2."""
@@ -260,7 +286,7 @@ class BinaryFFT(FFT):
 
 def _simple_ft(vals: List[FieldElement], roots_of_unity: FieldElement) -> List[FieldElement]:
   """Efficient base case implementation.
-
+  
   The FFT recurses down halves of the list. This method is
   called to handle the base case of the fft.
   """
