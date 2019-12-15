@@ -25,18 +25,37 @@ def num_to_binary_list(index):
 
 @memoize
 def FloatingPoint(field):
+  '''
+  Each  real  value can  be  represented  in  floating-point  format  as  a  4-tuple (v, p, z, s),
+  where v is  an  l-bit  significand, p is  a k-bit  exponent, z is a bit which is set to 1 iffu= 0,
+  and s is a sign bit which is set when the value is negative
+  '''
   class Fp:
     def __init__(self, v, p, z, s):
-      #these are four ellements of floating point numbers
+      #these are four elements of floating point numbers
       self.v = v
       self.p = p
       self.z = z
       self.s = s
+   
+
+    @typecheck
+    def __eq__(self, other):
+      return self.z == other.z or (self.v == other.v and self.p == other.p and self.z == other.z and self.s == other.s)
 
 
     #this is addition operation of two floating point numbers in binary finite field representation
     @typecheck
     def __add__(self, other):
+      '''
+      if we are adding A = (v_a, p_a, z_a, s_a) and B = (v_b, p_b, z_b, s_b), then:
+        1- If z_a = 0, then the output is B, and if z_b= 0, then the output is A
+        2- find v_max, v_min, p_max, and p_min
+        3- delta = p_max - p_min
+        4- s_output = s_a XOR s_b
+        5- if delta > 1, then v_output = v_max and p_output = p_max, also z_output will be equal to z of the maximum element
+        6- if 0 <= delta <= l, then v_output = v_max * 2^delta + v_min and p_output = p_min 
+      '''
       polysOver = polynomials_over(IntegersModP(field.p))
 
       if self.z == 1:
@@ -107,6 +126,7 @@ def FloatingPoint(field):
     #this is subtraction operation of two floating point numbers in binary finite field representation and it uses addition operation
     @typecheck
     def __sub__(self, other):
+      # subtraction is implemented based on addition
       other.s = other.s ^ 1
       output = self + other
       return output
@@ -114,13 +134,19 @@ def FloatingPoint(field):
     #this is division operation of two floating point numbers in binary finite field representation
     @typecheck
     def __truediv__(self, other):
+      '''
+      if we are dividing A = (v_a, p_a, z_a, s_a) and B = (v_b, p_b, z_b, s_b), then:
+        1- z_output = z_a
+        2- s_output = s_a XOR s_b
+        3- if z_output == 1, then v_output = 0; otherwise, v_output = v_a * inverse(v_b)
+        4- if z_output == 1, then p_output = 0; otherwise, p_output = p_a - p_b + l 
+      '''
       polysOver = polynomials_over(IntegersModP(field.p))
+
       if other.z == 1:
         raise ZeroDivisionError
       if other.v == field(polysOver([0])):
         raise ZeroDivisionError
-
-      polysOver = polynomials_over(IntegersModP(field.p))
 
       z_c = self.z | other.z
 
@@ -143,6 +169,13 @@ def FloatingPoint(field):
     #this is multiplication operation of two floating point numbers in binary finite field representation
     @typecheck
     def __mul__(self, other):
+      '''
+      if we are multiplying A = (v_a, p_a, z_a, s_a) and B = (v_b, p_b, z_b, s_b), then:
+        1- z_output = z_a OR z_b
+        2- s_output = s_a XOR s_b
+        3- if z_output == 1, then v_output = 0; otherwise, v_output = v_a * v_b
+        4- if z_output == 1, then p_output = 0; otherwise, p_output = p_a + p_b + l 
+      '''
       polysOver = polynomials_over(IntegersModP(field.p))
 
       z_c = self.z | other.z
@@ -159,7 +192,7 @@ def FloatingPoint(field):
       else:
         p_c = self.p + other.p
         p_c = p_c + num_to_binary_list(self.v.poly.degree() + self.v.poly.degree() - (self.v.m - 1))
-
+ 
       output = Fp(v_c, p_c, z_c, s_c)
       return output
 
@@ -175,8 +208,9 @@ def FloatingPoint(field):
       return output, self.s
 
 
-    #this function computes exponentiation based on regular binary addition
+    #this is exponentiation operation in floating point representation
     def __pow__(self, other):
+      #this function computes exponentiation based on regular binary addition
       fixed_of_Exp, sign = other.Float_to_Fix()
 
       polysOver = polynomials_over(IntegersModP(field.p))

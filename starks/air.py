@@ -21,12 +21,12 @@ length T with a state of size w, the trace is O(wT) which
 could possibly be very large.
 """
 
-import math
 from typing import List
 from typing import Tuple
 from starks.utils import is_a_power_of_2
 from starks.utils import generate_Xi_s
 from starks.poly_utils import multivariates_over
+from sympy import *
 
 def get_computational_trace(inp, steps, width, step_polys):
   """Get the computational trace for the algebraic intermediate representation.
@@ -35,7 +35,7 @@ def get_computational_trace(inp, steps, width, step_polys):
   ----------
   f: Field
     TODO(rbharath): This shouldn't have to be passed explicitly
-  inp: list
+  inp: list 
     The input state for the computation
   steps: Int
     The number of steps in the computation
@@ -53,7 +53,7 @@ def get_computational_trace(inp, steps, width, step_polys):
 
 class AIR(object):
   """A simple class defining the algebraic intermediate representation of a computation.
-
+  
   More formally, this class holds an instance of the AIR problem. Recall that
   an instance of the AIR problem is a tuple.
 
@@ -75,12 +75,12 @@ class AIR(object):
   width: Int
     The dimensionality of the state space for the computation.
   inp: Int or List
-    Either a single int or a list of integers of length width
+    Either a single int or a list of integers of length width 
   steps: Int
     An int holding the number of steps of this computation.
   output: Int of List
-    Either a single int or a list of integers of length width
-  step_polys: Poly
+    Either a single int or a list of integers of length width 
+  step_polys: Poly 
     A function that maps a computation state to the next
     state. A state here is either an int of a list of ints of
     length width.
@@ -95,8 +95,9 @@ class AIR(object):
       inp = [inp]
 
     # Some constraints to make our job easier
-    assert math.log(steps+1, 2).is_integer()
-    self.t = math.log(steps+1, 2)
+    self.t = 9 # this is only a sample value, we need to change it based on a computation
+    assert steps == 2**self.t-1
+    #assert is_a_power_of_2(steps)
 
     self.inp = inp
     self.steps = steps
@@ -110,14 +111,14 @@ class AIR(object):
     # fields for consistency.
     self.F = field
     self.T = steps
-    self.w = width
+    self.w = width 
     self.Polys = self.generate_constraint_polynomials()
     self.C = self.generate_monotone_circuit(self.Polys)
     self.d = 10 # this is only a sample value, we need to change it based on a computation
     self.CDegree = self.C_degree(self.Polys)
     assert self.CDegree <= 2**self.d
     self.B = self.generate_boundary_constraints()
-
+  
   def generate_witness(self):
     """Returns the witness (computational trace) for this computation."""
     return [[self.computational_trace[i][j] for i in range(self.steps)] for j in range(self.w)]
@@ -131,6 +132,9 @@ class AIR(object):
     return boundary_constraints
 
   def generate_monotone_circuit(self, Polys):
+    """
+    building a monotone boolean circuit over variables Z1, . . . , Zs with multi-input AND and OR gates
+    """
     output_eval = []
     for i in range(self.steps - 1):
       Wt = self.computational_trace[i]
@@ -154,6 +158,9 @@ class AIR(object):
     return True
 
   def C_degree(self, Polys):
+    """
+    the degree of the monotone boolean circuit
+    """
     return max([Polys[j].degree() for j in range(self.width)])
 
 
